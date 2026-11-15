@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jumeau numérique MaxPID · Activités SII PCSI/PSI*</title>
+<style>
+  :root{
+    --font-ui:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+    --font-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+    --bg:#ffffff;--bar:#eeeeee;--panel:#ffffff;--panel2:#f1f3f6;--field:#ffffff;--line:#b9bfc7;
+    --fg:#111111;--muted:#5a6068;--accent:#2e6da4;--accent-fg:#ffffff;--accent-soft:#dcebf8;--accent-ink:#1b4a76;
+    --ok:#1e7a2e;--warn:#9a5b00;--bad:#c0281f;--violet:#7b4fc2;
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 var(--font-ui)}
+  .inner{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  #app{height:100%;display:flex;flex-direction:column;min-height:0}
+  .band{background:var(--bar);border-bottom:1px solid var(--line);flex:none}
+  .row{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding-block:7px}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:16px;letter-spacing:.01em}
+  .brand small{font-weight:400;color:var(--muted);font-size:13px}
+  .files{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .btn{font-weight:500;font-size:13px;padding:6px 11px;border:1px solid var(--line);background:var(--panel);border-radius:7px;cursor:pointer}
+  .btn:hover{border-color:var(--accent)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.pri{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+  .btn.sm{padding:3px 8px;font-size:12px}
+  :is(button,input,select,textarea,summary):focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;background:var(--panel);max-width:100%;overflow-x:auto}
+  .seg button{border:0;background:transparent;padding:7px 14px;font-weight:500;font-size:13px;cursor:pointer;white-space:nowrap}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+  .work{flex:1;min-height:0;display:flex;gap:10px;padding-block:10px}
+  #stage{flex:1;min-width:0;position:relative;border:1px solid var(--line);border-radius:10px;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+  #hint{flex:none;padding:6px 12px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--line);background:var(--bar)}
+  #scroller{flex:1;min-height:0;overflow:auto}
+  .phead{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);flex:none}
+  .phead b{font-size:15px}
+  .phead .sub{color:var(--muted);font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tabs{display:flex;gap:2px;padding:6px 8px 0;border-bottom:1px solid var(--line);overflow-x:auto;flex:none}
+  .tabs button{border:0;border-bottom:2px solid transparent;background:transparent;padding:6px 10px;font-weight:500;font-size:13px;cursor:pointer;white-space:nowrap;color:var(--muted)}
+  .tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+  .pbody{overflow:auto;padding:12px;flex:1;min-height:0}
+  .fld{display:flex;flex-direction:column;gap:3px;margin-bottom:9px;font-size:12.5px;color:var(--muted)}
+  input[type=text],input[type=number],textarea,select{width:100%;background:var(--field);border:1px solid var(--line);border-radius:6px;padding:5px 8px;color:var(--fg)}
+  input[type=range]{width:100%;padding:0;accent-color:var(--accent)}
+  .mono{font-family:var(--font-mono);font-size:12.5px}
+  .small{font-size:12px;color:var(--muted);margin:0 0 9px}
+  #act{flex:none;width:clamp(280px,24vw,340px);display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--panel);min-height:0;max-height:100%}
+  #act .pbody{font-size:13.5px}
+  .goal{background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:8px 10px;margin:0 0 10px}
+  .steps{margin:0 0 10px;padding-left:20px}.steps li{margin-bottom:9px}
+  .defi{border:1px dashed var(--accent);border-radius:8px;padding:8px 10px;margin:0 0 12px}.defi p{margin:6px 0}
+  .defi summary{cursor:pointer;font-weight:500;color:var(--accent-ink)}
+  fieldset.q{border:1px solid var(--line);border-radius:8px;padding:8px 10px 6px;margin:0 0 10px;min-width:0}
+  fieldset.q legend{font-weight:600;padding:0 4px;max-width:100%}
+  .opt{display:flex;gap:8px;align-items:flex-start;padding:4px 6px;border-radius:6px;cursor:pointer}
+  .opt input{margin-top:3px;width:auto;flex:none}
+  .opt.good{background:rgba(30,122,46,.15)}.opt.bad{background:rgba(192,40,31,.15)}
+  .why{font-size:12.5px;color:var(--muted);margin:6px 4px 2px}
+  .score{font-weight:600;font-size:15px;margin:4px 0 8px}
+  #course{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg)}
+  .ctop,.cwrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .ctop{flex:none;display:flex;justify-content:space-between;align-items:center;gap:10px;padding-block:8px;border-bottom:1px solid var(--line);background:var(--bar)}
+  .cwrap{flex:1;min-height:0;display:flex;gap:28px;padding-block:14px}
+  .ctoc{flex:none;width:250px;overflow:auto;display:flex;flex-direction:column;gap:1px}
+  .ctoc button{display:block;width:100%;text-align:left;padding:6px 10px;border:0;border-left:3px solid transparent;background:transparent;cursor:pointer;font-size:13.5px}
+  .ctoc button:hover{background:var(--panel2)}
+  .ctoc button.on{border-left-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+  .ctoc-sel{display:none;margin:8px max(16px,env(safe-area-inset-left,0px)) 0;width:auto}
+  .cbody{flex:1;min-width:0;overflow:auto;max-width:860px;padding-right:6px}
+  .ckick{color:var(--muted);font-size:12.5px;margin:0}
+  .cbody h2{font-size:26px;margin:2px 0 12px;text-wrap:balance}
+  .cbody h3{font-size:16.5px;margin:22px 0 6px}
+  .cbody p,.cbody li{font-size:14.5px;line-height:1.6}
+  .cbody ul,.cbody ol{padding-left:22px}.cbody li{margin-bottom:4px}
+  .cbody table{display:block;overflow-x:auto;max-width:100%}
+  .ctable{border-collapse:collapse;font-size:13.5px;margin:8px 0 12px}
+  .ctable th,.ctable td{border:1px solid var(--line);padding:5px 9px;text-align:left;vertical-align:top}
+  .ctable th{background:var(--panel2);font-weight:600}
+  .retain{background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:9px 12px;margin:16px 0 6px;font-size:14px}
+  .formula{background:var(--panel2);border-left:3px solid var(--accent);padding:8px 12px;margin:8px 0;font-size:15px;overflow-x:auto;font-family:var(--font-mono)}
+  pre.code{font:12.5px/1.55 var(--font-mono);margin:8px 0;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-x:auto;white-space:pre}
+  .gloss{display:grid;grid-template-columns:max-content 1fr;gap:5px 18px;font-size:14px}.gloss dt{font-weight:600}.gloss dd{margin:0}
+  .cpn{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:24px 0 32px}
+  #ws{padding:16px max(16px,env(safe-area-inset-left,0px)) 30px;max-width:980px}
+  #ws h2{font-size:24px;margin:0 0 8px;text-wrap:balance}
+  #ws h3{font-size:16.5px;margin:24px 0 6px}
+  #ws p,#ws li{font-size:14.5px;line-height:1.55}
+  #ws .small{font-size:12.5px}
+  .opts{display:flex;gap:10px 18px;flex-wrap:wrap;align-items:flex-end;margin:6px 0 10px}.opts .fld{margin:0}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+  .chip{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:4px 11px;font-size:13px;cursor:pointer}
+  .chip:hover{border-color:var(--accent)}.chip.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+  .gstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0}
+  .stat{border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--panel);display:flex;flex-direction:column;gap:2px;min-width:0}
+  .stat span{font-size:12px;color:var(--muted)}.stat b{font-size:14px;font-family:var(--font-mono);overflow-wrap:anywhere}
+  .verdict{border-radius:8px;padding:9px 12px;margin:10px 0;font-size:14px;background:var(--panel2);border:1px solid var(--line)}
+  .verdict.yes{background:rgba(30,122,46,.15);border-color:var(--ok)}.verdict.no{background:rgba(192,40,31,.13);border-color:var(--bad)}.verdict.warn{background:rgba(154,91,0,.13);border-color:var(--warn)}
+  .canvas-wrap{border:1px solid var(--line);border-radius:10px;padding:8px;background:#fff;margin:8px 0;overflow-x:auto}
+  canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;gap:10px 16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:4px 0}
+  .legend i{display:inline-block;width:12px;height:3px;border-radius:2px;vertical-align:2px;margin-right:4px}
+  @media (max-width:820px){
+    .ctoc{display:none}.ctoc-sel{display:block}.cwrap{padding-top:8px}.cbody{padding-right:0}.gloss{grid-template-columns:1fr}.gloss dd{margin-bottom:6px}
+    #act{position:fixed;left:0;right:0;bottom:0;width:auto;height:70%;max-height:none;border-radius:14px 14px 0 0;z-index:35;box-shadow:0 -8px 30px rgba(0,0,0,.28);padding-bottom:env(safe-area-inset-bottom,0px)}
+    .work{flex-direction:column;gap:8px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="band"><div class="inner row">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="3" y="14" width="4" height="9" fill="var(--accent)"/><rect x="9" y="9" width="4" height="14" fill="var(--ok)"/><rect x="15" y="5" width="4" height="18" fill="var(--warn)"/><rect x="21" y="11" width="2.5" height="12" fill="var(--bad)"/></svg>
+      <span>Jumeau numérique MaxPID <small>SII · PCSI/PSI*</small></span>
+    </div>
+    <div class="files">
+      <button class="btn" id="bAct" type="button" aria-pressed="false">Activité</button>
+      <button class="btn" id="bCourse" type="button" aria-pressed="false">Cours</button>
+      <button class="btn" id="bHelp" type="button">Aide</button>
+    </div>
+  </div></header>
+
+  <div class="band" id="modes"><div class="inner row"><div class="seg" id="wsSeg" role="tablist" aria-label="Ateliers"></div></div></div>
+
+  <main class="inner work" id="work">
+    <section id="stage"><div id="hint"></div><div id="scroller"><div id="ws"></div></div></section>
+    <aside id="act" hidden aria-label="Activité"></aside>
+  </main>
+
+  <section id="course" hidden aria-label="Cours"></section>
+</div>
+
+<div id="dlg" hidden></div>
+<div id="toast" hidden></div>
+
+<script>
+'use strict';
+const $ = (s, r) => (r || document).querySelector(s);
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v === false || v == null) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'html') el.innerHTML = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (v === true) el.setAttribute(k, '');
+    else el.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) el.append(k.nodeType ? k : document.createTextNode(k));
+  return el;
+}
+function isSmall(){ try { return window.matchMedia('(max-width:820px)').matches; } catch(e){ return false; } }
+const KEYS = { act: 'maxpid-jumeau-v1' };
+function lsGet(k,d){ try { const v=localStorage.getItem(k); return v?JSON.parse(v):d; } catch(e){ return d; } }
+function lsSet(k,v){ try { localStorage.setItem(k,JSON.stringify(v)); } catch(e){} }
+
+/* ================= MODÈLE MAXPID ================= */
+const SIM = {
+  // Paramètres du modèle de connaissance (linéarisé)
+  R: 1.1,          // Ω
+  Ke: 0.265,       // V·s/rad
+  Kc: 0.265,       // N·m/A
+  J: 0.0025,       // kg·m² (inertie équivalente ramenée à l'arbre moteur)
+  f: 0.0008,       // N·m·s/rad (frottement visqueux)
+  Km: 12,          // rad/s/V (gain statique de vitesse, ajusté pour le réalisme)
+  tau: 0.08,       // s (constante de temps électromécanique)
+  r: 50,           // rapport de réduction (vis + réducteur)
+  Ktheta: (180/Math.PI)/50, // °/rad : conversion vitesse moteur -> position bras
+  Umax: 24,        // V (saturation)
+  dt: 0.002,       // s (pas d'intégration)
+  T: 3,            // s (durée de simulation par défaut)
+};
+
+function simuler(params) {
+  // params: { Kp, Ki, Kd, consigne, type (echelon|rampe|trapeze), T }
+  const { Kp, Ki, Kd, consigne, type, T } = params;
+  const N = Math.floor(T / SIM.dt);
+  const t = new Float64Array(N), theta = new Float64Array(N), omega = new Float64Array(N), u = new Float64Array(N), err = new Float64Array(N);
+  let theta_m = 0;    // position mesurée (degrés)
+  let omega_m = 0;    // vitesse moteur (rad/s)
+  let integral = 0;   // intégrale de l'erreur
+  let prev_err = 0;   // erreur précédente pour le dérivé
+  for (let k = 0; k < N; k++) {
+    const tk = k * SIM.dt;
+    t[k] = tk;
+    // Consigne
+    let c = 0;
+    if (type === 'echelon') c = (tk >= 0.1) ? consigne : 0;
+    else if (type === 'rampe') c = (tk >= 0.1) ? consigne * (tk - 0.1) : 0;
+    else if (type === 'trapeze') {
+      const t1 = 0.3, t2 = 0.8, t3 = 1.3;
+      if (tk < 0.1) c = 0;
+      else if (tk < t1) c = consigne * (tk - 0.1) / (t1 - 0.1);
+      else if (tk < t2) c = consigne;
+      else if (tk < t3) c = consigne * (1 - (tk - t2) / (t3 - t2));
+      else c = 0;
+    }
+    const e = c - theta_m;
+    err[k] = e;
+    integral += e * SIM.dt;
+    const deriv = (e - prev_err) / SIM.dt;
+    let uc = Kp * e + Ki * integral + Kd * deriv;
+    // Saturation
+    uc = Math.max(-SIM.Umax, Math.min(SIM.Umax, uc));
+    u[k] = uc;
+    // Moteur : omega_m = Km * u (1er ordre)
+    const omega_cible = SIM.Km * uc;
+    omega_m += (omega_cible - omega_m) * SIM.dt / SIM.tau;
+    omega[k] = omega_m;
+    // Position : intégration de la vitesse moteur -> position bras (degrés)
+    theta_m += SIM.Ktheta * omega_m * SIM.dt;
+    theta[k] = theta_m;
+    prev_err = e;
+  }
+  // Calcul des indicateurs
+  const final = theta[N-1];
+  const err_stat = consigne - final;
+  let depassement = 0;
+  if (type === 'echelon') {
+    let maxv = -Infinity;
+    for (let k = 0; k < N; k++) if (theta[k] > maxv) maxv = theta[k];
+    depassement = (maxv - consigne) / consigne * 100;
+    if (depassement < 0) depassement = 0;
+  }
+  // Temps de réponse à 5%
+  let t5 = T;
+  for (let k = 0; k < N; k++) {
+    if (Math.abs(theta[k] - consigne) <= 0.05 * Math.abs(consigne)) { t5 = t[k]; break; }
+  }
+  return { t, theta, omega, u, err, final, err_stat, depassement, t5, consigne };
+}
+
+/* ================= ATELIERS ================= */
+const WORKSHOPS = [];
+const UI = { cur: 'jumeau' };
+const AS = { key: 'jumeau', tab: 'steps', open: false, st: lsGet(KEYS.act, {}), arm: null };
+const CS = { open: false, id: 'modele' };
+
+// --- Atelier 1 : jumeau numérique ---
+function mountJumeau(root) {
+  root.innerHTML = `
+    <h2>Jumeau numérique du MaxPID</h2>
+    <p>Le banc est modélisé par un <b>moteur CC du premier ordre en vitesse</b> (gain <span class="mono">K<sub>m</sub> = 12 rad/s/V</span>, constante de temps <span class="mono">τ = 80 ms</span>), une réduction <span class="mono">1/50</span> et un capteur de position. La tension de commande sature à <span class="mono">±24 V</span>. Le correcteur est un PID numérique.</p>
+    <div class="opts">
+      <label class="fld"><span>Consigne (°)</span><input type="number" id="j-cons" value="60" min="5" max="100" step="5"></label>
+      <div class="fld"><span>Type d'entrée</span><div id="j-type"></div></div>
+      <label class="fld"><span>K<sub>p</sub></span><input type="range" id="j-kp" min="0" max="50" step="1" value="8"><b id="j-kp-out">8</b></label>
+      <label class="fld"><span>K<sub>i</sub></span><input type="range" id="j-ki" min="0" max="20" step="0.5" value="0"><b id="j-ki-out">0</b></label>
+      <label class="fld"><span>K<sub>d</sub></span><input type="range" id="j-kd" min="0" max="2" step="0.05" value="0"><b id="j-kd-out">0</b></label>
+      <button class="btn pri" id="j-run" type="button">Simuler</button>
+      <button class="btn" id="j-reset" type="button">Réinitialiser</button>
+    </div>
+    <div class="canvas-wrap"><canvas id="j-canvas" width="900" height="360"></canvas></div>
+    <div class="legend"><span><i style="background:#2e6da4"></i>Position θ (°)</span><span><i style="background:#9a5b00"></i>Consigne</span><span><i style="background:#1e7a2e"></i>Vitesse moteur (rad/s, échelle /10)</span><span><i style="background:#c0281f"></i>Tension u (V, échelle /5)</span></div>
+    <div id="j-indic"></div>
+    <div id="j-msg" class="verdict" aria-live="polite"></div>
+  `;
+  const typeEl = $('#j-type');
+  typeEl.append(h('div', {class:'chips'}, [['echelon','Échelon'],['rampe','Rampe'],['trapeze','Trapèze']].map(([id,lab])=>{
+    const b = h('button',{type:'button',class:'chip'+(id==='echelon'?' on':''),'data-type':id,onclick:()=>{ typeEl.querySelectorAll('.chip').forEach(c=>c.classList.remove('on')); b.classList.add('on'); drawJumeau(); }},lab);
+    return b;
+  })));
+  ['kp','ki','kd'].forEach(id => {
+    const el = $('#j-'+id), out = $('#j-'+id+'-out');
+    el.addEventListener('input', ()=>{ out.textContent = el.value; drawJumeau(); });
+  });
+  $('#j-cons').addEventListener('input', drawJumeau);
+  $('#j-run').addEventListener('click', drawJumeau);
+  $('#j-reset').addEventListener('click', ()=>{
+    $('#j-cons').value = 60; $('#j-kp').value = 8; $('#j-ki').value = 0; $('#j-kd').value = 0;
+    $('#j-kp-out').textContent = 8; $('#j-ki-out').textContent = 0; $('#j-kd-out').textContent = 0;
+    typeEl.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on', c.dataset.type==='echelon'));
+    drawJumeau();
+  });
+  drawJumeau();
+}
+
+function drawJumeau() {
+  const canvas = $('#j-canvas'); if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  const type = $('#j-type')?.querySelector('.chip.on')?.dataset.type || 'echelon';
+  const cons = parseFloat($('#j-cons')?.value) || 60;
+  const Kp = parseFloat($('#j-kp')?.value) || 0;
+  const Ki = parseFloat($('#j-ki')?.value) || 0;
+  const Kd = parseFloat($('#j-kd')?.value) || 0;
+  const res = simuler({ Kp, Ki, Kd, consigne: cons, type, T: 3 });
+  const N = res.t.length;
+  // Échelles
+  const maxTheta = Math.max(cons, ...res.theta) * 1.1 || 1;
+  const maxOmega = Math.max(1, ...res.omega) * 1.1;
+  const maxU = SIM.Umax * 1.05;
+  const pad = { l: 45, r: 15, t: 15, b: 30 };
+  const plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;
+  const x = i => pad.l + (i / (N-1)) * plotW;
+  const yTheta = v => pad.t + plotH - (v / maxTheta) * plotH;
+  const yOmega = v => pad.t + plotH - (v / maxOmega) * plotH;
+  const yU = v => pad.t + plotH - ((v + SIM.Umax) / (2*SIM.Umax)) * plotH;
+  // Grille et axes
+  ctx.strokeStyle = '#d0d5db'; ctx.lineWidth = 0.8;
+  for (let g = 0; g <= 4; g++) {
+    const yy = pad.t + (g/4)*plotH;
+    ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W-pad.r, yy); ctx.stroke();
+  }
+  ctx.strokeStyle = '#5a6068'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, H-pad.b); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pad.l, H-pad.b); ctx.lineTo(W-pad.r, H-pad.b); ctx.stroke();
+  // Graduations
+  ctx.fillStyle = '#5a6068'; ctx.font = '11px IBM Plex Mono, monospace';
+  ctx.textAlign = 'right';
+  for (let g = 0; g <= 4; g++) {
+    const val = maxTheta * (1 - g/4);
+    const yy = pad.t + (g/4)*plotH;
+    ctx.fillText(val.toFixed(0), pad.l-5, yy+4);
+  }
+  ctx.textAlign = 'center';
+  for (let g = 0; g <= 4; g++) {
+    const tt = (g/4)*res.T;
+    const xx = pad.l + (g/4)*plotW;
+    ctx.fillText(tt.toFixed(1)+'s', xx, H-pad.b+15);
+  }
+  // Courbe consigne
+  ctx.strokeStyle = '#9a5b00'; ctx.lineWidth = 1.8; ctx.setLineDash([5,4]);
+  ctx.beginPath();
+  for (let i = 0; i < N; i+=2) {
+    let c = 0;
+    const tk = res.t[i];
+    if (type === 'echelon') c = tk >= 0.1 ? cons : 0;
+    else if (type === 'rampe') c = tk >= 0.1 ? cons*(tk-0.1) : 0;
+    else { const t1=0.3,t2=0.8,t3=1.3; if(tk<0.1)c=0; else if(tk<t1)c=cons*(tk-0.1)/(t1-0.1); else if(tk<t2)c=cons; else if(tk<t3)c=cons*(1-(tk-t2)/(t3-t2)); else c=0; }
+    const xx = x(i), yy = yTheta(c);
+    i===0 ? ctx.moveTo(xx,yy) : ctx.lineTo(xx,yy);
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+  // Courbe position
+  ctx.strokeStyle = '#2e6da4'; ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  for (let i = 0; i < N; i+=2) {
+    const xx = x(i), yy = yTheta(res.theta[i]);
+    i===0 ? ctx.moveTo(xx,yy) : ctx.lineTo(xx,yy);
+  }
+  ctx.stroke();
+  // Courbe vitesse (échelle /10 pour lisibilité)
+  ctx.strokeStyle = '#1e7a2e'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let i = 0; i < N; i+=2) {
+    const xx = x(i), yy = yOmega(res.omega[i]/10);
+    i===0 ? ctx.moveTo(xx,yy) : ctx.lineTo(xx,yy);
+  }
+  ctx.stroke();
+  // Courbe tension (échelle /5)
+  ctx.strokeStyle = '#c0281f'; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (let i = 0; i < N; i+=2) {
+    const xx = x(i), yy = yU(res.u[i]/5);
+    i===0 ? ctx.moveTo(xx,yy) : ctx.lineTo(xx,yy);
+  }
+  ctx.stroke();
+  // Indicateurs
+  const box = $('#j-indic'); if (box) {
+    box.innerHTML = '';
+    box.append(h('div',{class:'gstats'},[
+      ['Erreur statique', (res.err_stat).toFixed(2)+' °'],
+      ['Dépassement', (type==='echelon'? res.depassement.toFixed(1):'—')+' %'],
+      ['Temps de réponse à 5%', res.t5.toFixed(2)+' s'],
+      ['Tension max', (Math.max(...res.u)).toFixed(1)+' V']
+    ].map(([lab,val])=>h('div',{class:'stat'},h('span',null,lab),h('b',null,val)))));
+  }
+  const msg = $('#j-msg'); if (msg) {
+    let txt = '';
+    if (res.err_stat > 1 && Ki === 0) txt = 'Erreur statique non nulle : un correcteur proportionnel seul ne l’annule pas sur un système du premier ordre en position (intégrateur).';
+    else if (res.depassement > 20) txt = 'Dépassement important : augmentez K<sub>d</sub> ou réduisez K<sub>p</sub>.';
+    else if (res.t5 > 2) txt = 'Réponse lente : augmentez K<sub>p</sub> (attention à la saturation et au dépassement).';
+    else txt = 'Comportement correct : erreur statique nulle avec l’intégrateur, dépassement maîtrisé.';
+    msg.innerHTML = txt;
+  }
+}
+
+// --- Atelier 2 : identification (boucle ouverte) ---
+function mountIdent(root) {
+  root.innerHTML = `
+    <h2>Identification du moteur</h2>
+    <p>En boucle ouverte, on applique un échelon de tension à l’induit et on relève la vitesse. Le modèle retenu est du <b>premier ordre</b> : <span class="mono">Ω(p)/U(p) = K<sub>m</sub> / (1 + τ p)</span>.</p>
+    <div class="opts">
+      <label class="fld"><span>Tension d'échelon (V)</span><input type="number" id="i-u" value="10" min="1" max="24" step="1"></label>
+      <button class="btn pri" id="i-run" type="button">Tracer la réponse</button>
+    </div>
+    <div class="canvas-wrap"><canvas id="i-canvas" width="900" height="280"></canvas></div>
+    <div id="i-mes" class="gstats"></div>
+    <div class="verdict" id="i-msg"></div>
+  `;
+  $('#i-run').addEventListener('click', drawIdent);
+  drawIdent();
+}
+
+function drawIdent() {
+  const canvas = $('#i-canvas'); if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  const U0 = parseFloat($('#i-u')?.value) || 10;
+  const T = 1.0, dt = 0.002, N = Math.floor(T/dt);
+  const t = new Float64Array(N), omega = new Float64Array(N);
+  let w = 0;
+  for (let k=0;k<N;k++) {
+    const tk = k*dt;
+    t[k]=tk;
+    const uc = tk>=0.05 ? U0 : 0;
+    const cible = SIM.Km * uc;
+    w += (cible - w) * dt / SIM.tau;
+    omega[k]=w;
+  }
+  const maxW = Math.max(...omega) * 1.15 || 1;
+  const pad = {l:45,r:15,t:15,b:30};
+  const plotW = W-pad.l-pad.r, plotH = H-pad.t-pad.b;
+  const x = i => pad.l + (i/(N-1))*plotW;
+  const y = v => pad.t + plotH - (v/maxW)*plotH;
+  // grille
+  ctx.strokeStyle='#d0d5db'; ctx.lineWidth=0.8;
+  for(let g=0;g<=4;g++){ const yy=pad.t+(g/4)*plotH; ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(W-pad.r,yy);ctx.stroke(); }
+  ctx.strokeStyle='#5a6068'; ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(pad.l,pad.t);ctx.lineTo(pad.l,H-pad.b);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(pad.l,H-pad.b);ctx.lineTo(W-pad.r,H-pad.b);ctx.stroke();
+  ctx.fillStyle='#5a6068';ctx.font='11px IBM Plex Mono, monospace';ctx.textAlign='right';
+  for(let g=0;g<=4;g++){ const val=maxW*(1-g/4); ctx.fillText(val.toFixed(1), pad.l-5, pad.t+(g/4)*plotH+4); }
+  ctx.textAlign='center';
+  for(let g=0;g<=4;g++){ const tt=(g/4)*T; ctx.fillText(tt.toFixed(2)+'s', pad.l+(g/4)*plotW, H-pad.b+15); }
+  // courbe
+  ctx.strokeStyle='#2e6da4';ctx.lineWidth=2.2;
+  ctx.beginPath();
+  for(let i=0;i<N;i+=2){ const xx=x(i),yy=y(omega[i]); i===0?ctx.moveTo(xx,yy):ctx.lineTo(xx,yy); }
+  ctx.stroke();
+  // asymptote
+  const wInf = SIM.Km * U0;
+  ctx.strokeStyle='#9a5b00';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(pad.l,y(wInf));ctx.lineTo(W-pad.r,y(wInf));ctx.stroke();ctx.setLineDash([]);
+  // mesures
+  const w63 = 0.63 * wInf;
+  let t63 = 0;
+  for(let k=0;k<N;k++) if(omega[k] >= w63){ t63 = t[k]; break; }
+  const box = $('#i-mes'); if(box){ box.innerHTML='';
+    box.append(h('div',{class:'gstats'},[
+      ['Gain statique K<sub>m</sub>', (wInf/U0).toFixed(2)+' rad/s/V'],
+      ['Constante de temps τ (63%)', (t63*1000).toFixed(0)+' ms'],
+      ['Vitesse finale', wInf.toFixed(1)+' rad/s']
+    ].map(([lab,val])=>h('div',{class:'stat'},h('span',{html:lab}),h('b',null,val)))));
+  }
+  const msg = $('#i-msg');
+  if(msg) msg.innerHTML = `Sur un échelon de ${U0} V, la vitesse tend vers ${wInf.toFixed(1)} rad/s et atteint 63 % de cette valeur à t ≈ ${(t63*1000).toFixed(0)} ms. On identifie donc <span class="mono">K<sub>m</sub> ≈ ${(wInf/U0).toFixed(2)}</span> et <span class="mono">τ ≈ ${(t63*1000).toFixed(0)} ms</span>.`;
+}
+
+// --- Atelier 3 : QCM PID et stabilité (pas de simulation lourde) ---
+function mountQcmPid(root) {
+  root.innerHTML = `
+    <h2>Réglage du PID et performances</h2>
+    <p>Ce questionnaire vérifie la compréhension des effets de chaque terme du correcteur PID sur la stabilité, la précision et la rapidité. Utilisez le jumeau numérique pour expérimenter, puis répondez.</p>
+    <div id="qcm-pid"></div>
+  `;
+  const qs = [
+    { q: "Quel terme du correcteur annule l’erreur statique sur un échelon ?", o: ["Le terme proportionnel Kp", "Le terme intégral Ki", "Le terme dérivé Kd", "Aucun : il faut un système du second ordre"], a: 1, w: "L’intégrateur du correcteur (1/p) augmente la classe du système : l’erreur statique devient nulle pour un échelon." },
+    { q: "Quel est l’effet principal d’une augmentation de Kp (à Ki et Kd fixés) ?", o: ["Réduire le dépassement", "Augmenter la rapidité mais aussi le dépassement et le risque d’instabilité", "Annuler l’erreur statique", "Augmenter l’erreur statique"], a: 1, w: "Kp accélère la réponse mais diminue la marge de stabilité, ce qui se traduit souvent par un dépassement plus important, voire des oscillations." },
+    { q: "Le terme dérivé Kd a tendance à :", o: ["Augmenter le dépassement", "Amortir le système et réduire le dépassement", "Annuler l’erreur statique", "Ralentir fortement le système sans autre effet"], a: 1, w: "Le dérivé anticipe les variations de l’erreur : il apporte un amortissement qui réduit le dépassement et améliore la marge de phase." },
+    { q: "Avec un correcteur proportionnel seul (Ki = 0) sur le modèle de position (intégrateur), l’erreur statique pour un échelon est :", o: ["Nulle", "Non nulle et d’autant plus petite que Kp est grand", "Toujours égale à la consigne", "Infinie"], a: 1, w: "Le système en boucle ouverte possède déjà un intégrateur (la position est l’intégrale de la vitesse). Avec un simple gain Kp, l’erreur statique vaut consigne/(1 + Kp·K_bo) : elle diminue quand Kp augmente, mais n’est pas nulle." },
+    { q: "La saturation de la tension de commande peut :", o: ["Améliorer la stabilité", "Provoquer des dépassements plus importants et un comportement non linéaire", "Annuler l’effet de l’intégrateur", "Ne jamais se produire avec un PID"], a: 1, w: "Lorsque l’actionneur sature, la boucle est momentanément ouverte : le comportement n’est plus linéaire et peut entraîner des dépassements importants (effet de vent)." }
+  ];
+  const box = $('#qcm-pid');
+  qs.forEach((q,i)=>{
+    const fs = h('fieldset',{class:'q'},h('legend',null,(i+1)+'. '+q.q));
+    q.o.forEach((o,j)=>{
+      const inp = h('input',{type:'radio',name:'pid'+i});
+      inp.addEventListener('change',()=>{ fs.dataset.res = j; fs.querySelectorAll('.why').forEach(e=>e.remove()); fs.querySelectorAll('.opt').forEach((lab,jj)=>{ lab.classList.remove('good','bad'); if(jj===q.a)lab.classList.add('good'); else if(jj===j)lab.classList.add('bad'); }); fs.append(h('p',{class:'why'},q.w)); });
+      fs.append(h('label',{class:'opt'},inp,h('span',null,o)));
+    });
+    box.append(fs);
+  });
+}
+
+// Enregistrement des ateliers
+WORKSHOPS.push({ id:'jumeau', title:'Jumeau numérique', hint:'Réglez les gains du PID et observez la réponse du bras : position, vitesse moteur et tension de commande.', mount: mountJumeau, reset: ()=>{} });
+WORKSHOPS.push({ id:'ident', title:'Identification', hint:'En boucle ouverte, identifiez le gain statique Km et la constante de temps τ du moteur à partir d’un échelon de tension.', mount: mountIdent, reset: ()=>{} });
+WORKSHOPS.push({ id:'qcmpid', title:'PID & performances', hint:'Vérifiez vos connaissances sur l’influence de Kp, Ki, Kd et sur la stabilité.', mount: mountQcmPid, reset: ()=>{} });
+
+/* ================= ACTIVITÉS ================= */
+const ACT = {
+  jumeau: {
+    title: "Jumeau numérique MaxPID", level: "Niveau 1 · Découvrir", time: "30 min", course: "modele",
+    goal: "Prendre en main le modèle, observer l’influence des gains du PID et relier les réglages aux performances (précision, rapidité, stabilité).",
+    steps: [
+      "Lancez la simulation avec Kp = 8, Ki = 0, Kd = 0. Relevez l’erreur statique. Que se passe-t-il si vous augmentez Kp ?",
+      "Activez l’intégrateur (Ki = 5) et vérifiez que l’erreur statique devient nulle. Observez le dépassement.",
+      "Ajoutez un terme dérivé (Kd = 0.2) et constatez son effet sur le dépassement et le temps de réponse.",
+      "Testez une consigne en trapèze de vitesse. La poursuite est-elle meilleure qu’avec un échelon ?",
+      "Réglez un PID qui donne un temps de réponse inférieur à 0,8 s avec un dépassement inférieur à 10 %."
+    ],
+    defi: {
+      q: "Sur le modèle linéarisé, pourquoi un correcteur proportionnel seul laisse-t-il une erreur statique non nulle ?",
+      a: "La fonction de transfert en boucle ouverte contient déjà un intégrateur (la position est l’intégrale de la vitesse). Avec un gain Kp, l’erreur statique pour un échelon vaut ε = consigne / (1 + Kp·K_bo). Elle n’est jamais nulle, mais diminue quand Kp augmente. L’intégrateur du correcteur (Ki) ajoute un second pôle en 0 et annule cette erreur."
+    },
+    qcm: [
+      { q: "Quel terme du correcteur permet d’annuler l’erreur statique sur un échelon ?", o: ["Kp", "Ki", "Kd", "Aucun"], a: 1, w: "Ki introduit une intégration supplémentaire : la classe du système augmente, l’erreur statique devient nulle." },
+      { q: "Augmenter Kp a tendance à :", o: ["Réduire le dépassement", "Augmenter la rapidité et le dépassement", "Annuler l’erreur statique", "Réduire la tension de commande"], a: 1, w: "Kp accélère la réponse mais diminue la marge de stabilité, ce qui se traduit souvent par un dépassement plus important." },
+      { q: "Le terme dérivé Kd sert principalement à :", o: ["Augmenter l’erreur statique", "Amortir le système et réduire le dépassement", "Augmenter la vitesse sans limite", "Remplacer l’intégrateur"], a: 1, w: "Kd apporte un amortissement en anticipant les variations de l’erreur : il réduit le dépassement et améliore la marge de phase." },
+      { q: "La saturation de la tension de commande peut :", o: ["Améliorer la stabilité", "Provoquer des dépassements plus importants", "Annuler l’effet de l’intégrateur", "Ne jamais se produire"], a: 1, w: "Lorsque l’actionneur sature, la boucle est momentanément ouverte : le comportement n’est plus linéaire et peut entraîner des dépassements importants (effet de vent)." }
+    ]
+  },
+  ident: {
+    title: "Identification du moteur", level: "Niveau 1 · Découvrir", time: "20 min", course: "identification",
+    goal: "Identifier le gain statique et la constante de temps d’un système du premier ordre à partir d’une réponse indicielle.",
+    steps: [
+      "Appliquez un échelon de 10 V. Relevez la vitesse finale et déduisez Km.",
+      "Mesurez le temps au bout duquel la vitesse atteint 63 % de sa valeur finale : c’est τ.",
+      "Recommencez avec 20 V. Km et τ changent-ils ?",
+      "Vérifiez que la réponse peut se mettre sous la forme Ω(t) = Km·U0·(1 − e^(−t/τ))."
+    ],
+    defi: {
+      q: "Un système du premier ordre a pour réponse indicielle s(t) = K·(1 − e^(−t/τ)). Quelle est la valeur de s(τ) ?",
+      a: "s(τ) = K·(1 − e^(−1)) ≈ 0,632·K. La constante de temps est le temps nécessaire pour atteindre 63 % de la valeur finale."
+    },
+    qcm: [
+      { q: "Sur un échelon, la constante de temps τ correspond au temps pour atteindre :", o: ["50 % de la valeur finale", "63 % de la valeur finale", "95 % de la valeur finale", "100 % de la valeur finale"], a: 1, w: "Par définition, à t = τ, la réponse a atteint 1 − e^(−1) ≈ 63,2 % de sa valeur finale." },
+      { q: "Le gain statique Km se lit :", o: ["Sur l’axe des temps", "Comme la valeur finale de la sortie divisée par l’amplitude de l’échelon", "Comme la pente initiale", "Comme le temps de réponse à 5 %"], a: 1, w: "En régime permanent, Ω = Km·U. Donc Km = Ω_finale / U." }
+    ]
+  }
+};
+
+/* ================= COURS ================= */
+const COURSE = [];
+COURSE.push({ id:'modele', t:'Modèle du MaxPID', h:`
+<p>Le MaxPID est un bras robotisé à vis à billes actionné par un moteur à courant continu. Pour l’étude des asservissements, on en retient un modèle de connaissance linéarisé.</p>
+<h3>Moteur à courant continu</h3>
+<p>Avec les notations usuelles (induit, couple, charge ramenée à l’arbre moteur) :</p>
+<div class="formula">u(t) = R·i(t) + e(t), &nbsp; e(t) = Ke·ω(t), &nbsp; Cm(t) = Kc·i(t), &nbsp; J·dω/dt + f·ω = Cm − Cr</div>
+<p>En négligeant l’inductance et le couple résistant constant, on obtient la fonction de transfert du premier ordre :</p>
+<div class="formula">Ω(p)/U(p) = Km / (1 + τ·p), &nbsp; avec Km = Kc / (R·f + Ke·Kc) et τ = R·J / (R·f + Ke·Kc)</div>
+<p>Les valeurs typiques du banc MaxPID (moteur Maxon RE035G, réduction 1/50, vis au pas de 4 mm) conduisent à une constante de temps de l’ordre de 50 à 100 ms et à un gain statique de quelques dizaines de rad/s/V selon la charge[reference:2][reference:3].</p>
+<h3>Chaîne de position</h3>
+<p>La vitesse du bras est proportionnelle à la vitesse moteur : ω_bras = ω_moteur / r (r ≈ 50). La position angulaire du bras (en degrés) s’obtient par intégration :</p>
+<div class="formula">θ(p) = (180/π)/r · Ω(p)/p = K_θ · Ω(p)/p</div>
+<p>Le capteur potentiométrique délivre une tension proportionnelle à θ. Le schéma‑bloc en boucle fermée fait apparaître : comparateur, correcteur PID, saturation de la tension (±24 V), moteur du premier ordre, intégrateur de position et capteur unitaire.</p>
+<div class="retain"><b>À retenir.</b> Le MaxPID se modélise par un premier ordre en vitesse suivi d’un intégrateur pour la position. Le gain statique et la constante de temps s’identifient sur une réponse indicielle en boucle ouverte.</div>
+` });
+
+COURSE.push({ id:'identification', t:'Identification temporelle', h:`
+<p>Identifier un système, c’est déterminer les paramètres d’un modèle de comportement à partir de mesures.</p>
+<h3>Système du premier ordre</h3>
+<p>Réponse à un échelon d’amplitude U₀ :</p>
+<div class="formula">s(t) = K·U₀·(1 − e^(−t/τ))</div>
+<ul>
+<li><b>Gain statique</b> : K = s(∞)/U₀.</li>
+<li><b>Constante de temps</b> : τ est le temps pour atteindre 63 % de la valeur finale. Le temps de réponse à 5 % vaut environ 3τ.</li>
+</ul>
+<p>On peut aussi utiliser la pente initiale : la tangente à l’origine coupe l’asymptote à t = τ.</p>
+<h3>Méthode pratique sur le MaxPID</h3>
+<p>En boucle ouverte, on applique un échelon de tension et on relève la vitesse moteur (génératrice tachymétrique). On vérifie que la réponse est bien du premier ordre, puis on lit Km et τ. Attention à la saturation de la commande et aux frottements secs, qui peuvent fausser l’identification si l’échelon est trop faible[reference:4].</p>
+<div class="retain"><b>À retenir.</b> Sur un échelon, Km = sortie finale / entrée, et τ correspond à 63 % de la valeur finale.</div>
+` });
+
+COURSE.push({ id:'pid', t:'Correction PID et performances', h:`
+<p>Le correcteur PID calcule la commande à partir de l’erreur ε = consigne − mesure :</p>
+<div class="formula">u(t) = Kp·ε(t) + Ki·∫ε dt + Kd·dε/dt</div>
+<h3>Rôle de chaque terme</h3>
+<table class="ctable"><thead><tr><th>Terme</th><th>Effet principal</th><th>Risque</th></tr></thead><tbody>
+<tr><td>Proportionnel Kp</td><td>Rapidité, réduction de l’erreur statique</td><td>Dépassement, instabilité si trop grand</td></tr>
+<tr><td>Intégral Ki</td><td>Annulation de l’erreur statique (classe +1)</td><td>Dépassement, effet de vent en cas de saturation</td></tr>
+<tr><td>Dérivé Kd</td><td>Amortissement, réduction du dépassement</td><td>Sensibilité au bruit, saturation si dérivée forte</td></tr>
+</tbody></table>
+<h3>Compromis stabilité‑précision‑rapidité</h3>
+<p>Un réglage trop « rapide » (Kp élevé) peut rendre le système oscillant, voire instable. L’intégrateur annule l’erreur statique mais peut réduire la marge de stabilité. Le dérivé améliore l’amortissement mais amplifie le bruit. En pratique, on utilise la méthode de Ziegler‑Nichols ou on ajuste progressivement.</p>
+<div class="retain"><b>À retenir.</b> P : rapidité et précision approximative. I : précision exacte en régime permanent. D : amortissement et stabilité.</div>
+` });
+
+COURSE.push({ id:'stabilite', t:'Stabilité et marges', h:`
+<p>Un système asservi est stable si sa réponse à une entrée bornée reste bornée. Pour un système linéaire, la stabilité en boucle fermée se déduit de l’étude de la fonction de transfert en boucle ouverte.</p>
+<h3>Critères</h3>
+<ul>
+<li><b>Condition nécessaire</b> : tous les pôles de la fonction de transfert en boucle fermée ont une partie réelle strictement négative.</li>
+<li><b>Marges de stabilité</b> : marge de gain et marge de phase, lues sur le diagramme de Bode de la boucle ouverte. Une marge de phase de 45° et une marge de gain de 10 dB sont des ordres de grandeur courants.</li>
+</ul>
+<p>Sur le jumeau numérique, l’augmentation de Kp ou de Ki réduit les marges et peut conduire à des oscillations persistantes. La saturation de la tension de commande peut également déstabiliser le système en limitant l’action corrective[reference:5].</p>
+<div class="retain"><b>À retenir.</b> Stabilité = pôles à partie réelle négative. Marges de phase et de gain quantifient la robustesse.</div>
+` });
+
+COURSE.push({ id:'precisions', t:'Précision et erreur statique', h:`
+<p>L’erreur statique est l’écart entre la consigne et la mesure en régime permanent.</p>
+<table class="ctable"><thead><tr><th>Type de système (boucle ouverte)</th><th>Échelon</th><th>Rampe</th></tr></thead><tbody>
+<tr><td>Type 0 (pas d’intégrateur)</td><td>Erreur non nulle</td><td>Erreur infinie</td></tr>
+<tr><td>Type 1 (un intégrateur)</td><td>Erreur nulle</td><td>Erreur finie</td></tr>
+<tr><td>Type 2 (deux intégrateurs)</td><td>Erreur nulle</td><td>Erreur nulle</td></tr>
+</tbody></table>
+<p>Sur le MaxPID, la position est déjà un intégrateur de la vitesse : la boucle ouverte est de type 1. Un correcteur proportionnel laisse donc une erreur statique sur un échelon (elle diminue quand Kp augmente). L’ajout d’un intégrateur dans le correcteur (Ki ≠ 0) fait passer le système en type 2 et annule l’erreur statique.</p>
+<div class="retain"><b>À retenir.</b> L’erreur statique dépend du type du système et de l’entrée. L’intégrateur du correcteur augmente le type et annule l’erreur pour l’échelon.</div>
+` });
+
+COURSE.push({ id:'gloss', t:'Vocabulaire', h:`
+<dl class="gloss">
+<dt>SLCI</dt><dd>Système Linéaire Continu et Invariant.</dd>
+<dt>Fonction de transfert</dt><dd>Rapport des transformées de Laplace de la sortie et de l’entrée, à conditions initiales nulles.</dd>
+<dt>Boucle ouverte / fermée</dt><dd>Sans / avec retour de la mesure et comparaison à la consigne.</dd>
+<dt>Erreur statique</dt><dd>Écart en régime permanent pour une entrée donnée.</dd>
+<dt>Dépassement</dt><dd>Amplitude maximale au‑delà de la consigne, en pourcentage.</dd>
+<dt>Temps de réponse à 5 %</dt><dd>Temps pour que la sortie reste dans un intervalle de ±5 % autour de la valeur finale.</dd>
+<dt>Marge de phase / de gain</dt><dd>Indicateurs de robustesse de la stabilité en boucle fermée.</dd>
+<dt>Saturation</dt><dd>Limitation physique de l’actionneur (tension, couple, etc.).</dd>
+</dl>
+` });
+
+/* ================= UI ================= */
+function wsById(id){ return WORKSHOPS.find(w=>w.id===id) || WORKSHOPS[0]; }
+function renderSeg(){
+  const seg = $('#wsSeg'); seg.innerHTML = '';
+  WORKSHOPS.forEach((w,i)=>seg.append(h('button',{type:'button',role:'tab','aria-pressed':w.id===UI.cur?'true':'false','aria-selected':w.id===UI.cur?'true':'false',onclick:()=>gotoWs(w.id)},(i+1)+'. '+w.title)));
+}
+function mountWs(){
+  const w = wsById(UI.cur), root = $('#ws');
+  $('#hint').textContent = w.hint; root.innerHTML='';
+  w.mount(root);
+  const sc=$('#scroller'); if(sc) sc.scrollTop=0;
+}
+function gotoWs(id){
+  const old = wsById(UI.cur); if(old.leave) old.leave();
+  if(CS.open){ CS.open=false; renderCourse(); }
+  UI.cur=id; AS.key=id; AS.tab='steps';
+  renderSeg(); mountWs(); renderAct();
+}
+function actSave(){ lsSet(KEYS.act, AS.st); }
+function actState(){ return AS.st[AS.key] || (AS.st[AS.key]={a:{},checked:false,shown:false}); }
+function actScore(a){ const s=actState(); return a.qcm.filter((q,i)=>s.a[i]===q.a).length; }
+
+function renderAct(){
+  const box=$('#act'), btn=$('#bAct');
+  btn.setAttribute('aria-pressed', AS.open?'true':'false'); btn.classList.toggle('pri', AS.open);
+  box.hidden = !AS.open;
+  if(!AS.open){ box.innerHTML=''; return; }
+  const oldB = box.querySelector('.pbody'), tag = AS.key+'|'+AS.tab, keep = oldB && box.dataset.k===tag ? oldB.scrollTop : 0;
+  box.dataset.k = tag;
+  box.innerHTML='';
+  const a = ACT[AS.key];
+  if(!a){ box.append(h('div',{class:'pbody'},h('p',null,'Activité en préparation.'))); return; }
+  const close = h('button',{class:'btn sm',type:'button',onclick:()=>{ AS.open=false; renderAct(); }},'Fermer');
+  box.append(h('div',{class:'phead'},h('b',null,'Activité'),h('span',{class:'sub'},a.title),close));
+  const nq = a.qcm.length;
+  box.append(h('div',{class:'tabs',role:'tablist'},
+    h('button',{type:'button',role:'tab','aria-selected':AS.tab==='steps'?'true':'false',onclick:()=>{AS.tab='steps';renderAct();}},'Consignes'),
+    h('button',{type:'button',role:'tab','aria-selected':AS.tab==='qcm'?'true':'false',onclick:()=>{AS.tab='qcm';renderAct();}},'Questions ('+nq+')')));
+  const body = h('div',{class:'pbody'});
+  if(AS.tab==='steps'){
+    body.append(h('p',{class:'small'},a.level+' · environ '+a.time), h('div',{class:'goal'},h('b',null,'Objectif. '),a.goal));
+    body.append(h('ol',{class:'steps'},a.steps.map(s=>h('li',{html:s}))));
+    body.append(h('div',{class:'defi'},h('b',null,'Défi'),h('p',{html:a.defi.q}),h('details',null,h('summary',null,'Voir la réponse'),h('p',{html:a.defi.a}))));
+    if(a.course) body.append(h('p',null,h('button',{class:'btn',type:'button',onclick:()=>openCourse(a.course)},'Voir le cours : '+courseSection(a.course).t)));
+    body.append(h('p',null,h('button',{class:'btn',type:'button',onclick:ev=>{
+      const b=ev.currentTarget;
+      if(!AS.arm){ b.textContent='Confirmer ? Votre travail sera effacé'; AS.arm=setTimeout(()=>{ b.textContent='Recommencer l’atelier'; AS.arm=null; },3500); return; }
+      clearTimeout(AS.arm); AS.arm=null; wsById(UI.cur).reset(); mountWs(); renderAct();
+    }},'Recommencer l’atelier')));
+    body.append(h('p',null,h('button',{class:'btn pri',type:'button',onclick:()=>{ AS.tab='qcm'; renderAct(); }},'Passer aux questions')));
+  } else {
+    const s=actState(), show=s.checked||s.shown;
+    a.qcm.forEach((q,i)=>{
+      const fs = h('fieldset',{class:'q'},h('legend',null,(i+1)+'. '+q.q));
+      q.o.forEach((o,j)=>{
+        const good = show && j===q.a, bad = s.checked && !s.shown && s.a[i]===j && j!==q.a;
+        const inp = h('input',{type:'radio',name:'q'+i,checked: show && s.shown ? j===q.a : s.a[i]===j,disabled:show});
+        inp.addEventListener('change',()=>{ s.a[i]=j; actSave(); renderAct(); });
+        fs.append(h('label',{class:'opt'+(good?' good':'')+(bad?' bad':'')},inp,h('span',null,o+(good?'  ✓':'')+(bad?'  ✗':''))));
+      });
+      if(show){ const miss = s.a[i]==null && !s.shown; fs.append(h('p',{class:'why'},(miss?'Sans réponse. ':'')+q.w)); }
+      body.append(fs);
+    });
+    const done = Object.keys(s.a).length;
+    body.append(h('p',{class:'small'}, s.shown?'Réponses affichées.': s.checked?'':done+' réponse(s) sur '+nq+'.'));
+    if(s.checked && !s.shown) body.append(h('p',{class:'score'},'Score : '+actScore(a)+' / '+nq));
+    const row = h('div',{class:'files'});
+    if(!show) row.append(h('button',{class:'btn pri',type:'button',onclick:()=>{ s.checked=true; actSave(); renderAct(); }},'Corriger'));
+    row.append(h('button',{class:'btn',type:'button',onclick:()=>{ s.shown=true; actSave(); renderAct(); }},'Afficher les réponses'));
+    if(show) row.append(h('button',{class:'btn',type:'button',onclick:()=>{ AS.st[AS.key]={a:{},checked:false,shown:false}; actSave(); renderAct(); }},'Recommencer'));
+    body.append(row);
+  }
+  box.append(body); body.scrollTop=keep;
+}
+function actToggle(){ if(CS.open){ CS.open=false; renderCourse(); } AS.open=!AS.open; renderAct(); }
+$('#bAct').addEventListener('click', actToggle);
+
+function courseSection(id){ return COURSE.find(s=>s.id===id) || COURSE[0]; }
+function renderCourse(){
+  const box=$('#course'), btn=$('#bCourse'), work=$('#work');
+  btn.setAttribute('aria-pressed', CS.open?'true':'false'); btn.classList.toggle('pri', CS.open);
+  box.hidden=!CS.open; work.hidden=CS.open; $('#modes').hidden=CS.open;
+  if(!CS.open){ box.innerHTML=''; return; }
+  box.innerHTML='';
+  const cur = courseSection(CS.id), idx = COURSE.indexOf(cur);
+  const go = id => { CS.id=id; renderCourse(); };
+  const nav = h('nav',{class:'ctoc','aria-label':'Sommaire du cours'},COURSE.map((s,i)=>h('button',{type:'button',class:s.id===cur.id?'on':'','aria-current':s.id===cur.id?'true':'false',onclick:()=>go(s.id)},(i+1)+'. '+s.t)));
+  const sel = h('select',{class:'ctoc-sel','aria-label':'Choisir une section',onchange:e=>go(e.target.value)},COURSE.map((s,i)=>h('option',{value:s.id,selected:s.id===cur.id},(i+1)+'. '+s.t)));
+  const art = h('article',{class:'cbody'});
+  art.append(h('p',{class:'ckick'},'Cours · section '+(idx+1)+' sur '+COURSE.length),h('h2',null,cur.t),h('div',{html:cur.h}));
+  art.append(h('div',{class:'cpn'},
+    idx>0?h('button',{class:'btn',type:'button',onclick:()=>go(COURSE[idx-1].id)},'← '+COURSE[idx-1].t):h('span'),
+    idx<COURSE.length-1?h('button',{class:'btn pri',type:'button',onclick:()=>go(COURSE[idx+1].id)},COURSE[idx+1].t+' →'):h('span')));
+  const top = h('div',{class:'ctop'},h('b',null,'Cours : MaxPID et asservissements'),h('button',{class:'btn pri sm',type:'button',onclick:()=>{ CS.open=false; renderCourse(); }},'Retour à l’atelier'));
+  box.append(top,sel,h('div',{class:'cwrap'},nav,art));
+  const sc=box.querySelector('.cwrap'); if(sc) sc.scrollTop=0;
+}
+function openCourse(id){ if(id) CS.id=id; CS.open=true; renderCourse(); }
+$('#bCourse').addEventListener('click', ()=>{ CS.open=!CS.open; renderCourse(); });
+
+function closeDlg(){ $('#dlg').hidden=true; $('#dlg').innerHTML=''; }
+function openDlg(title, body){
+  const d=$('#dlg'); d.innerHTML=''; d.hidden=false;
+  d.append(h('div',{class:'dlgbox',role:'dialog','aria-label':title},h('header',null,h('b',null,title),h('button',{class:'btn sm',type:'button',onclick:closeDlg},'Fermer')),h('div',{class:'dbody'},body)));
+  d.onclick=ev=>{ if(ev.target===d) closeDlg(); };
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !$('#dlg').hidden) closeDlg(); });
+$('#bHelp').addEventListener('click',()=>{
+  openDlg('Aide', h('div',{html:`
+    <p>Ce support propose un <b>jumeau numérique simplifié du MaxPID</b> et trois ateliers pour le programme de SII (PCSI/PSI*) :</p>
+    <ul>
+      <li><b>Jumeau numérique</b> : réglage d’un PID, observation de la réponse (position, vitesse, tension).</li>
+      <li><b>Identification</b> : estimation de Km et τ sur une réponse indicielle en boucle ouverte.</li>
+      <li><b>PID & performances</b> : QCM sur les effets de Kp, Ki, Kd et sur la stabilité.</li>
+    </ul>
+    <p>Le bouton <b>Activité</b> ouvre les consignes, un défi et un QCM avec correction. Le bouton <b>Cours</b> donne les rappels nécessaires.</p>
+    <p>Les réponses aux QCM sont mémorisées dans ce navigateur uniquement.</p>
+  `}));
+});
+
+(function init(){
+  AS.open = !isSmall();
+  renderSeg();
+  mountWs();
+  renderAct();
+  renderCourse();
+})();
+</script>
+</body>
+</html>
