@@ -1,3 +1,3 @@
 # Jumeaux_numeriques
 
-[MaxPID](https://siicpgeamansur.github.io/mecanique/coordonnees.html.html)
+[MaxPID](https://siicpgeamansur.github.io/Jumeaux_numeriques/MaxPID.html)
