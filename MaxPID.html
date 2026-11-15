@@ -142,7 +142,7 @@
 (function() {
   'use strict';
 
-  // Fonctions utilitaires renommées pour éviter tout conflit
+  // Utilitaires
   const qs = (s, r) => (r || document).querySelector(s);
   function mk(tag, attrs, ...kids) {
     const el = document.createElement(tag);
@@ -157,68 +157,81 @@
     for (const k of kids.flat()) if (k != null && k !== false) el.append(k.nodeType ? k : document.createTextNode(k));
     return el;
   }
-  
   function isSmall(){ try { return window.matchMedia('(max-width:820px)').matches; } catch(e){ return false; } }
-  const KEYS = { act: 'maxpid-jumeau-v4' };
+  const KEYS = { act: 'maxpid-jumeau-v5' };
   function lsGet(k,d){ try { const v=localStorage.getItem(k); return v?JSON.parse(v):d; } catch(e){ return d; } }
   function lsSet(k,v){ try { localStorage.setItem(k,JSON.stringify(v)); } catch(e){} }
 
   /* ==================================================================
-     MODÈLE MAXPID ET SIMULATION
+     MODÈLE MAXPID (Données de la plaque signalétique et du modèle 3D)
      ================================================================== */
   const MAXPID = {
-    a: 70, b: 80, c: 80, p: 4, // Géométrie (mm)
-    R: 1.1, Ke: 0.265, Kc: 0.265, Umax: 24, // Moteur
-    r: 50, m_bras: 0.32, L_bras: 0.08, // Mécanique
-    fv: 0.0008, Cf: 0.012,
-    Km: 12, tau: 0.08, dt: 0.002, T: 4
+    // Géométrie
+    L_bras: 0.15,       // Longueur du bras (m) - estimée d'après la photo
+    pas_vis: 0.005,     // Pas de la vis (m/tr) - 5mm
+    r: 50,              // Rapport de réduction
+    // Moteur Maxon (ordre de grandeur)
+    R: 2.0,             // Résistance (Ohms)
+    Ke: 0.05,           // Constante de f.e.m (V.s/rad)
+    Kc: 0.05,           // Constante de couple (N.m/A)
+    Umax: 24,           // Tension d'alimentation (V)
+    // Mécanique
+    m_bras: 0.45,       // Masse du bras + écrou + masselotte (kg)
+    fv: 0.001,          // Frottement visqueux ramené (N.m.s/rad)
+    Cf: 0.02,           // Frottement sec (N.m)
+    // Simulation
+    dt: 0.002,          // Pas de temps (s)
+    T: 4.0              // Durée de simulation (s)
   };
 
-  function inertieEquivalente(m = MAXPID.m_bras) {
-    const J_moteur = 0.0025, J_vis = 0.0001;
-    const J_bras = m * MAXPID.L_bras * MAXPID.L_bras;
-    return J_moteur + J_vis + J_bras / (MAXPID.r * MAXPID.r);
+  function getJeq(m = MAXPID.m_bras) {
+    const Jm = 0.000015; // Inertie rotor Maxon (15 g.cm²)
+    const Jvis = 0.000005; 
+    const Jbras = m * Math.pow(MAXPID.L_bras, 2);
+    return Jm + Jvis + Jbras / Math.pow(MAXPID.r, 2);
   }
 
-  function coupleMaintien(thetaDeg) {
+  function getCoupleMaintien(thetaDeg) {
     const theta = thetaDeg * Math.PI / 180;
-    return MAXPID.m_bras * 9.81 * MAXPID.L_bras * Math.cos(theta);
+    return MAXPID.m_bras * 9.81 * (MAXPID.L_bras / 2) * Math.cos(theta);
   }
 
-  function simulerMaxpid(params) {
-    const { Kp, Ki, Kd, consigne, type, T, masse, inclinaison, frottementSec, jeu } = params;
-    const dt = MAXPID.dt, N = Math.floor(T / dt);
+  // Simulation temporelle (Génération de toutes les données à l'avance)
+  function genererSimulation(params) {
+    const { Kp, Ki, Kd, consigne, masse, frottementSec } = params;
+    const dt = MAXPID.dt, N = Math.floor(MAXPID.T / dt);
     const t = new Float64Array(N), theta = new Float64Array(N), omega = new Float64Array(N),
-          u = new Float64Array(N), err = new Float64Array(N), couple = new Float64Array(N);
+          u = new Float64Array(N), couple = new Float64Array(N);
+    
     let theta_m = 0, omega_m = 0, integral = 0, prev_err = 0;
     const m = masse || MAXPID.m_bras;
-    const J = inertieEquivalente(m);
-    const incl = (inclinaison || 0) * Math.PI / 180;
+    const J = getJeq(m);
     
     for (let k = 0; k < N; k++) {
       const tk = k * dt; t[k] = tk;
-      let c = 0;
-      if (type === 'echelon') c = (tk >= 0.1) ? consigne : 0;
-      else if (type === 'rampe') c = (tk >= 0.1) ? consigne * (tk - 0.1) : 0;
+      // Consigne (Échelon à t = 0.2s)
+      let c = (tk >= 0.2) ? consigne : 0;
       
-      const e = c - theta_m; err[k] = e;
+      const e = c - theta_m;
       integral += e * dt;
       const deriv = (e - prev_err) / dt;
       let uc = Kp * e + Ki * integral + Kd * deriv;
       
+      // Saturation tension
       uc = Math.max(-MAXPID.Umax, Math.min(MAXPID.Umax, uc));
       u[k] = uc;
       
-      const Cm = MAXPID.Kc * (uc / MAXPID.R);
-      const Cg = m * 9.81 * MAXPID.L_bras * Math.cos(theta_m * Math.PI / 180 + incl);
+      // Dynamique
+      const Cm = MAXPID.Kc * (uc / MAXPID.R); // Simplification i = u/R
+      const Cg = m * 9.81 * (MAXPID.L_bras / 2) * Math.cos(theta_m * Math.PI / 180);
       const Cvisq = MAXPID.fv * omega_m;
-      const frot = (frottementSec && Math.abs(omega_m) > 1e-4) ? -Math.sign(omega_m) * MAXPID.Cf : 0;
+      const frot = (frottementSec && Math.abs(omega_m) > 1e-3) ? -Math.sign(omega_m) * MAXPID.Cf : 0;
       
       couple[k] = Cm - Cg - Cvisq + frot;
+      
+      // Intégration Euler
       omega_m += (couple[k] / J) * dt;
       theta_m += (180 / Math.PI) * omega_m / MAXPID.r * dt;
-      
-      if (jeu && Math.abs(theta_m - c) < 0.3) theta_m = c;
       
       theta[k] = theta_m; omega[k] = omega_m;
       prev_err = e;
@@ -227,210 +240,259 @@
   }
 
   /* ==================================================================
-     ANIMATION 2D
+     DESSIN 2D (Inspiré du modèle CAO)
      ================================================================== */
-  function dessinerBras(canvas, thetaDeg, omegaRad, consigneDeg) {
+  function drawMaxPID(canvas, thetaDeg, consDeg, currentTime) {
     if(!canvas) return;
     const ctx = canvas.getContext('2d');
     const W = canvas.width, H = canvas.height;
     ctx.clearRect(0, 0, W, H);
     
-    const cx = W * 0.35, cy = H * 0.65;
-    const L = Math.min(W, H) * 0.45;
+    // Point de pivot (centre du capteur)
+    const cx = W * 0.35, cy = H * 0.55;
+    const L_pixel = W * 0.45; // Longueur visuelle du bras
     const theta = thetaDeg * Math.PI / 180;
+    const consTheta = consDeg * Math.PI / 180;
+
+    // 1. Bâti gris (Forme en U)
+    ctx.fillStyle = '#d0d4d8'; // Gris clair
+    ctx.strokeStyle = '#9ea4a8';
+    ctx.lineWidth = 2;
+    // Montant vertical gauche
+    ctx.fillRect(cx - 60, cy - 20, 40, H - cy + 10);
+    ctx.strokeRect(cx - 60, cy - 20, 40, H - cy + 10);
+    // Base horizontale
+    ctx.fillRect(cx - 80, H - 30, 160, 30);
+    ctx.strokeRect(cx - 80, H - 30, 160, 30);
+    // Support capteur central
+    ctx.beginPath();
+    ctx.arc(cx, cy, 35, 0, 2*Math.PI);
+    ctx.fill();
+    ctx.stroke();
+
+    // 2. Moteur noir (Maxon)
+    ctx.fillStyle = '#222';
+    ctx.fillRect(cx - 120, cy - 60, 60, 30); // Corps du moteur
+    ctx.fillStyle = '#888'; // Bride
+    ctx.fillRect(cx - 60, cy - 65, 10, 40);
+    // Arbre moteur
+    ctx.strokeStyle = '#ccc'; ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(cx - 50, cy - 45); ctx.lineTo(cx - 20, cy - 45); ctx.stroke();
+
+    // 3. Vis sans fin (tige filetée argentée)
+    // On la dessine de l'arrière vers le point d'ancrage
+    ctx.strokeStyle = '#b0b0b0'; ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(cx - 20, cy - 45);
+    ctx.lineTo(cx + L_pixel * 0.8, cy - 45 + L_pixel * 0.8 * Math.tan(theta) * 0.5); // Approximation visuelle
+    ctx.stroke();
+    // Filetage (hachures)
+    ctx.strokeStyle = '#777'; ctx.lineWidth = 1;
+    for(let i=0; i<20; i++) {
+       let px = cx - 20 + i*10;
+       let py = cy - 45 + (i*10) * Math.tan(theta) * 0.5;
+       ctx.beginPath(); ctx.moveTo(px, py-4); ctx.lineTo(px, py+4); ctx.stroke();
+    }
+
+    // 4. Bras jaune
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(theta);
     
-    // Rapporteur
-    ctx.strokeStyle = '#222'; ctx.lineWidth = 18;
-    ctx.beginPath(); ctx.arc(cx, cy, L + 25, -Math.PI*0.8, Math.PI*0.8); ctx.stroke();
+    // Corps du bras
+    ctx.fillStyle = '#c8b942'; // Jaune MaxPID
+    ctx.beginPath();
+    ctx.moveTo(20, -15); // Épaulement
+    ctx.lineTo(L_pixel, -10);
+    ctx.arc(L_pixel, 0, 15, -Math.PI/2, Math.PI/2); // Bout arrondi
+    ctx.lineTo(20, 15);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Écrou (pièce dorée sur la vis)
+    ctx.fillStyle = '#a88b2a';
+    ctx.fillRect(30, -18, 20, 36);
+
+    // Masselotte au bout
+    ctx.fillStyle = '#666';
+    ctx.fillRect(L_pixel - 5, -25, 10, 50);
+
+    // Axe de pivot
+    ctx.fillStyle = '#e0e0e0';
+    ctx.beginPath(); ctx.arc(0, 0, 15, 0, 2*Math.PI); ctx.fill();
+    ctx.strokeStyle = '#999'; ctx.lineWidth=2; ctx.stroke();
+
+    ctx.restore();
+
+    // 5. Capteur (grand cercle au centre)
+    ctx.fillStyle = '#888';
+    ctx.beginPath(); ctx.arc(cx, cy, 25, 0, 2*Math.PI); ctx.fill();
+    ctx.fillStyle = '#ccc';
+    ctx.beginPath(); ctx.arc(cx, cy, 20, 0, 2*Math.PI); ctx.fill();
+    // Trait de mesure sur le capteur (tourne avec le bras)
+    ctx.save();
+    ctx.translate(cx, cy); ctx.rotate(theta);
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0, -18); ctx.stroke();
+    ctx.restore();
+
+    // 6. Rapporteur / Cercle gradué
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 12;
+    ctx.beginPath(); ctx.arc(cx, cy, W*0.4, -Math.PI/2 - 0.5, -Math.PI/2 + Math.PI/2 + 0.5); ctx.stroke();
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
-    for(let i=-80; i<=80; i+=5) {
-      const a = i * Math.PI/180;
-      const r1 = L + 16, r2 = (i%10===0) ? L + 24 : L + 20;
+    for(let i=-90; i<=90; i+=10) {
+      let a = i * Math.PI/180;
+      let r1 = W*0.4 - 6, r2 = W*0.4 + 6;
       ctx.beginPath();
       ctx.moveTo(cx + r1*Math.sin(a), cy - r1*Math.cos(a));
       ctx.lineTo(cx + r2*Math.sin(a), cy - r2*Math.cos(a));
       ctx.stroke();
     }
 
-    // Bâti
-    ctx.fillStyle = '#2e6da4';
-    ctx.fillRect(cx - 20, cy, 40, H - cy);
-    ctx.fillRect(cx - 60, cy + 10, 120, 30);
-    ctx.fillStyle = '#1b4a76';
-    ctx.fillRect(cx - 15, cy + 10, 30, 20);
+    // 7. Consigne (Ligne pointillée)
+    ctx.strokeStyle = '#d9534f'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + W*0.4*Math.sin(consTheta), cy - W*0.4*Math.cos(consTheta));
+    ctx.stroke(); ctx.setLineDash([]);
 
-    // Moteur
-    ctx.fillStyle = '#2e8b3a';
-    ctx.fillRect(cx - 100, cy - 15, 50, 30);
-    ctx.fillStyle = '#b9bfc7';
-    ctx.fillRect(cx - 50, cy - 10, 40, 20);
-    ctx.strokeStyle = '#888'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(cx - 10, cy); ctx.lineTo(cx + L * Math.sin(theta), cy - L * Math.cos(theta)); ctx.stroke();
-
-    // Bras
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(theta);
-    ctx.fillStyle = '#e8d83a'; 
-    ctx.beginPath();
-    ctx.moveTo(-15, -10);
-    ctx.lineTo(L - 10, -10);
-    ctx.lineTo(L, 0);
-    ctx.lineTo(L - 10, 10);
-    ctx.lineTo(-15, 10);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#333';
-    ctx.fillRect(0, -3, L*0.7, 6);
-    ctx.fillStyle = '#a0a0a0';
-    ctx.fillRect(L - 5, -20, 10, 40);
-    ctx.fillRect(L - 20, -5, 40, 10);
-    ctx.restore();
-
-    // Pivot
-    ctx.fillStyle = '#c0281f';
-    ctx.beginPath(); ctx.arc(cx, cy, 10, 0, 2*Math.PI); ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(cx, cy, 4, 0, 2*Math.PI); ctx.fill();
-
-    // Consigne
-    if (consigneDeg != null) {
-      const tc = consigneDeg * Math.PI / 180;
-      ctx.strokeStyle = '#9a5b00'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + L * Math.sin(tc), cy - L * Math.cos(tc));
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    // Afficheurs LCD
-    ctx.fillStyle = '#111'; ctx.fillRect(cx + 40, cy - 80, 130, 50);
-    ctx.fillStyle = '#e8a33a'; 
-    ctx.font = 'bold 16px IBM Plex Mono, monospace';
+    // 8. Affichage LCD
+    ctx.fillStyle = '#111'; ctx.fillRect(10, 10, 140, 60);
+    ctx.fillStyle = '#0f0'; ctx.font = 'bold 14px IBM Plex Mono';
     ctx.textAlign = 'left';
-    ctx.fillText('Ω: ' + omegaRad.toFixed(1) + ' rad/s', cx + 50, cy - 60);
-    ctx.fillStyle = '#2e8b3a';
-    ctx.fillText('θ: ' + thetaDeg.toFixed(1) + ' °', cx + 50, cy - 40);
+    ctx.fillText('Position :', 20, 30);
+    ctx.fillText('Consigne :', 20, 55);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(thetaDeg.toFixed(1).padStart(5, ' ') + '°', 90, 30);
+    ctx.fillText(consDeg.toFixed(1).padStart(5, ' ') + '°', 90, 55);
   }
 
   /* ==================================================================
-     ATELIERS
+     ATELIER 1 : JUMEAU AVEC REAL-TIME PACER
      ================================================================== */
-  let animTimer = null;
-
+  let animReq = null;
+  
   function mountJumeau(root) {
     root.innerHTML = `
-      <h2>Jumeau numérique du MaxPID</h2>
-      <p>Ce jumeau numérique vous permet de configurer un essai et de lancer la simulation. L'animation du bras et les courbes temporelles évoluent en temps réel.</p>
+      <h2>Jumeau numérique MaxPID</h2>
+      <p>Inspiré du modèle CAO. Le moteur Maxon entraîne une vis qui translate l'écrou, faisant pivoter le bras.</p>
+      
       <div class="opts">
-        <label class="fld"><span>Consigne (°)</span><input type="number" id="j-cons" value="45" min="5" max="90" step="5"></label>
-        <div class="fld"><span>Type d'entrée</span><div id="j-type"></div></div>
-        <label class="fld"><span>K<sub>p</sub></span><input type="range" id="j-kp" min="0" max="50" step="1" value="8"><b id="j-kp-out">8</b></label>
-        <label class="fld"><span>K<sub>i</sub></span><input type="range" id="j-ki" min="0" max="20" step="0.5" value="0"><b id="j-ki-out">0</b></label>
+        <label class="fld"><span>Consigne (°)</span><input type="number" id="j-cons" value="30" min="0" max="80" step="5"></label>
+        <label class="fld"><span>K<sub>p</sub></span><input type="range" id="j-kp" min="0" max="20" step="0.5" value="5"><b id="j-kp-out">5</b></label>
+        <label class="fld"><span>K<sub>i</sub></span><input type="range" id="j-ki" min="0" max="10" step="0.1" value="0"><b id="j-ki-out">0</b></label>
         <label class="fld"><span>K<sub>d</sub></span><input type="range" id="j-kd" min="0" max="2" step="0.05" value="0"><b id="j-kd-out">0</b></label>
-        <label class="fld"><span>Masse (kg)</span><input type="range" id="j-masse" min="0.1" max="1.5" step="0.1" value="0.32"><b id="j-masse-out">0.32</b></label>
+        <label class="fld"><span>Masse (kg)</span><input type="range" id="j-masse" min="0.1" max="1.5" step="0.1" value="0.45"><b id="j-masse-out">0.45</b></label>
       </div>
+      
       <div class="opts">
-        <label class="fld"><span><input type="checkbox" id="j-frot"> Frottement sec</span></label>
-        <label class="fld"><span><input type="checkbox" id="j-jeu"> Jeu</span></label>
-        <button class="btn pri" id="j-run" type="button" style="font-size:15px;padding:10px 20px;">▶ Lancer l'essai</button>
+        <label class="fld" style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="j-frot"> Frottement sec</label>
+        <button class="btn pri" id="j-run" type="button" style="font-size:15px;padding:10px 20px;">▶ Lancer l'essai (Temps réel)</button>
       </div>
       
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0">
-        <div class="canvas-wrap" style="flex:1;min-width:300px;background:#e0e6ed;">
-          <canvas id="j-bras" width="400" height="300"></canvas>
+        <div class="canvas-wrap" style="flex:1.2;min-width:300px;background:#f8f9fa;">
+          <canvas id="j-bras" width="500" height="350"></canvas>
         </div>
-        <div class="canvas-wrap" style="flex:2;min-width:320px;">
-          <canvas id="j-canvas" width="640" height="300"></canvas>
+        <div class="canvas-wrap" style="flex:1;min-width:300px;">
+          <canvas id="j-canvas" width="500" height="350"></canvas>
         </div>
       </div>
       
-      <div class="legend"><span><i style="background:#2e6da4"></i>Position θ (°)</span><span><i style="background:#9a5b00"></i>Consigne</span><span><i style="background:#1e7a2e"></i>Vitesse moteur (/10)</span><span><i style="background:#c0281f"></i>Tension u (/5)</span><span><i style="background:#7b4fc2"></i>Couple (N·m)</span></div>
+      <div class="legend"><span><i style="background:#2e6da4"></i>Position θ (°)</span><span><i style="background:#c0281f"></i>Consigne</span></div>
       <div id="j-indic"></div>
-      <div id="j-msg" class="verdict" aria-live="polite">Prêt. Cliquez sur "Lancer l'essai" pour démarrer.</div>
+      <div id="j-msg" class="verdict" aria-live="polite">Prêt. Cliquez sur "Lancer l'essai".</div>
     `;
-    
-    const typeEl = qs('#j-type');
-    typeEl.append(mk('div', {class:'chips'}, [['echelon','Échelon'],['rampe','Rampe']].map(([id,lab])=>{
-      const b = mk('button',{type:'button',class:'chip'+(id==='echelon'?' on':''),'data-type':id,onclick:()=>{ typeEl.querySelectorAll('.chip').forEach(c=>c.classList.remove('on')); b.classList.add('on'); }},lab);
-      return b;
-    })));
     
     ['kp','ki','kd','masse'].forEach(id => {
       const el = qs('#j-'+id), out = qs('#j-'+id+'-out');
-      if (el && out) el.addEventListener('input', ()=>{ out.textContent = el.value; });
+      el.addEventListener('input', ()=>{ out.textContent = el.value; });
     });
     
     qs('#j-run').addEventListener('click', runEssai);
     
-    dessinerBras(qs('#j-bras'), 0, 0, 45);
-    drawTemporalGraph(qs('#j-canvas'), null, 0);
+    // État initial statique
+    drawMaxPID(qs('#j-bras'), 0, 30, 0);
+    drawGraph(qs('#j-canvas'), null, 0, 30);
   }
 
   function runEssai() {
-    if (animTimer) cancelAnimationFrame(animTimer);
+    if (animReq) cancelAnimationFrame(animReq);
     
-    const cons = parseFloat(qs('#j-cons').value) || 45;
-    const Kp = parseFloat(qs('#j-kp').value) || 0;
+    const cons = parseFloat(qs('#j-cons').value) || 30;
+    const Kp = parseFloat(qs('#j-kp').value) || 5;
     const Ki = parseFloat(qs('#j-ki').value) || 0;
     const Kd = parseFloat(qs('#j-kd').value) || 0;
-    const masse = parseFloat(qs('#j-masse').value) || 0.32;
-    const type = qs('#j-type').querySelector('.chip.on').dataset.type;
+    const masse = parseFloat(qs('#j-masse').value) || 0.45;
     const frottementSec = qs('#j-frot').checked;
-    const jeu = qs('#j-jeu').checked;
     
-    const res = simulerMaxpid({ Kp, Ki, Kd, consigne: cons, type, T: 3, masse, inclinaison: 0, frottementSec, jeu });
+    // 1. Calcul de la simulation complète (comme Simulink)
+    const res = genererSimulation({ Kp, Ki, Kd, consigne: cons, masse, frottementSec });
     
-    let idx = 0;
     const brasCanvas = qs('#j-bras');
     const graphCanvas = qs('#j-canvas');
     const msg = qs('#j-msg');
+    const btn = qs('#j-run');
     
-    msg.textContent = "Essai en cours...";
+    msg.textContent = "Essai en cours... (Real-Time)";
     msg.className = 'verdict warn';
+    btn.disabled = true;
     
-    const speedFactor = 2;
+    // 2. Implémentation du Real-Time Pacer
+    // On veut que 1s de temps simulé = 1s réel (speedup = 1)
+    const startTimeReal = performance.now();
     
-    function animate() {
+    function pacerLoop() {
+      const elapsedReal = (performance.now() - startTimeReal) / 1000; // en secondes
+      
+      // Trouver l'index correspondant au temps écoulé
+      // On pourrait faire une recherche, mais comme dt est fixe, on divise
+      let idx = Math.floor(elapsedReal / MAXPID.dt);
+      
       if (idx >= res.N) {
+        idx = res.N - 1;
+        // Fin de la simulation
+        drawMaxPID(brasCanvas, res.theta[idx], cons, elapsedReal);
+        drawGraph(graphCanvas, res, idx, cons);
+        updateIndicators(res, cons, masse);
         msg.textContent = "Essai terminé.";
         msg.className = 'verdict yes';
-        updateIndicators(res, cons, masse);
-        return;
+        btn.disabled = false;
+        return; // On arrête la boucle
       }
       
-      dessinerBras(brasCanvas, res.theta[idx], res.omega[idx], cons);
-      drawTemporalGraph(graphCanvas, res, idx);
+      // Mise à jour des vues
+      drawMaxPID(brasCanvas, res.theta[idx], cons, elapsedReal);
+      drawGraph(graphCanvas, res, idx, cons);
       
-      idx += Math.max(1, Math.floor(speedFactor * (MAXPID.dt / 0.016)));
-      animTimer = requestAnimationFrame(animate);
+      // Appel pour la frame suivante
+      animReq = requestAnimationFrame(pacerLoop);
     }
     
-    animate();
+    pacerLoop();
   }
 
-  function drawTemporalGraph(canvas, res, currentIndex) {
+  function drawGraph(canvas, res, currentIndex, consVal) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const W = canvas.width, H = canvas.height;
     ctx.clearRect(0,0,W,H);
     
-    const cons = parseFloat(qs('#j-cons').value) || 45;
-    const maxTheta = Math.max(cons, 100) * 1.1;
+    const maxTheta = Math.max(consVal, 90) * 1.1;
     const pad = { l: 40, r: 15, t: 15, b: 25 };
     const plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;
     
-    ctx.strokeStyle = '#d0d5db'; ctx.lineWidth = 0.8;
+    // Grille
+    ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 1;
     for (let g = 0; g <= 4; g++) { const yy = pad.t + (g/4)*plotH; ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W-pad.r, yy); ctx.stroke(); }
-    ctx.strokeStyle = '#5a6068'; ctx.lineWidth = 1.2;
+    ctx.strokeStyle = '#5a6068'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, H-pad.b); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(pad.l, H-pad.b); ctx.lineTo(W-pad.r, H-pad.b); ctx.stroke();
     
+    // Axes
     ctx.fillStyle = '#5a6068'; ctx.font = '11px IBM Plex Mono'; ctx.textAlign = 'right';
     for (let g = 0; g <= 4; g++) { ctx.fillText((maxTheta*(1-g/4)).toFixed(0), pad.l-5, pad.t + (g/4)*plotH + 4); }
     ctx.textAlign = 'center';
-    for (let g = 0; g <= 4; g++) { ctx.fillText((g/4*3).toFixed(1)+'s', pad.l + (g/4)*plotW, H-pad.b+15); }
+    for (let g = 0; g <= 4; g++) { ctx.fillText((g/4*MAXPID.T).toFixed(1)+'s', pad.l + (g/4)*plotW, H-pad.b+15); }
     
     if (!res) return;
     
@@ -438,14 +500,16 @@
     const x = i => pad.l + (i / (N-1)) * plotW;
     const yTheta = v => pad.t + plotH - (v / maxTheta) * plotH;
     
-    ctx.strokeStyle = '#9a5b00'; ctx.lineWidth = 1.5; ctx.setLineDash([4,4]);
+    // Consigne
+    ctx.strokeStyle = '#c0281f'; ctx.lineWidth = 2; ctx.setLineDash([4,4]);
     ctx.beginPath();
     for (let i = 0; i < currentIndex; i+=2) {
-      let c = res.t[i] >= 0.1 ? cons : 0;
+      let c = res.t[i] >= 0.2 ? consVal : 0;
       const xx = x(i), yy = yTheta(c); i===0 ? ctx.moveTo(xx,yy) : ctx.lineTo(xx,yy);
     }
     ctx.stroke(); ctx.setLineDash([]);
     
+    // Position
     ctx.strokeStyle = '#2e6da4'; ctx.lineWidth = 2.5;
     ctx.beginPath();
     for (let i = 0; i < currentIndex; i+=2) {
@@ -453,298 +517,162 @@
     }
     ctx.stroke();
     
-    ctx.strokeStyle = '#c0281f'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x(currentIndex), pad.t); ctx.lineTo(x(currentIndex), H-pad.b); ctx.stroke();
+    // Curseur
+    if (currentIndex > 0) {
+      ctx.strokeStyle = '#e8a33a'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x(currentIndex), pad.t); ctx.lineTo(x(currentIndex), H-pad.b); ctx.stroke();
+    }
   }
 
   function updateIndicators(res, cons, masse) {
     const final = res.theta[res.N-1];
-    const err_stat = cons - final;
-    let maxv = -Infinity;
-    for (let k = 0; k < res.N; k++) if (res.theta[k] > maxv) maxv = res.theta[k];
-    const dep = Math.max(0, (maxv - cons) / cons * 100);
+    const err = cons - final;
     
-    const box = qs('#j-indic'); if (box) {
+    const box = qs('#j-indic');
+    if (box) {
       box.innerHTML = '';
       box.append(mk('div',{class:'gstats'},[
-        ['Erreur statique', err_stat.toFixed(2)+' °'],
-        ['Dépassement', dep.toFixed(1)+' %'],
-        ['Inertie équivalente J<sub>eq</sub>', (inertieEquivalente(masse)*1000).toFixed(2)+' g·m²'],
-        ['Couple de maintien', coupleMaintien(final).toFixed(3)+' N·m']
+        ['Erreur statique', err.toFixed(2)+' °'],
+        ['Inertie J<sub>eq</sub>', (getJeq(masse)*10000).toFixed(2)+' kg·cm²'],
+        ['Couple maintien', getCoupleMaintien(final).toFixed(3)+' N·m']
       ].map(([lab,val])=>mk('div',{class:'stat'},mk('span',{html:lab}),mk('b',null,val)))));
     }
   }
 
-  /* --- Autres ateliers --- */
+  /* ==================================================================
+     ATELIERS SECONDAIRES (Cinématique, Statique, etc.)
+     ================================================================== */
   function mountCinematique(root) {
     root.innerHTML = `
-      <h2>Cinématique : loi entrée-sortie</h2>
-      <p>Le système vis-écrou transforme la rotation de la vis en translation de l'écrou, ce qui fait tourner le bras.</p>
+      <h2>Cinématique</h2>
       <div class="formula">x(t) = (p / 2π) · α<sub>m</sub>(t)</div>
       <div class="opts">
         <label class="fld"><span>Rotation vis α<sub>m</sub> (°)</span><input type="range" id="c-alpha" min="-360" max="360" step="5" value="0"><b id="c-alpha-out">0</b></label>
       </div>
-      <div class="canvas-wrap"><canvas id="c-canvas" width="640" height="240"></canvas></div>
+      <div class="canvas-wrap"><canvas id="c-canvas" width="600" height="200"></canvas></div>
       <div id="c-out" class="gstats"></div>
-      <div class="verdict" id="c-msg"></div>
     `;
-    qs('#c-alpha').addEventListener('input', drawCinematique);
-    drawCinematique();
-  }
-
-  function drawCinematique() {
-    const alphaDeg = parseFloat(qs('#c-alpha')?.value) || 0;
-    qs('#c-alpha-out').textContent = alphaDeg;
-    const alpha = alphaDeg * Math.PI / 180;
-    const x = (MAXPID.p / (2 * Math.PI)) * alpha;
-    const thetaRad = Math.atan2(x, MAXPID.a + MAXPID.b);
-    const thetaDeg = thetaRad * 180 / Math.PI;
-    
-    const canvas = qs('#c-canvas'); if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height;
-    ctx.clearRect(0, 0, W, H);
-    
-    const cx = W * 0.3, cy = H * 0.7, L = H * 0.5;
-    ctx.strokeStyle = '#5a6068'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(W*0.1, cy); ctx.lineTo(W*0.9, cy); ctx.stroke();
-    
-    ctx.strokeStyle = '#2e6da4'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(cx - 40, cy - 10); ctx.lineTo(cx + 40, cy - 10); ctx.stroke();
-    
-    const ex = cx + x * 2;
-    ctx.fillStyle = '#9a5b00'; ctx.fillRect(ex - 8, cy - 18, 16, 16);
-    
-    const bx = ex + L * Math.sin(thetaRad), by = cy - L * Math.cos(thetaRad);
-    ctx.strokeStyle = '#1e7a2e'; ctx.lineWidth = 6; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(ex, cy - 10); ctx.lineTo(bx, by); ctx.stroke();
-    
-    const box = qs('#c-out'); if (box) {
-      box.innerHTML = '';
+    qs('#c-alpha').addEventListener('input', () => {
+      const a = parseFloat(qs('#c-alpha').value);
+      qs('#c-alpha-out').textContent = a;
+      const x = (MAXPID.pas_vis * 1000 / (2 * Math.PI)) * (a * Math.PI / 180); // mm
+      const theta = Math.atan2(x, 100) * 180 / Math.PI;
+      
+      const canvas = qs('#c-canvas'); const ctx = canvas.getContext('2d');
+      ctx.clearRect(0,0,600,200);
+      ctx.fillStyle = '#ccc'; ctx.fillRect(0, 150, 600, 50);
+      
+      ctx.fillStyle = '#2e6da4'; ctx.fillRect(50, 140, 100, 10); // Moteur
+      ctx.strokeStyle = '#999'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(150, 145); ctx.lineTo(450, 145); ctx.stroke(); // Vis
+      
+      const ex = 300 + x * 2; // Ecrou
+      ctx.fillStyle = '#c8b942'; ctx.beginPath(); ctx.arc(ex, 145, 15, 0, 2*Math.PI); ctx.fill();
+      
+      const th = theta * Math.PI / 180;
+      ctx.strokeStyle = '#333'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(300, 145); ctx.lineTo(300 + 100*Math.sin(th), 145 - 100*Math.cos(th)); ctx.stroke();
+      
+      const box = qs('#c-out'); box.innerHTML = '';
       box.append(mk('div',{class:'gstats'},[
         ['Translation x', x.toFixed(2)+' mm'],
-        ['Angle bras θ', thetaDeg.toFixed(2)+' °']
-      ].map(([lab,val])=>mk('div',{class:'stat'},mk('span',{html:lab}),mk('b',null,val)))));
-    }
-    qs('#c-msg').innerHTML = `Pour α<sub>m</sub> = ${alphaDeg}°, x = ${x.toFixed(2)} mm et θ = ${thetaDeg.toFixed(2)}°.`;
+        ['Angle θ', theta.toFixed(2)+' °']
+      ].map(([l,v])=>mk('div',{class:'stat'},mk('span',null,l),mk('b',null,v)))));
+    });
+    qs('#c-alpha').dispatchEvent(new Event('input'));
   }
 
   function mountStatique(root) {
     root.innerHTML = `
-      <h2>Statique : couple de maintien</h2>
-      <div class="formula">C<sub>maintien</sub>(θ) = m · g · L · cos(θ)</div>
+      <h2>Statique : Couple de maintien</h2>
+      <div class="formula">C(θ) = m · g · L · cos(θ)</div>
       <div class="opts">
         <label class="fld"><span>Angle θ (°)</span><input type="range" id="s-theta" min="0" max="90" step="5" value="45"><b id="s-theta-out">45</b></label>
-        <label class="fld"><span>Masse m (kg)</span><input type="range" id="s-masse" min="0.1" max="1.5" step="0.1" value="0.32"><b id="s-masse-out">0.32</b></label>
       </div>
-      <div class="canvas-wrap"><canvas id="s-canvas" width="640" height="280"></canvas></div>
       <div id="s-out" class="gstats"></div>
     `;
-    qs('#s-theta').addEventListener('input', drawStatique);
-    qs('#s-masse').addEventListener('input', drawStatique);
-    drawStatique();
-  }
-
-  function drawStatique() {
-    const thetaDeg = parseFloat(qs('#s-theta')?.value) || 45;
-    const m = parseFloat(qs('#s-masse')?.value) || MAXPID.m_bras;
-    qs('#s-theta-out').textContent = thetaDeg;
-    qs('#s-masse-out').textContent = m;
-    const C = m * 9.81 * MAXPID.L_bras * Math.cos(thetaDeg * Math.PI / 180);
-    
-    const canvas = qs('#s-canvas'); if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height;
-    ctx.clearRect(0, 0, W, H);
-    const cx = W/2, cy = H*0.8, L = H*0.6, theta = thetaDeg * Math.PI/180;
-    
-    ctx.fillStyle = '#5a6068'; ctx.fillRect(cx-30, cy+5, 60, 10);
-    const bx = cx + L*Math.sin(theta), by = cy - L*Math.cos(theta);
-    ctx.strokeStyle = '#2e6da4'; ctx.lineWidth = 8; ctx.lineCap='round';
-    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(bx,by); ctx.stroke();
-    ctx.fillStyle = '#9a5b00'; ctx.beginPath(); ctx.arc(bx,by,10,0,2*Math.PI); ctx.fill();
-    
-    ctx.strokeStyle = '#c0281f'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(bx, by+40); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(bx-5, by+30); ctx.lineTo(bx, by+40); ctx.lineTo(bx+5, by+30); ctx.stroke();
-    
-    const box = qs('#s-out'); if (box) {
-      box.innerHTML = '';
+    qs('#s-theta').addEventListener('input', () => {
+      const t = parseFloat(qs('#s-theta').value);
+      qs('#s-theta-out').textContent = t;
+      const C = getCoupleMaintien(t);
+      const box = qs('#s-out'); box.innerHTML = '';
       box.append(mk('div',{class:'gstats'},[
-        ['Couple de maintien', C.toFixed(3)+' N·m'],
-        ['Couple maximal', (m*9.81*MAXPID.L_bras).toFixed(3)+' N·m']
-      ].map(([lab,val])=>mk('div',{class:'stat'},mk('span',{html:lab}),mk('b',null,val)))));
-    }
-  }
-
-  function mountInertie(root) {
-    root.innerHTML = `
-      <h2>Inertie équivalente</h2>
-      <div class="formula">J<sub>eq</sub> = J<sub>moteur</sub> + J<sub>vis</sub> + (m · L²) / r²</div>
-      <div class="opts">
-        <label class="fld"><span>Masse m (kg)</span><input type="range" id="i-masse" min="0.1" max="1.5" step="0.1" value="0.32"><b id="i-masse-out">0.32</b></label>
-      </div>
-      <div id="i-out" class="gstats"></div>
-    `;
-    qs('#i-masse').addEventListener('input', () => {
-      const m = parseFloat(qs('#i-masse').value);
-      qs('#i-masse-out').textContent = m;
-      const J = inertieEquivalente(m);
-      const box = qs('#i-out'); box.innerHTML = '';
-      box.append(mk('div',{class:'gstats'},[
-        ['J équivalent total', (J*1000).toFixed(2)+' g·m²']
-      ].map(([lab,val])=>mk('div',{class:'stat'},mk('span',{html:lab}),mk('b',null,val)))));
+        ['Couple de maintien', C.toFixed(3)+' N·m']
+      ].map(([l,v])=>mk('div',{class:'stat'},mk('span',null,l),mk('b',null,v)))));
     });
-    qs('#i-masse').dispatchEvent(new Event('input'));
+    qs('#s-theta').dispatchEvent(new Event('input'));
   }
 
-  function mountDynamique(root) {
-    root.innerHTML = `
-      <h2>Dynamique</h2>
-      <div class="formula">J<sub>eq</sub> · dω<sub>m</sub>/dt = C<sub>m</sub> − C<sub>r</sub> − f<sub>v</sub>·ω<sub>m</sub></div>
-      <div class="formula">τ = R · J<sub>eq</sub> / (R·f<sub>v</sub> + K<sub>e</sub>·K<sub>c</sub>)</div>
-      <p>La constante de temps augmente avec la masse embarquée.</p>
-    `;
-  }
-
-  function mountNonLinearites(root) {
-    root.innerHTML = `
-      <h2>Non-linéarités en SLCI</h2>
-      <p>Les non-linéarités (saturation, frottement sec, jeu) dégradent les performances. Testez-les dans l'atelier Jumeau Numérique.</p>
-    `;
-  }
-
-  /* ==================================================================
-     ACTIVITÉS ET COURS
-     ================================================================== */
-  const ACT = {
-    jumeau: {
-      title: "Jumeau numérique MaxPID", level: "Niveau 1 · Découvrir", time: "30 min",
-      goal: "Prendre en main le modèle complet et observer l'influence des gains du PID.",
-      steps: [
-        "Lancez l'essai avec Kp = 8, Ki = 0. Relevez l'erreur statique.",
-        "Activez l'intégrateur (Ki = 5) et vérifiez que l'erreur statique devient nulle.",
-        "Augmentez la masse à 1 kg : que devient l'inertie équivalente ?",
-        "Cochez « Frottement sec » et observez l'apparition d'oscillations."
-      ],
-      defi: {
-        q: "Pourquoi le couple de maintien est-il maximal lorsque le bras est horizontal ?",
-        a: "Le couple dû au poids est C = m·g·L·cos(θ). À l'horizontale (θ = 0°), cos(0) = 1 : le bras de levier est maximal."
-      },
-      qcm: [
-        { q: "Quel terme du correcteur annule l'erreur statique sur un échelon ?", o: ["Kp", "Ki", "Kd", "Aucun"], a: 1, w: "Ki introduit une intégration supplémentaire." }
-      ]
-    }
-  };
-
-  const COURSE = [
-    { id:'modele', t:'Modèle du MaxPID', h:`<p>Le MaxPID est un bras robotisé à vis à billes actionné par un moteur à courant continu. Le modèle de connaissance permet de simuler son comportement.</p>` }
+  // Déclaration des ateliers
+  const WORKSHOPS = [
+    { id:'jumeau', title:'Jumeau numérique', hint:'Lancez un essai en temps réel.', mount: mountJumeau },
+    { id:'cinematique', title:'Cinématique', hint:'Loi entrée-sortie vis-écrou.', mount: mountCinematique },
+    { id:'statique', title:'Statique', hint:'Couple de maintien.', mount: mountStatique }
   ];
 
   /* ==================================================================
-     UI
+     INTERFACE UTILISATEUR
      ================================================================== */
-  const WORKSHOPS = [];
-  WORKSHOPS.push({ id:'jumeau', title:'Jumeau numérique', hint:'Réglez le PID, lancez l\'essai et observez le bras en temps réel.', mount: mountJumeau, reset: ()=>{} });
-  WORKSHOPS.push({ id:'cinematique', title:'Cinématique', hint:'Loi entrée-sortie vis-écrou.', mount: mountCinematique, reset: ()=>{} });
-  WORKSHOPS.push({ id:'statique', title:'Statique', hint:'Couple de maintien gravitaire.', mount: mountStatique, reset: ()=>{} });
-  WORKSHOPS.push({ id:'inertie', title:'Inertie équivalente', hint:'Ramenez les inerties à l\'arbre moteur.', mount: mountInertie, reset: ()=>{} });
-  WORKSHOPS.push({ id:'dynamique', title:'Dynamique', hint:'Équation de mouvement et constante de temps.', mount: mountDynamique, reset: ()=>{} });
-  WORKSHOPS.push({ id:'nonlin', title:'Non-linéarités', hint:'Saturation, frottement sec et jeu.', mount: mountNonLinearites, reset: ()=>{} });
-
   const UI = { cur: 'jumeau' };
-  const AS = { key: 'jumeau', tab: 'steps', open: false, st: lsGet(KEYS.act, {}), arm: null };
-  const CS = { open: false, id: 'modele' };
+  const AS = { key: 'jumeau', open: !isSmall() };
 
-  function wsById(id){ return WORKSHOPS.find(w=>w.id===id) || WORKSHOPS[0]; }
   function renderSeg(){
     const seg = qs('#wsSeg'); seg.innerHTML = '';
-    WORKSHOPS.forEach((w,i)=>seg.append(mk('button',{type:'button',role:'tab','aria-pressed':w.id===UI.cur?'true':'false','aria-selected':w.id===UI.cur?'true':'false',onclick:()=>gotoWs(w.id)},(i+1)+'. '+w.title)));
+    WORKSHOPS.forEach((w,i)=>{
+      seg.append(mk('button',{
+        type:'button', role:'tab',
+        'aria-pressed': w.id===UI.cur?'true':'false',
+        onclick:()=>gotoWs(w.id)
+      }, (i+1)+'. '+w.title));
+    });
   }
+
   function mountWs(){
-    const w = wsById(UI.cur), root = qs('#ws');
-    qs('#hint').textContent = w.hint; root.innerHTML='';
-    w.mount(root);
-    const sc=qs('#scroller'); if(sc) sc.scrollTop=0;
+    const w = WORKSHOPS.find(w=>w.id===UI.cur) || WORKSHOPS[0];
+    qs('#hint').textContent = w.hint;
+    qs('#ws').innerHTML = '';
+    w.mount(qs('#ws'));
+    qs('#scroller').scrollTop = 0;
   }
+
   function gotoWs(id){
-    const old = wsById(UI.cur); if(old.leave) old.leave();
-    if(CS.open){ CS.open=false; renderCourse(); }
-    UI.cur=id; AS.key=id; AS.tab='steps';
-    renderSeg(); mountWs(); renderAct();
-  }
-  function actSave(){ lsSet(KEYS.act, AS.st); }
-  function actState(){ return AS.st[AS.key] || (AS.st[AS.key]={a:{},checked:false,shown:false}); }
-  function actScore(a){ const s=actState(); return a.qcm.filter((q,i)=>s.a[i]===q.a).length; }
-
-  function renderAct(){
-    const box=qs('#act'), btn=qs('#bAct');
-    btn.setAttribute('aria-pressed', AS.open?'true':'false'); btn.classList.toggle('pri', AS.open);
-    box.hidden = !AS.open;
-    if(!AS.open){ box.innerHTML=''; return; }
-    const a = ACT[AS.key];
-    if(!a){ box.append(mk('div',{class:'pbody'},mk('p',null,'Activité en préparation.'))); return; }
-    
-    box.innerHTML = '';
-    const close = mk('button',{class:'btn sm',type:'button',onclick:()=>{ AS.open=false; renderAct(); }},'Fermer');
-    box.append(mk('div',{class:'phead'},mk('b',null,'Activité'),mk('span',{class:'sub'},a.title),close));
-    const nq = a.qcm.length;
-    box.append(mk('div',{class:'tabs',role:'tablist'},
-      mk('button',{type:'button',role:'tab','aria-selected':AS.tab==='steps'?'true':'false',onclick:()=>{AS.tab='steps';renderAct();}},'Consignes'),
-      mk('button',{type:'button',role:'tab','aria-selected':AS.tab==='qcm'?'true':'false',onclick:()=>{AS.tab='qcm';renderAct();}},'Questions ('+nq+')')));
-      
-    const body = mk('div',{class:'pbody'});
-    if(AS.tab==='steps'){
-      body.append(mk('p',{class:'small'},a.level+' · environ '+a.time), mk('div',{class:'goal'},mk('b',null,'Objectif. '),a.goal));
-      body.append(mk('ol',{class:'steps'},a.steps.map(s=>mk('li',{html:s}))));
-      body.append(mk('div',{class:'defi'},mk('b',null,'Défi'),mk('p',{html:a.defi.q}),mk('details',null,mk('summary',null,'Voir la réponse'),mk('p',{html:a.defi.a}))));
-    } else {
-      const s=actState(), show=s.checked||s.shown;
-      a.qcm.forEach((q,i)=>{
-        const fs = mk('fieldset',{class:'q'},mk('legend',null,(i+1)+'. '+q.q));
-        q.o.forEach((o,j)=>{
-          const good = show && j===q.a, bad = s.checked && !s.shown && s.a[i]===j && j!==q.a;
-          const inp = mk('input',{type:'radio',name:'q'+i,checked: show && s.shown ? j===q.a : s.a[i]===j,disabled:show});
-          inp.addEventListener('change',()=>{ s.a[i]=j; actSave(); renderAct(); });
-          fs.append(mk('label',{class:'opt'+(good?' good':'')+(bad?' bad':'')},inp,mk('span',null,o+(good?'  ✓':'')+(bad?'  ✗':''))));
-        });
-        if(show){ const miss = s.a[i]==null && !s.shown; fs.append(mk('p',{class:'why'},(miss?'Sans réponse. ':'')+q.w)); }
-        body.append(fs);
-      });
-      if(s.checked && !s.shown) body.append(mk('p',{class:'score'},'Score : '+actScore(a)+' / '+nq));
-    }
-    box.append(body);
-  }
-
-  qs('#bAct').addEventListener('click', ()=>{ AS.open=!AS.open; renderAct(); });
-
-  function courseSection(id){ return COURSE.find(s=>s.id===id) || COURSE[0]; }
-  function renderCourse(){
-    const box=qs('#course'), btn=qs('#bCourse'), work=qs('#work');
-    btn.setAttribute('aria-pressed', CS.open?'true':'false'); btn.classList.toggle('pri', CS.open);
-    box.hidden=!CS.open; work.hidden=CS.open; qs('#modes').hidden=CS.open;
-    if(!CS.open){ box.innerHTML=''; return; }
-    box.innerHTML='';
-    const cur = courseSection(CS.id);
-    const art = mk('article',{class:'cbody'});
-    art.append(mk('p',{class:'ckick'},'Cours'),mk('h2',null,cur.t),mk('div',{html:cur.h}));
-    const top = mk('div',{class:'ctop'},mk('b',null,'Cours : MaxPID'),mk('button',{class:'btn pri sm',type:'button',onclick:()=>{ CS.open=false; renderCourse(); }},'Retour'));
-    box.append(top,mk('div',{class:'cwrap'},art));
-  }
-  qs('#bCourse').addEventListener('click', ()=>{ CS.open=!CS.open; renderCourse(); });
-
-  qs('#bHelp').addEventListener('click',()=>{
-    alert("Jumeau numérique MaxPID :\n- Cliquez sur Lancer l'essai pour voir le bras bouger.\n- Testez l'influence des gains PID et de la masse.");
-  });
-
-  // Initialisation
-  (function init(){
-    AS.open = !isSmall();
+    UI.cur = id;
     renderSeg();
     mountWs();
-    renderAct();
-    renderCourse();
-  })();
+  }
+
+  function renderAct(){
+    const box = qs('#act'), btn = qs('#bAct');
+    btn.setAttribute('aria-pressed', AS.open?'true':'false');
+    box.hidden = !AS.open;
+    if (!AS.open) return;
+    
+    box.innerHTML = `
+      <div class="phead"><b>Activité</b><span class="sub">Jumeau MaxPID</span><button class="btn sm" id="close-act">Fermer</button></div>
+      <div class="pbody">
+        <div class="goal"><b>Objectif.</b> Comprendre l'influence des paramètres du correcteur PID sur le comportement du bras.</div>
+        <ol class="steps">
+          <li>Lancez l'essai avec Kp = 5, Ki = 0, Kd = 0. L'erreur statique est-elle nulle ?</li>
+          <li>Augmentez Ki à 2. Que se passe-t-il ? L'erreur disparaît-elle ?</li>
+          <li>Ajoutez du dérivé (Kd = 0.5) pour amortir les oscillations.</li>
+          <li>Changez la masse et observez la modification de l'inertie équivalente.</li>
+        </ol>
+        <div class="defi">
+          <b>Défi</b>
+          <p>Réglez le PID pour que le bras atteigne 30° en moins de 1.5s, sans dépassement.</p>
+        </div>
+      </div>
+    `;
+    qs('#close-act').addEventListener('click', ()=>{ AS.open = false; renderAct(); });
+  }
+
+  qs('#bAct').addEventListener('click', ()=>{ AS.open = !AS.open; renderAct(); });
+  qs('#bCourse').addEventListener('click', ()=>{ alert("Le cours est en cours de rédaction pour cette version."); });
+  qs('#bHelp').addEventListener('click', ()=>{ alert("Cliquez sur 'Lancer l'essai' pour voir l'animation en temps réel (Real-Time Pacer)."); });
+
+  // Initialisation
+  renderSeg();
+  mountWs();
+  renderAct();
 
 })();
 </script>
