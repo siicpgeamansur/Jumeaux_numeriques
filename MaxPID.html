@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Jumeau numérique MaxPID · Activités SII PCSI/PSI*</title>
+<title>Jumeau numérique MaxPID · SII PCSI/PSI*</title>
 <style>
   :root{
     --font-ui:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
@@ -156,108 +156,230 @@ function h(tag, attrs, ...kids) {
   return el;
 }
 function isSmall(){ try { return window.matchMedia('(max-width:820px)').matches; } catch(e){ return false; } }
-const KEYS = { act: 'maxpid-jumeau-v1' };
+const KEYS = { act: 'maxpid-jumeau-v2' };
 function lsGet(k,d){ try { const v=localStorage.getItem(k); return v?JSON.parse(v):d; } catch(e){ return d; } }
 function lsSet(k,v){ try { localStorage.setItem(k,JSON.stringify(v)); } catch(e){} }
 
-/* ================= MODÈLE MAXPID ================= */
-const SIM = {
-  // Paramètres du modèle de connaissance (linéarisé)
-  R: 1.1,          // Ω
-  Ke: 0.265,       // V·s/rad
-  Kc: 0.265,       // N·m/A
-  J: 0.0025,       // kg·m² (inertie équivalente ramenée à l'arbre moteur)
-  f: 0.0008,       // N·m·s/rad (frottement visqueux)
-  Km: 12,          // rad/s/V (gain statique de vitesse, ajusté pour le réalisme)
-  tau: 0.08,       // s (constante de temps électromécanique)
-  r: 50,           // rapport de réduction (vis + réducteur)
-  Ktheta: (180/Math.PI)/50, // °/rad : conversion vitesse moteur -> position bras
-  Umax: 24,        // V (saturation)
-  dt: 0.002,       // s (pas d'intégration)
-  T: 3,            // s (durée de simulation par défaut)
+/* ==================================================================
+   MODÈLE MAXPID : paramètres, cinématique, statique, dynamique
+   ================================================================== */
+const MAXPID = {
+  // Géométrie (mm) — d'après cahier-de-prepa.fr
+  a: 70, b: 80, c: 80, p: 4, // p = pas de la vis en mm/tr
+  // Moteur CC
+  R: 1.1, Ke: 0.265, Kc: 0.265,
+  Umax: 24, // V
+  // Mécanique
+  r: 50, // rapport de réduction
+  m_bras: 0.32, // kg (bras + écrou + masses éventuelles)
+  L_bras: 0.08, // m (longueur équivalente du bras)
+  fv: 0.0008, // frottement visqueux ramené N·m·s/rad
+  Cf: 0.012, // frottement sec ramené N·m
+  // Modèle 1er ordre identifié
+  Km: 12, tau: 0.08,
+  // Simulation
+  dt: 0.002, T: 3
 };
 
-function simuler(params) {
-  // params: { Kp, Ki, Kd, consigne, type (echelon|rampe|trapeze), T }
-  const { Kp, Ki, Kd, consigne, type, T } = params;
-  const N = Math.floor(T / SIM.dt);
-  const t = new Float64Array(N), theta = new Float64Array(N), omega = new Float64Array(N), u = new Float64Array(N), err = new Float64Array(N);
-  let theta_m = 0;    // position mesurée (degrés)
-  let omega_m = 0;    // vitesse moteur (rad/s)
-  let integral = 0;   // intégrale de l'erreur
-  let prev_err = 0;   // erreur précédente pour le dérivé
+/* --- Cinématique : loi entrée-sortie --- */
+// x = p/(2π) · θ_moteur  (vis-écrou)
+// Le bras est articulé : la relation θ_bras(α_m) est non linéaire.
+// On utilise le modèle géométrique simplifié du MaxPID (voir TP fermeture géométrique).
+function thetaBras(alphaM) {
+  // alphaM en rad (rotation vis) ; x = p/(2π)·alphaM (en mm)
+  const { a, b, c, p } = MAXPID;
+  const x = (p / (2 * Math.PI)) * alphaM; // mm
+  // Loi entrée-sortie issue de la fermeture géométrique (forme simplifiée)
+  // c² = a² + b² + x² − 2·a·b·cos(θ) + 2·a·x·sin(θ)  → on résout numériquement
+  // Pour la simulation, on utilise une approximation linéarisée autour de θ₀ = 0
+  // θ ≈ atan( (x) / (a + b) )  (modèle linéarisé)
+  const theta = Math.atan2(x, a + b); // rad
+  return theta;
+}
+// Inverse (linéarisé) : alphaM ≈ (a+b)·tan(θ)·2π/p
+function alphaMFromTheta(theta) {
+  const { a, b, p } = MAXPID;
+  return (a + b) * Math.tan(theta) * 2 * Math.PI / p;
+}
+
+/* --- Inertie équivalente ramenée à l'arbre moteur --- */
+function inertieEquivalente(m = MAXPID.m_bras) {
+  // J_eq = J_moteur + J_vis + (m·L²)/r²  + termes cinématiques
+  const J_moteur = 0.0025; // kg·m²
+  const J_vis = 0.0001;    // kg·m²
+  const J_bras = m * MAXPID.L_bras * MAXPID.L_bras; // kg·m² (bras + masse)
+  return J_moteur + J_vis + J_bras / (MAXPID.r * MAXPID.r);
+}
+
+/* --- Couple de maintien statique (masse + gravité) --- */
+function coupleMaintien(thetaDeg) {
+  // θ en deg ; le bras est supposé dans un plan vertical (inclinaison)
+  const theta = thetaDeg * Math.PI / 180;
+  const g = 9.81;
+  const m = MAXPID.m_bras;
+  const L = MAXPID.L_bras;
+  // Couple dû au poids du bras : C = m·g·L·cos(θ)  (bras horizontal → θ=0)
+  return m * g * L * Math.cos(theta); // N·m
+}
+
+/* --- Non-linéarités SLCI : saturation, frottement sec, jeu --- */
+function nonLinearites(u, omega, params) {
+  let uc = u;
+  // Saturation tension
+  uc = Math.max(-MAXPID.Umax, Math.min(MAXPID.Umax, uc));
+  // Frottement sec (opposé au mouvement)
+  const sign = Math.sign(omega);
+  const Cf = params.Cf || MAXPID.Cf;
+  // Le frottement sec n'agit que si la vitesse est non nulle
+  const coupleFrottement = (Math.abs(omega) > 1e-6) ? -sign * Cf : 0;
+  return { uc, coupleFrottement };
+}
+
+/* --- Simulation complète --- */
+function simulerMaxpid(params) {
+  const { Kp, Ki, Kd, consigne, type, T, masse, inclinaison, frottementSec, jeu } = params;
+  const dt = MAXPID.dt, N = Math.floor(T / dt);
+  const t = new Float64Array(N), theta = new Float64Array(N), omega = new Float64Array(N),
+        u = new Float64Array(N), err = new Float64Array(N), couple = new Float64Array(N);
+  let theta_m = 0; // position mesurée (degrés)
+  let omega_m = 0; // vitesse moteur (rad/s)
+  let integral = 0, prev_err = 0;
+  const m = masse || MAXPID.m_bras;
+  const J = inertieEquivalente(m);
+  const incl = (inclinaison || 0) * Math.PI / 180; // inclinaison du plan (0 = horizontal)
   for (let k = 0; k < N; k++) {
-    const tk = k * SIM.dt;
-    t[k] = tk;
+    const tk = k * dt; t[k] = tk;
     // Consigne
     let c = 0;
     if (type === 'echelon') c = (tk >= 0.1) ? consigne : 0;
     else if (type === 'rampe') c = (tk >= 0.1) ? consigne * (tk - 0.1) : 0;
-    else if (type === 'trapeze') {
-      const t1 = 0.3, t2 = 0.8, t3 = 1.3;
-      if (tk < 0.1) c = 0;
-      else if (tk < t1) c = consigne * (tk - 0.1) / (t1 - 0.1);
-      else if (tk < t2) c = consigne;
-      else if (tk < t3) c = consigne * (1 - (tk - t2) / (t3 - t2));
-      else c = 0;
-    }
-    const e = c - theta_m;
-    err[k] = e;
-    integral += e * SIM.dt;
-    const deriv = (e - prev_err) / SIM.dt;
+    else if (type === 'trapeze') { const t1=0.3,t2=0.8,t3=1.3; if(tk<0.1)c=0; else if(tk<t1)c=consigne*(tk-0.1)/(t1-0.1); else if(tk<t2)c=consigne; else if(tk<t3)c=consigne*(1-(tk-t2)/(t3-t2)); else c=0; }
+    const e = c - theta_m; err[k] = e;
+    integral += e * dt;
+    const deriv = (e - prev_err) / dt;
     let uc = Kp * e + Ki * integral + Kd * deriv;
-    // Saturation
-    uc = Math.max(-SIM.Umax, Math.min(SIM.Umax, uc));
-    u[k] = uc;
-    // Moteur : omega_m = Km * u (1er ordre)
-    const omega_cible = SIM.Km * uc;
-    omega_m += (omega_cible - omega_m) * SIM.dt / SIM.tau;
-    omega[k] = omega_m;
-    // Position : intégration de la vitesse moteur -> position bras (degrés)
-    theta_m += SIM.Ktheta * omega_m * SIM.dt;
-    theta[k] = theta_m;
+    // Non-linéarités
+    const nl = nonLinearites(uc, omega_m, { Cf: frottementSec ? MAXPID.Cf : 0 });
+    u[k] = nl.uc;
+    // Couple de maintien (statique) + couple moteur
+    const Cm = MAXPID.Kc * (nl.uc / MAXPID.R); // couple moteur approché (i = u/R)
+    // Couple résistant : gravité + frottement visqueux + frottement sec
+    const Cg = m * 9.81 * MAXPID.L_bras * Math.cos(theta_m * Math.PI / 180 + incl);
+    const Cvisq = MAXPID.fv * omega_m;
+    couple[k] = Cm - Cg - Cvisq + nl.coupleFrottement;
+    // Dynamique : J·dω/dt = couple net (ramené à l'arbre moteur)
+    omega_m += (couple[k] / J) * dt;
+    // Position (degrés) : θ_bras = (1/r)·(180/π)·∫ω dt
+    theta_m += (180 / Math.PI) * omega_m / MAXPID.r * dt;
+    // Jeu (approximatif) : on ajoute un petit retard/zone morte
+    if (jeu && Math.abs(theta_m - c) < 0.2) theta_m = c;
+    theta[k] = theta_m; omega[k] = omega_m;
     prev_err = e;
   }
-  // Calcul des indicateurs
+  // Indicateurs
   const final = theta[N-1];
   const err_stat = consigne - final;
   let depassement = 0;
   if (type === 'echelon') {
     let maxv = -Infinity;
     for (let k = 0; k < N; k++) if (theta[k] > maxv) maxv = theta[k];
-    depassement = (maxv - consigne) / consigne * 100;
-    if (depassement < 0) depassement = 0;
+    depassement = Math.max(0, (maxv - consigne) / consigne * 100);
   }
-  // Temps de réponse à 5%
   let t5 = T;
-  for (let k = 0; k < N; k++) {
-    if (Math.abs(theta[k] - consigne) <= 0.05 * Math.abs(consigne)) { t5 = t[k]; break; }
-  }
-  return { t, theta, omega, u, err, final, err_stat, depassement, t5, consigne };
+  for (let k = 0; k < N; k++) if (Math.abs(theta[k] - consigne) <= 0.05 * Math.abs(consigne)) { t5 = t[k]; break; }
+  return { t, theta, omega, u, err, couple, final, err_stat, depassement, t5, consigne, J, m };
 }
 
-/* ================= ATELIERS ================= */
+/* ==================================================================
+   ANIMATION 2D DU BRAS
+   ================================================================== */
+function dessinerBras(canvas, thetaDeg, params) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  const cx = W / 2, cy = H * 0.75;
+  const L = Math.min(W, H) * 0.55;
+  const theta = thetaDeg * Math.PI / 180;
+  // Bâti
+  ctx.fillStyle = '#5a6068';
+  ctx.fillRect(cx - 30, cy + 5, 60, 12);
+  ctx.fillStyle = '#b9bfc7';
+  ctx.fillRect(cx - 40, cy + 17, 80, 6);
+  // Bras
+  const bx = cx + L * Math.sin(theta);
+  const by = cy - L * Math.cos(theta);
+  ctx.strokeStyle = '#2e6da4';
+  ctx.lineWidth = 10;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(bx, by); ctx.stroke();
+  ctx.strokeStyle = '#1b4a76';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(bx, by); ctx.stroke();
+  // Pivot
+  ctx.fillStyle = '#c0281f';
+  ctx.beginPath(); ctx.arc(cx, cy, 7, 0, 2 * Math.PI); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(cx, cy, 3, 0, 2 * Math.PI); ctx.fill();
+  // Masse au bout
+  ctx.fillStyle = '#9a5b00';
+  ctx.beginPath(); ctx.arc(bx, by, 8, 0, 2 * Math.PI); ctx.fill();
+  // Arc de cercle (référence)
+  ctx.strokeStyle = '#b9bfc7';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.arc(cx, cy, L * 0.6, -Math.PI / 2, -Math.PI / 2 + theta, false); ctx.stroke();
+  ctx.setLineDash([]);
+  // Texte
+  ctx.fillStyle = '#5a6068';
+  ctx.font = '12px IBM Plex Sans, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('θ = ' + thetaDeg.toFixed(1) + '°', cx, cy + 40);
+  // Consigne
+  if (params && params.consigne != null) {
+    const tc = params.consigne * Math.PI / 180;
+    ctx.strokeStyle = '#9a5b00';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + L * Math.sin(tc), cy - L * Math.cos(tc));
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+/* ==================================================================
+   ATELIERS
+   ================================================================== */
 const WORKSHOPS = [];
 const UI = { cur: 'jumeau' };
 const AS = { key: 'jumeau', tab: 'steps', open: false, st: lsGet(KEYS.act, {}), arm: null };
 const CS = { open: false, id: 'modele' };
 
-// --- Atelier 1 : jumeau numérique ---
+/* --- Atelier 1 : jumeau numérique avec animation 2D --- */
 function mountJumeau(root) {
   root.innerHTML = `
     <h2>Jumeau numérique du MaxPID</h2>
-    <p>Le banc est modélisé par un <b>moteur CC du premier ordre en vitesse</b> (gain <span class="mono">K<sub>m</sub> = 12 rad/s/V</span>, constante de temps <span class="mono">τ = 80 ms</span>), une réduction <span class="mono">1/50</span> et un capteur de position. La tension de commande sature à <span class="mono">±24 V</span>. Le correcteur est un PID numérique.</p>
+    <p>Le modèle linéarisé du premier ordre en vitesse est complété par la <b>loi entrée-sortie</b> de la vis-écrou, le <b>couple de maintien</b> gravitaire et une <b>inertie équivalente</b> ramenée à l'arbre moteur. L'animation 2D montre le bras en temps réel, synchronisé avec les courbes.</p>
     <div class="opts">
-      <label class="fld"><span>Consigne (°)</span><input type="number" id="j-cons" value="60" min="5" max="100" step="5"></label>
+      <label class="fld"><span>Consigne (°)</span><input type="number" id="j-cons" value="60" min="5" max="90" step="5"></label>
       <div class="fld"><span>Type d'entrée</span><div id="j-type"></div></div>
       <label class="fld"><span>K<sub>p</sub></span><input type="range" id="j-kp" min="0" max="50" step="1" value="8"><b id="j-kp-out">8</b></label>
       <label class="fld"><span>K<sub>i</sub></span><input type="range" id="j-ki" min="0" max="20" step="0.5" value="0"><b id="j-ki-out">0</b></label>
       <label class="fld"><span>K<sub>d</sub></span><input type="range" id="j-kd" min="0" max="2" step="0.05" value="0"><b id="j-kd-out">0</b></label>
-      <button class="btn pri" id="j-run" type="button">Simuler</button>
-      <button class="btn" id="j-reset" type="button">Réinitialiser</button>
+      <label class="fld"><span>Masse (kg)</span><input type="range" id="j-masse" min="0.1" max="1.5" step="0.1" value="0.32"><b id="j-masse-out">0.32</b></label>
     </div>
-    <div class="canvas-wrap"><canvas id="j-canvas" width="900" height="360"></canvas></div>
-    <div class="legend"><span><i style="background:#2e6da4"></i>Position θ (°)</span><span><i style="background:#9a5b00"></i>Consigne</span><span><i style="background:#1e7a2e"></i>Vitesse moteur (rad/s, échelle /10)</span><span><i style="background:#c0281f"></i>Tension u (V, échelle /5)</span></div>
+    <div class="opts">
+      <label class="fld"><span>Inclinaison (°)</span><input type="range" id="j-incl" min="-30" max="30" step="5" value="0"><b id="j-incl-out">0</b></label>
+      <label class="fld"><span><input type="checkbox" id="j-frot"> Frottement sec</span></label>
+      <label class="fld"><span><input type="checkbox" id="j-jeu"> Jeu (zone morte)</span></label>
+      <button class="btn pri" id="j-run" type="button">Simuler</button>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0">
+      <div class="canvas-wrap" style="flex:1;min-width:280px"><canvas id="j-bras" width="320" height="240"></canvas></div>
+      <div class="canvas-wrap" style="flex:2;min-width:320px"><canvas id="j-canvas" width="640" height="300"></canvas></div>
+    </div>
+    <div class="legend"><span><i style="background:#2e6da4"></i>Position θ (°)</span><span><i style="background:#9a5b00"></i>Consigne</span><span><i style="background:#1e7a2e"></i>Vitesse moteur (/10)</span><span><i style="background:#c0281f"></i>Tension u (/5)</span><span><i style="background:#7b4fc2"></i>Couple (N·m, échelle)</span></div>
     <div id="j-indic"></div>
     <div id="j-msg" class="verdict" aria-live="polite"></div>
   `;
@@ -266,23 +388,20 @@ function mountJumeau(root) {
     const b = h('button',{type:'button',class:'chip'+(id==='echelon'?' on':''),'data-type':id,onclick:()=>{ typeEl.querySelectorAll('.chip').forEach(c=>c.classList.remove('on')); b.classList.add('on'); drawJumeau(); }},lab);
     return b;
   })));
-  ['kp','ki','kd'].forEach(id => {
+  ['kp','ki','kd','masse','incl'].forEach(id => {
     const el = $('#j-'+id), out = $('#j-'+id+'-out');
-    el.addEventListener('input', ()=>{ out.textContent = el.value; drawJumeau(); });
+    if (el && out) el.addEventListener('input', ()=>{ out.textContent = el.value; drawJumeau(); });
   });
+  $('#j-frot').addEventListener('change', drawJumeau);
+  $('#j-jeu').addEventListener('change', drawJumeau);
   $('#j-cons').addEventListener('input', drawJumeau);
   $('#j-run').addEventListener('click', drawJumeau);
-  $('#j-reset').addEventListener('click', ()=>{
-    $('#j-cons').value = 60; $('#j-kp').value = 8; $('#j-ki').value = 0; $('#j-kd').value = 0;
-    $('#j-kp-out').textContent = 8; $('#j-ki-out').textContent = 0; $('#j-kd-out').textContent = 0;
-    typeEl.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on', c.dataset.type==='echelon'));
-    drawJumeau();
-  });
   drawJumeau();
 }
 
 function drawJumeau() {
   const canvas = $('#j-canvas'); if (!canvas) return;
+  const brasCanvas = $('#j-bras');
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0,0,W,H);
@@ -291,327 +410,496 @@ function drawJumeau() {
   const Kp = parseFloat($('#j-kp')?.value) || 0;
   const Ki = parseFloat($('#j-ki')?.value) || 0;
   const Kd = parseFloat($('#j-kd')?.value) || 0;
-  const res = simuler({ Kp, Ki, Kd, consigne: cons, type, T: 3 });
+  const masse = parseFloat($('#j-masse')?.value) || MAXPID.m_bras;
+  const incl = parseFloat($('#j-incl')?.value) || 0;
+  const frottementSec = $('#j-frot')?.checked || false;
+  const jeu = $('#j-jeu')?.checked || false;
+  const res = simulerMaxpid({ Kp, Ki, Kd, consigne: cons, type, T: 3, masse, inclinaison: incl, frottementSec, jeu });
   const N = res.t.length;
   // Échelles
   const maxTheta = Math.max(cons, ...res.theta) * 1.1 || 1;
   const maxOmega = Math.max(1, ...res.omega) * 1.1;
-  const maxU = SIM.Umax * 1.05;
-  const pad = { l: 45, r: 15, t: 15, b: 30 };
+  const maxCouple = Math.max(1, ...res.couple.map(Math.abs)) * 1.2;
+  const pad = { l: 50, r: 15, t: 15, b: 30 };
   const plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;
   const x = i => pad.l + (i / (N-1)) * plotW;
   const yTheta = v => pad.t + plotH - (v / maxTheta) * plotH;
   const yOmega = v => pad.t + plotH - (v / maxOmega) * plotH;
-  const yU = v => pad.t + plotH - ((v + SIM.Umax) / (2*SIM.Umax)) * plotH;
-  // Grille et axes
+  const yU = v => pad.t + plotH - ((v + MAXPID.Umax) / (2*MAXPID.Umax)) * plotH;
+  const yC = v => pad.t + plotH - ((v + maxCouple) / (2*maxCouple)) * plotH;
+  // Grille
   ctx.strokeStyle = '#d0d5db'; ctx.lineWidth = 0.8;
-  for (let g = 0; g <= 4; g++) {
-    const yy = pad.t + (g/4)*plotH;
-    ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W-pad.r, yy); ctx.stroke();
-  }
+  for (let g = 0; g <= 4; g++) { const yy = pad.t + (g/4)*plotH; ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W-pad.r, yy); ctx.stroke(); }
   ctx.strokeStyle = '#5a6068'; ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, H-pad.b); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(pad.l, H-pad.b); ctx.lineTo(W-pad.r, H-pad.b); ctx.stroke();
-  // Graduations
-  ctx.fillStyle = '#5a6068'; ctx.font = '11px IBM Plex Mono, monospace';
-  ctx.textAlign = 'right';
-  for (let g = 0; g <= 4; g++) {
-    const val = maxTheta * (1 - g/4);
-    const yy = pad.t + (g/4)*plotH;
-    ctx.fillText(val.toFixed(0), pad.l-5, yy+4);
-  }
+  ctx.fillStyle = '#5a6068'; ctx.font = '11px IBM Plex Mono, monospace'; ctx.textAlign = 'right';
+  for (let g = 0; g <= 4; g++) { const val = maxTheta * (1 - g/4); ctx.fillText(val.toFixed(0), pad.l-5, pad.t + (g/4)*plotH + 4); }
   ctx.textAlign = 'center';
-  for (let g = 0; g <= 4; g++) {
-    const tt = (g/4)*res.T;
-    const xx = pad.l + (g/4)*plotW;
-    ctx.fillText(tt.toFixed(1)+'s', xx, H-pad.b+15);
-  }
-  // Courbe consigne
+  for (let g = 0; g <= 4; g++) { const tt = (g/4)*res.T; ctx.fillText(tt.toFixed(1)+'s', pad.l + (g/4)*plotW, H-pad.b+15); }
+  // Consigne
   ctx.strokeStyle = '#9a5b00'; ctx.lineWidth = 1.8; ctx.setLineDash([5,4]);
   ctx.beginPath();
   for (let i = 0; i < N; i+=2) {
-    let c = 0;
-    const tk = res.t[i];
+    let c = 0; const tk = res.t[i];
     if (type === 'echelon') c = tk >= 0.1 ? cons : 0;
     else if (type === 'rampe') c = tk >= 0.1 ? cons*(tk-0.1) : 0;
     else { const t1=0.3,t2=0.8,t3=1.3; if(tk<0.1)c=0; else if(tk<t1)c=cons*(tk-0.1)/(t1-0.1); else if(tk<t2)c=cons; else if(tk<t3)c=cons*(1-(tk-t2)/(t3-t2)); else c=0; }
-    const xx = x(i), yy = yTheta(c);
-    i===0 ? ctx.moveTo(xx,yy) : ctx.lineTo(xx,yy);
+    const xx = x(i), yy = yTheta(c); i===0 ? ctx.moveTo(xx,yy) : ctx.lineTo(xx,yy);
   }
   ctx.stroke(); ctx.setLineDash([]);
-  // Courbe position
+  // Position
   ctx.strokeStyle = '#2e6da4'; ctx.lineWidth = 2.2;
   ctx.beginPath();
-  for (let i = 0; i < N; i+=2) {
-    const xx = x(i), yy = yTheta(res.theta[i]);
-    i===0 ? ctx.moveTo(xx,yy) : ctx.lineTo(xx,yy);
-  }
+  for (let i = 0; i < N; i+=2) { const xx = x(i), yy = yTheta(res.theta[i]); i===0 ? ctx.moveTo(xx,yy) : ctx.lineTo(xx,yy); }
   ctx.stroke();
-  // Courbe vitesse (échelle /10 pour lisibilité)
+  // Vitesse
   ctx.strokeStyle = '#1e7a2e'; ctx.lineWidth = 1.5;
   ctx.beginPath();
-  for (let i = 0; i < N; i+=2) {
-    const xx = x(i), yy = yOmega(res.omega[i]/10);
-    i===0 ? ctx.moveTo(xx,yy) : ctx.lineTo(xx,yy);
-  }
+  for (let i = 0; i < N; i+=2) { const xx = x(i), yy = yOmega(res.omega[i]/10); i===0 ? ctx.moveTo(xx,yy) : ctx.lineTo(xx,yy); }
   ctx.stroke();
-  // Courbe tension (échelle /5)
+  // Tension
   ctx.strokeStyle = '#c0281f'; ctx.lineWidth = 1.2;
   ctx.beginPath();
-  for (let i = 0; i < N; i+=2) {
-    const xx = x(i), yy = yU(res.u[i]/5);
-    i===0 ? ctx.moveTo(xx,yy) : ctx.lineTo(xx,yy);
-  }
+  for (let i = 0; i < N; i+=2) { const xx = x(i), yy = yU(res.u[i]/5); i===0 ? ctx.moveTo(xx,yy) : ctx.lineTo(xx,yy); }
   ctx.stroke();
+  // Couple
+  ctx.strokeStyle = '#7b4fc2'; ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  for (let i = 0; i < N; i+=2) { const xx = x(i), yy = yC(res.couple[i]); i===0 ? ctx.moveTo(xx,yy) : ctx.lineTo(xx,yy); }
+  ctx.stroke();
+  // Animation 2D du bras (position finale)
+  if (brasCanvas) dessinerBras(brasCanvas, res.final, { consigne: cons });
   // Indicateurs
   const box = $('#j-indic'); if (box) {
     box.innerHTML = '';
     box.append(h('div',{class:'gstats'},[
-      ['Erreur statique', (res.err_stat).toFixed(2)+' °'],
+      ['Erreur statique', res.err_stat.toFixed(2)+' °'],
       ['Dépassement', (type==='echelon'? res.depassement.toFixed(1):'—')+' %'],
       ['Temps de réponse à 5%', res.t5.toFixed(2)+' s'],
-      ['Tension max', (Math.max(...res.u)).toFixed(1)+' V']
-    ].map(([lab,val])=>h('div',{class:'stat'},h('span',null,lab),h('b',null,val)))));
+      ['Inertie équivalente J<sub>eq</sub>', (res.J*1000).toFixed(2)+' g·m²'],
+      ['Couple de maintien', coupleMaintien(res.final).toFixed(3)+' N·m']
+    ].map(([lab,val])=>h('div',{class:'stat'},h('span',{html:lab}),h('b',null,val)))));
   }
   const msg = $('#j-msg'); if (msg) {
     let txt = '';
-    if (res.err_stat > 1 && Ki === 0) txt = 'Erreur statique non nulle : un correcteur proportionnel seul ne l’annule pas sur un système du premier ordre en position (intégrateur).';
+    if (res.err_stat > 1 && Ki === 0) txt = 'Erreur statique non nulle : un correcteur proportionnel seul ne l’annule pas.';
     else if (res.depassement > 20) txt = 'Dépassement important : augmentez K<sub>d</sub> ou réduisez K<sub>p</sub>.';
-    else if (res.t5 > 2) txt = 'Réponse lente : augmentez K<sub>p</sub> (attention à la saturation et au dépassement).';
-    else txt = 'Comportement correct : erreur statique nulle avec l’intégrateur, dépassement maîtrisé.';
+    else if (frottementSec && res.depassement > 10) txt = 'Le frottement sec provoque un dépassement supplémentaire (effet de collage-décollage).';
+    else txt = 'Comportement correct. L’animation 2D montre le bras à la position finale.';
     msg.innerHTML = txt;
   }
 }
 
-// --- Atelier 2 : identification (boucle ouverte) ---
-function mountIdent(root) {
+/* --- Atelier 2 : cinématique --- */
+function mountCinematique(root) {
   root.innerHTML = `
-    <h2>Identification du moteur</h2>
-    <p>En boucle ouverte, on applique un échelon de tension à l’induit et on relève la vitesse. Le modèle retenu est du <b>premier ordre</b> : <span class="mono">Ω(p)/U(p) = K<sub>m</sub> / (1 + τ p)</span>.</p>
+    <h2>Cinématique : loi entrée-sortie</h2>
+    <p>Le bras MaxPID est actionné par un système <b>vis-écrou</b> : la rotation de la vis (α<sub>m</sub>) produit une translation de l’écrou (x), qui fait tourner le bras (θ). La loi entrée-sortie relie θ à α<sub>m</sub>.</p>
+    <div class="formula">x(t) = (p / 2π) · α<sub>m</sub>(t)   (vis-écrou, p = 4 mm/tr)</div>
+    <p>La fermeture géométrique du mécanisme (voir TP “fermeture géométrique”) donne une relation non linéaire entre x et θ. Dans le domaine linéarisé autour de θ = 0, on obtient :</p>
+    <div class="formula">θ ≈ atan( x / (a + b) )   avec a = 70 mm, b = 80 mm</div>
     <div class="opts">
-      <label class="fld"><span>Tension d'échelon (V)</span><input type="number" id="i-u" value="10" min="1" max="24" step="1"></label>
-      <button class="btn pri" id="i-run" type="button">Tracer la réponse</button>
+      <label class="fld"><span>Rotation vis α<sub>m</sub> (°)</span><input type="range" id="c-alpha" min="-360" max="360" step="5" value="0"><b id="c-alpha-out">0</b></label>
     </div>
-    <div class="canvas-wrap"><canvas id="i-canvas" width="900" height="280"></canvas></div>
-    <div id="i-mes" class="gstats"></div>
-    <div class="verdict" id="i-msg"></div>
+    <div class="canvas-wrap"><canvas id="c-canvas" width="640" height="240"></canvas></div>
+    <div id="c-out" class="gstats"></div>
+    <div class="verdict" id="c-msg"></div>
   `;
-  $('#i-run').addEventListener('click', drawIdent);
-  drawIdent();
+  $('#c-alpha').addEventListener('input', drawCinematique);
+  drawCinematique();
 }
 
-function drawIdent() {
-  const canvas = $('#i-canvas'); if (!canvas) return;
+function drawCinematique() {
+  const alphaDeg = parseFloat($('#c-alpha')?.value) || 0;
+  $('#c-alpha-out').textContent = alphaDeg;
+  const alpha = alphaDeg * Math.PI / 180;
+  const x = (MAXPID.p / (2 * Math.PI)) * alpha; // mm
+  const thetaRad = thetaBras(alpha);
+  const thetaDeg = thetaRad * 180 / Math.PI;
+  // Tracé
+  const canvas = $('#c-canvas'); if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
-  ctx.clearRect(0,0,W,H);
-  const U0 = parseFloat($('#i-u')?.value) || 10;
-  const T = 1.0, dt = 0.002, N = Math.floor(T/dt);
-  const t = new Float64Array(N), omega = new Float64Array(N);
-  let w = 0;
-  for (let k=0;k<N;k++) {
-    const tk = k*dt;
-    t[k]=tk;
-    const uc = tk>=0.05 ? U0 : 0;
-    const cible = SIM.Km * uc;
-    w += (cible - w) * dt / SIM.tau;
-    omega[k]=w;
-  }
-  const maxW = Math.max(...omega) * 1.15 || 1;
-  const pad = {l:45,r:15,t:15,b:30};
-  const plotW = W-pad.l-pad.r, plotH = H-pad.t-pad.b;
-  const x = i => pad.l + (i/(N-1))*plotW;
-  const y = v => pad.t + plotH - (v/maxW)*plotH;
-  // grille
-  ctx.strokeStyle='#d0d5db'; ctx.lineWidth=0.8;
-  for(let g=0;g<=4;g++){ const yy=pad.t+(g/4)*plotH; ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(W-pad.r,yy);ctx.stroke(); }
-  ctx.strokeStyle='#5a6068'; ctx.lineWidth=1.2;
-  ctx.beginPath();ctx.moveTo(pad.l,pad.t);ctx.lineTo(pad.l,H-pad.b);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(pad.l,H-pad.b);ctx.lineTo(W-pad.r,H-pad.b);ctx.stroke();
-  ctx.fillStyle='#5a6068';ctx.font='11px IBM Plex Mono, monospace';ctx.textAlign='right';
-  for(let g=0;g<=4;g++){ const val=maxW*(1-g/4); ctx.fillText(val.toFixed(1), pad.l-5, pad.t+(g/4)*plotH+4); }
-  ctx.textAlign='center';
-  for(let g=0;g<=4;g++){ const tt=(g/4)*T; ctx.fillText(tt.toFixed(2)+'s', pad.l+(g/4)*plotW, H-pad.b+15); }
-  // courbe
-  ctx.strokeStyle='#2e6da4';ctx.lineWidth=2.2;
-  ctx.beginPath();
-  for(let i=0;i<N;i+=2){ const xx=x(i),yy=y(omega[i]); i===0?ctx.moveTo(xx,yy):ctx.lineTo(xx,yy); }
-  ctx.stroke();
-  // asymptote
-  const wInf = SIM.Km * U0;
-  ctx.strokeStyle='#9a5b00';ctx.lineWidth=1;ctx.setLineDash([4,4]);
-  ctx.beginPath();ctx.moveTo(pad.l,y(wInf));ctx.lineTo(W-pad.r,y(wInf));ctx.stroke();ctx.setLineDash([]);
-  // mesures
-  const w63 = 0.63 * wInf;
-  let t63 = 0;
-  for(let k=0;k<N;k++) if(omega[k] >= w63){ t63 = t[k]; break; }
-  const box = $('#i-mes'); if(box){ box.innerHTML='';
+  ctx.clearRect(0, 0, W, H);
+  // Représentation schématique : vis horizontale, écrou, bras
+  const cx = W * 0.3, cy = H * 0.7;
+  const L = H * 0.5;
+  ctx.strokeStyle = '#5a6068'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(W*0.1, cy); ctx.lineTo(W*0.9, cy); ctx.stroke(); // bâti
+  // Vis
+  ctx.strokeStyle = '#2e6da4'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(cx - 40, cy - 10); ctx.lineTo(cx + 40, cy - 10); ctx.stroke();
+  // Écrou
+  const ex = cx + x * 2; // échelle visuelle
+  ctx.fillStyle = '#9a5b00';
+  ctx.fillRect(ex - 8, cy - 18, 16, 16);
+  // Bras
+  const bx = ex + L * Math.sin(thetaRad);
+  const by = cy - L * Math.cos(thetaRad);
+  ctx.strokeStyle = '#1e7a2e'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(ex, cy - 10); ctx.lineTo(bx, by); ctx.stroke();
+  ctx.fillStyle = '#c0281f';
+  ctx.beginPath(); ctx.arc(ex, cy - 10, 5, 0, 2*Math.PI); ctx.fill();
+  ctx.fillStyle = '#5a6068'; ctx.font = '12px IBM Plex Sans'; ctx.textAlign = 'center';
+  ctx.fillText('αm = ' + alphaDeg.toFixed(0) + '°', W/2, H - 10);
+  // Indicateurs
+  const box = $('#c-out'); if (box) {
+    box.innerHTML = '';
     box.append(h('div',{class:'gstats'},[
-      ['Gain statique K<sub>m</sub>', (wInf/U0).toFixed(2)+' rad/s/V'],
-      ['Constante de temps τ (63%)', (t63*1000).toFixed(0)+' ms'],
-      ['Vitesse finale', wInf.toFixed(1)+' rad/s']
+      ['Translation x', x.toFixed(2)+' mm'],
+      ['Angle bras θ', thetaDeg.toFixed(2)+' °'],
+      ['Rapport θ/x', (thetaDeg/x).toFixed(3)+' °/mm']
+    ].map(([lab,val])=>h('div',{class:'stat'},h('span',{html:lab}),h('b',null,val)))));
+  }
+  const msg = $('#c-msg');
+  if (msg) msg.innerHTML = `Pour une rotation de vis de ${alphaDeg}°, l’écrou se translate de x = ${x.toFixed(2)} mm, ce qui fait tourner le bras de θ ≈ ${thetaDeg.toFixed(2)}°. La loi entrée-sortie est non linéaire, mais reste localement linéarisable autour de θ = 0.`;
+}
+
+/* --- Atelier 3 : statique --- */
+function mountStatique(root) {
+  root.innerHTML = `
+    <h2>Statique : couple de maintien</h2>
+    <p>Lorsque le bras est maintenu en position, le moteur doit fournir un <b>couple de maintien</b> pour équilibrer l’action de la pesanteur. Ce couple dépend de l’angle θ et de la masse embarquée.</p>
+    <div class="formula">C<sub>maintien</sub>(θ) = m · g · L · cos(θ)</div>
+    <p>où m est la masse totale (bras + charge), L la longueur équivalente du bras (≈ 80 mm) et θ l’angle par rapport à l’horizontale.</p>
+    <div class="opts">
+      <label class="fld"><span>Angle θ (°)</span><input type="range" id="s-theta" min="0" max="90" step="5" value="45"><b id="s-theta-out">45</b></label>
+      <label class="fld"><span>Masse m (kg)</span><input type="range" id="s-masse" min="0.1" max="1.5" step="0.1" value="0.32"><b id="s-masse-out">0.32</b></label>
+    </div>
+    <div class="canvas-wrap"><canvas id="s-canvas" width="640" height="280"></canvas></div>
+    <div id="s-out" class="gstats"></div>
+    <div class="verdict" id="s-msg"></div>
+  `;
+  $('#s-theta').addEventListener('input', drawStatique);
+  $('#s-masse').addEventListener('input', drawStatique);
+  drawStatique();
+}
+
+function drawStatique() {
+  const thetaDeg = parseFloat($('#s-theta')?.value) || 45;
+  const m = parseFloat($('#s-masse')?.value) || MAXPID.m_bras;
+  $('#s-theta-out').textContent = thetaDeg;
+  $('#s-masse-out').textContent = m;
+  const C = coupleMaintien(thetaDeg) * (m / MAXPID.m_bras);
+  // Tracé
+  const canvas = $('#s-canvas'); if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  const cx = W/2, cy = H*0.8;
+  const L = H*0.6;
+  const theta = thetaDeg * Math.PI/180;
+  // Bâti
+  ctx.fillStyle = '#5a6068'; ctx.fillRect(cx-30, cy+5, 60, 10);
+  // Bras
+  const bx = cx + L*Math.sin(theta), by = cy - L*Math.cos(theta);
+  ctx.strokeStyle = '#2e6da4'; ctx.lineWidth = 8; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(bx,by); ctx.stroke();
+  // Masse
+  ctx.fillStyle = '#9a5b00'; ctx.beginPath(); ctx.arc(bx,by,10,0,2*Math.PI); ctx.fill();
+  // Poids
+  ctx.strokeStyle = '#c0281f'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(bx, by+40); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx-5, by+30); ctx.lineTo(bx, by+40); ctx.lineTo(bx+5, by+30); ctx.stroke();
+  // Couple
+  ctx.fillStyle = '#7b4fc2'; ctx.font = '12px IBM Plex Mono'; ctx.textAlign='left';
+  ctx.fillText('C = ' + C.toFixed(3) + ' N·m', 10, 20);
+  // Indicateurs
+  const box = $('#s-out'); if (box) {
+    box.innerHTML = '';
+    box.append(h('div',{class:'gstats'},[
+      ['Angle θ', thetaDeg.toFixed(0)+' °'],
+      ['Masse m', m.toFixed(2)+' kg'],
+      ['Couple de maintien', C.toFixed(3)+' N·m'],
+      ['Couple maximal (θ=0)', (m*9.81*MAXPID.L_bras).toFixed(3)+' N·m']
+    ].map(([lab,val])=>h('div',{class:'stat'},h('span',{html:lab}),h('b',null,val)))));
+  }
+  const msg = $('#s-msg');
+  if (msg) msg.innerHTML = `Le couple de maintien est maximal lorsque le bras est horizontal (θ = 0°) et s’annule lorsqu’il est vertical (θ = 90°). Pour θ = ${thetaDeg}° et m = ${m.toFixed(2)} kg, il vaut ${C.toFixed(3)} N·m.`;
+}
+
+/* --- Atelier 4 : inertie équivalente --- */
+function mountInertie(root) {
+  root.innerHTML = `
+    <h2>Inertie équivalente</h2>
+    <p>Pour étudier la dynamique, on ramène toutes les inerties à l’arbre moteur. L’inertie équivalente dépend de la masse embarquée et du rapport de réduction.</p>
+    <div class="formula">J<sub>eq</sub> = J<sub>moteur</sub> + J<sub>vis</sub> + (m · L²) / r²</div>
+    <p>Avec J<sub>moteur</sub> ≈ 2,5·10⁻³ kg·m², J<sub>vis</sub> ≈ 10⁻⁴ kg·m², L ≈ 80 mm et r = 50.</p>
+    <div class="opts">
+      <label class="fld"><span>Masse m (kg)</span><input type="range" id="i-masse" min="0.1" max="1.5" step="0.1" value="0.32"><b id="i-masse-out">0.32</b></label>
+    </div>
+    <div id="i-out" class="gstats"></div>
+    <div class="verdict" id="i-msg"></div>
+  `;
+  $('#i-masse').addEventListener('input', drawInertie);
+  drawInertie();
+}
+
+function drawInertie() {
+  const m = parseFloat($('#i-masse')?.value) || MAXPID.m_bras;
+  $('#i-masse-out').textContent = m;
+  const J = inertieEquivalente(m);
+  const Jm = 0.0025, Jv = 0.0001;
+  const Jb = m * MAXPID.L_bras * MAXPID.L_bras / (MAXPID.r * MAXPID.r);
+  const box = $('#i-out'); if (box) {
+    box.innerHTML = '';
+    box.append(h('div',{class:'gstats'},[
+      ['J moteur', (Jm*1000).toFixed(2)+' g·m²'],
+      ['J vis', (Jv*1000).toFixed(2)+' g·m²'],
+      ['J bras ramené', (Jb*1000).toFixed(2)+' g·m²'],
+      ['J équivalent total', (J*1000).toFixed(2)+' g·m²']
     ].map(([lab,val])=>h('div',{class:'stat'},h('span',{html:lab}),h('b',null,val)))));
   }
   const msg = $('#i-msg');
-  if(msg) msg.innerHTML = `Sur un échelon de ${U0} V, la vitesse tend vers ${wInf.toFixed(1)} rad/s et atteint 63 % de cette valeur à t ≈ ${(t63*1000).toFixed(0)} ms. On identifie donc <span class="mono">K<sub>m</sub> ≈ ${(wInf/U0).toFixed(2)}</span> et <span class="mono">τ ≈ ${(t63*1000).toFixed(0)} ms</span>.`;
+  if (msg) msg.innerHTML = `Le rapport de réduction r = 50 divise l’inertie du bras par r² = 2500. Pour m = ${m.toFixed(2)} kg, l’inertie du bras ramenée à l’arbre moteur ne représente que ${(Jb/J*100).toFixed(1)} % de J<sub>eq</sub>.`;
 }
 
-// --- Atelier 3 : QCM PID et stabilité (pas de simulation lourde) ---
-function mountQcmPid(root) {
+/* --- Atelier 5 : dynamique --- */
+function mountDynamique(root) {
   root.innerHTML = `
-    <h2>Réglage du PID et performances</h2>
-    <p>Ce questionnaire vérifie la compréhension des effets de chaque terme du correcteur PID sur la stabilité, la précision et la rapidité. Utilisez le jumeau numérique pour expérimenter, puis répondez.</p>
-    <div id="qcm-pid"></div>
+    <h2>Dynamique : équation de mouvement</h2>
+    <p>L’équation de dynamique ramenée à l’arbre moteur s’écrit :</p>
+    <div class="formula">J<sub>eq</sub> · dω<sub>m</sub>/dt = C<sub>m</sub> − C<sub>r</sub> − f<sub>v</sub>·ω<sub>m</sub></div>
+    <p>où C<sub>r</sub> représente le couple résistant (pesanteur, frottement sec). La constante de temps du moteur dépend de J<sub>eq</sub> :</p>
+    <div class="formula">τ = R · J<sub>eq</sub> / (R·f<sub>v</sub> + K<sub>e</sub>·K<sub>c</sub>)</div>
+    <div class="opts">
+      <label class="fld"><span>Masse m (kg)</span><input type="range" id="d-masse" min="0.1" max="1.5" step="0.1" value="0.32"><b id="d-masse-out">0.32</b></label>
+      <label class="fld"><span>Inclinaison (°)</span><input type="range" id="d-incl" min="-30" max="30" step="5" value="0"><b id="d-incl-out">0</b></label>
+    </div>
+    <div id="d-out" class="gstats"></div>
+    <div class="verdict" id="d-msg"></div>
   `;
-  const qs = [
-    { q: "Quel terme du correcteur annule l’erreur statique sur un échelon ?", o: ["Le terme proportionnel Kp", "Le terme intégral Ki", "Le terme dérivé Kd", "Aucun : il faut un système du second ordre"], a: 1, w: "L’intégrateur du correcteur (1/p) augmente la classe du système : l’erreur statique devient nulle pour un échelon." },
-    { q: "Quel est l’effet principal d’une augmentation de Kp (à Ki et Kd fixés) ?", o: ["Réduire le dépassement", "Augmenter la rapidité mais aussi le dépassement et le risque d’instabilité", "Annuler l’erreur statique", "Augmenter l’erreur statique"], a: 1, w: "Kp accélère la réponse mais diminue la marge de stabilité, ce qui se traduit souvent par un dépassement plus important, voire des oscillations." },
-    { q: "Le terme dérivé Kd a tendance à :", o: ["Augmenter le dépassement", "Amortir le système et réduire le dépassement", "Annuler l’erreur statique", "Ralentir fortement le système sans autre effet"], a: 1, w: "Le dérivé anticipe les variations de l’erreur : il apporte un amortissement qui réduit le dépassement et améliore la marge de phase." },
-    { q: "Avec un correcteur proportionnel seul (Ki = 0) sur le modèle de position (intégrateur), l’erreur statique pour un échelon est :", o: ["Nulle", "Non nulle et d’autant plus petite que Kp est grand", "Toujours égale à la consigne", "Infinie"], a: 1, w: "Le système en boucle ouverte possède déjà un intégrateur (la position est l’intégrale de la vitesse). Avec un simple gain Kp, l’erreur statique vaut consigne/(1 + Kp·K_bo) : elle diminue quand Kp augmente, mais n’est pas nulle." },
-    { q: "La saturation de la tension de commande peut :", o: ["Améliorer la stabilité", "Provoquer des dépassements plus importants et un comportement non linéaire", "Annuler l’effet de l’intégrateur", "Ne jamais se produire avec un PID"], a: 1, w: "Lorsque l’actionneur sature, la boucle est momentanément ouverte : le comportement n’est plus linéaire et peut entraîner des dépassements importants (effet de vent)." }
-  ];
-  const box = $('#qcm-pid');
-  qs.forEach((q,i)=>{
-    const fs = h('fieldset',{class:'q'},h('legend',null,(i+1)+'. '+q.q));
-    q.o.forEach((o,j)=>{
-      const inp = h('input',{type:'radio',name:'pid'+i});
-      inp.addEventListener('change',()=>{ fs.dataset.res = j; fs.querySelectorAll('.why').forEach(e=>e.remove()); fs.querySelectorAll('.opt').forEach((lab,jj)=>{ lab.classList.remove('good','bad'); if(jj===q.a)lab.classList.add('good'); else if(jj===j)lab.classList.add('bad'); }); fs.append(h('p',{class:'why'},q.w)); });
-      fs.append(h('label',{class:'opt'},inp,h('span',null,o)));
-    });
-    box.append(fs);
-  });
+  $('#d-masse').addEventListener('input', drawDynamique);
+  $('#d-incl').addEventListener('input', drawDynamique);
+  drawDynamique();
 }
 
-// Enregistrement des ateliers
-WORKSHOPS.push({ id:'jumeau', title:'Jumeau numérique', hint:'Réglez les gains du PID et observez la réponse du bras : position, vitesse moteur et tension de commande.', mount: mountJumeau, reset: ()=>{} });
-WORKSHOPS.push({ id:'ident', title:'Identification', hint:'En boucle ouverte, identifiez le gain statique Km et la constante de temps τ du moteur à partir d’un échelon de tension.', mount: mountIdent, reset: ()=>{} });
-WORKSHOPS.push({ id:'qcmpid', title:'PID & performances', hint:'Vérifiez vos connaissances sur l’influence de Kp, Ki, Kd et sur la stabilité.', mount: mountQcmPid, reset: ()=>{} });
+function drawDynamique() {
+  const m = parseFloat($('#d-masse')?.value) || MAXPID.m_bras;
+  const incl = parseFloat($('#d-incl')?.value) || 0;
+  $('#d-masse-out').textContent = m;
+  $('#d-incl-out').textContent = incl;
+  const J = inertieEquivalente(m);
+  const tau = MAXPID.R * J / (MAXPID.R * MAXPID.fv + MAXPID.Ke * MAXPID.Kc);
+  const Km = MAXPID.Kc / (MAXPID.R * MAXPID.fv + MAXPID.Ke * MAXPID.Kc);
+  const box = $('#d-out'); if (box) {
+    box.innerHTML = '';
+    box.append(h('div',{class:'gstats'},[
+      ['J équivalent', (J*1000).toFixed(2)+' g·m²'],
+      ['Constante de temps τ', (tau*1000).toFixed(1)+' ms'],
+      ['Gain statique Km', Km.toFixed(2)+' rad/s/V'],
+      ['Couple résistant (θ='+incl+'°)', coupleMaintien(incl).toFixed(3)+' N·m']
+    ].map(([lab,val])=>h('div',{class:'stat'},h('span',{html:lab}),h('b',null,val)))));
+  }
+  const msg = $('#d-msg');
+  if (msg) msg.innerHTML = `Avec m = ${m.toFixed(2)} kg, l’inertie équivalente vaut ${(J*1000).toFixed(2)} g·m², ce qui donne τ ≈ ${(tau*1000).toFixed(1)} ms. Une inclinaison de ${incl}° ajoute un couple résistant de ${coupleMaintien(incl).toFixed(3)} N·m.`;
+}
 
-/* ================= ACTIVITÉS ================= */
+/* --- Atelier 6 : non-linéarités --- */
+function mountNonLinearites(root) {
+  root.innerHTML = `
+    <h2>Non-linéarités en SLCI</h2>
+    <p>Un système réel n’est jamais parfaitement linéaire. Les principales non-linéarités du MaxPID sont :</p>
+    <ul>
+      <li><b>Saturation</b> de la tension de commande (±24 V) : la commande ne peut pas dépasser cette limite.</li>
+      <li><b>Frottement sec</b> (C<sub>f</sub>) : couple résistant constant opposé au mouvement, qui provoque des oscillations et une erreur statique.</li>
+      <li><b>Jeu</b> mécanique : zone morte dans la transmission vis-écrou, qui introduit un retard et un comportement non linéaire.</li>
+    </ul>
+    <p>Activez ces non-linéarités dans le jumeau numérique (atelier 1) pour observer leur influence sur la réponse.</p>
+    <div class="verdict">La saturation peut être étudiée en comparant les réponses pour différents K<sub>p</sub> : lorsque la commande sature, le système se comporte comme en boucle ouverte et le dépassement augmente.</div>
+  `;
+}
+
+// Enregistrement
+WORKSHOPS.push({ id:'jumeau', title:'Jumeau numérique', hint:'Réglez le PID, la masse et les non-linéarités ; l’animation 2D du bras est synchronisée avec les courbes.', mount: mountJumeau, reset: ()=>{} });
+WORKSHOPS.push({ id:'cinematique', title:'Cinématique', hint:'Loi entrée-sortie vis-écrou : rotation de la vis → translation de l’écrou → rotation du bras.', mount: mountCinematique, reset: ()=>{} });
+WORKSHOPS.push({ id:'statique', title:'Statique', hint:'Couple de maintien gravitaire : C = m·g·L·cos(θ).', mount: mountStatique, reset: ()=>{} });
+WORKSHOPS.push({ id:'inertie', title:'Inertie équivalente', hint:'Ramenez les inerties à l’arbre moteur : J_eq = J_moteur + J_vis + (m·L²)/r².', mount: mountInertie, reset: ()=>{} });
+WORKSHOPS.push({ id:'dynamique', title:'Dynamique', hint:'Équation de mouvement et constante de temps : τ dépend de J_eq.', mount: mountDynamique, reset: ()=>{} });
+WORKSHOPS.push({ id:'nonlin', title:'Non-linéarités', hint:'Saturation, frottement sec et jeu : leurs effets sur la réponse du bras.', mount: mountNonLinearites, reset: ()=>{} });
+
+/* ==================================================================
+   ACTIVITÉS ET COURS (inchangés sur le fond, adaptés)
+   ================================================================== */
 const ACT = {
   jumeau: {
     title: "Jumeau numérique MaxPID", level: "Niveau 1 · Découvrir", time: "30 min", course: "modele",
-    goal: "Prendre en main le modèle, observer l’influence des gains du PID et relier les réglages aux performances (précision, rapidité, stabilité).",
+    goal: "Prendre en main le modèle complet (cinématique, statique, dynamique) et observer l’influence des gains du PID, de la masse et des non-linéarités.",
     steps: [
-      "Lancez la simulation avec Kp = 8, Ki = 0, Kd = 0. Relevez l’erreur statique. Que se passe-t-il si vous augmentez Kp ?",
-      "Activez l’intégrateur (Ki = 5) et vérifiez que l’erreur statique devient nulle. Observez le dépassement.",
-      "Ajoutez un terme dérivé (Kd = 0.2) et constatez son effet sur le dépassement et le temps de réponse.",
-      "Testez une consigne en trapèze de vitesse. La poursuite est-elle meilleure qu’avec un échelon ?",
-      "Réglez un PID qui donne un temps de réponse inférieur à 0,8 s avec un dépassement inférieur à 10 %."
+      "Lancez la simulation avec Kp = 8, Ki = 0, Kd = 0. Relevez l’erreur statique et le couple de maintien.",
+      "Activez l’intégrateur (Ki = 5) et vérifiez que l’erreur statique devient nulle. Observez l’effet sur le dépassement.",
+      "Augmentez la masse à 1 kg : que devient l’inertie équivalente ? le temps de réponse ?",
+      "Cochez « Frottement sec » et observez l’apparition d’oscillations ou d’un dépassement supplémentaire.",
+      "Réglez un PID qui donne un temps de réponse inférieur à 0,8 s avec un dépassement inférieur à 10 % pour une masse de 0,5 kg."
     ],
     defi: {
-      q: "Sur le modèle linéarisé, pourquoi un correcteur proportionnel seul laisse-t-il une erreur statique non nulle ?",
-      a: "La fonction de transfert en boucle ouverte contient déjà un intégrateur (la position est l’intégrale de la vitesse). Avec un gain Kp, l’erreur statique pour un échelon vaut ε = consigne / (1 + Kp·K_bo). Elle n’est jamais nulle, mais diminue quand Kp augmente. L’intégrateur du correcteur (Ki) ajoute un second pôle en 0 et annule cette erreur."
+      q: "Pourquoi le couple de maintien est-il maximal lorsque le bras est horizontal ?",
+      a: "Le couple dû au poids est C = m·g·L·cos(θ). Lorsque le bras est horizontal (θ = 0°), cos(0) = 1 : le bras de levier est maximal. Lorsque le bras est vertical (θ = 90°), cos(90°) = 0 : le poids est aligné avec l’axe de rotation et ne crée aucun couple."
     },
     qcm: [
-      { q: "Quel terme du correcteur permet d’annuler l’erreur statique sur un échelon ?", o: ["Kp", "Ki", "Kd", "Aucun"], a: 1, w: "Ki introduit une intégration supplémentaire : la classe du système augmente, l’erreur statique devient nulle." },
-      { q: "Augmenter Kp a tendance à :", o: ["Réduire le dépassement", "Augmenter la rapidité et le dépassement", "Annuler l’erreur statique", "Réduire la tension de commande"], a: 1, w: "Kp accélère la réponse mais diminue la marge de stabilité, ce qui se traduit souvent par un dépassement plus important." },
-      { q: "Le terme dérivé Kd sert principalement à :", o: ["Augmenter l’erreur statique", "Amortir le système et réduire le dépassement", "Augmenter la vitesse sans limite", "Remplacer l’intégrateur"], a: 1, w: "Kd apporte un amortissement en anticipant les variations de l’erreur : il réduit le dépassement et améliore la marge de phase." },
-      { q: "La saturation de la tension de commande peut :", o: ["Améliorer la stabilité", "Provoquer des dépassements plus importants", "Annuler l’effet de l’intégrateur", "Ne jamais se produire"], a: 1, w: "Lorsque l’actionneur sature, la boucle est momentanément ouverte : le comportement n’est plus linéaire et peut entraîner des dépassements importants (effet de vent)." }
+      { q: "Quel terme du correcteur annule l’erreur statique sur un échelon ?", o: ["Kp", "Ki", "Kd", "Aucun"], a: 1, w: "Ki introduit une intégration supplémentaire : la classe du système augmente, l’erreur statique devient nulle." },
+      { q: "L’inertie équivalente J_eq dépend de :", o: ["Uniquement du moteur", "De la masse embarquée et du rapport de réduction", "Uniquement de la vis", "De la tension d’alimentation"], a: 1, w: "J_eq = J_moteur + J_vis + (m·L²)/r² : la masse du bras et le rapport de réduction r interviennent directement." },
+      { q: "Le frottement sec provoque :", o: ["Une erreur statique nulle", "Des oscillations et un dépassement supplémentaire", "Une diminution de l’inertie", "Aucun effet visible"], a: 1, w: "Le frottement sec (couple résistant constant) crée un phénomène de collage-décollage qui se traduit par des oscillations ou un dépassement plus important." }
     ]
   },
-  ident: {
-    title: "Identification du moteur", level: "Niveau 1 · Découvrir", time: "20 min", course: "identification",
-    goal: "Identifier le gain statique et la constante de temps d’un système du premier ordre à partir d’une réponse indicielle.",
+  cinematique: {
+    title: "Cinématique", level: "Niveau 1 · Modéliser", time: "20 min", course: "cinematique",
+    goal: "Établir la loi entrée-sortie du système vis-écrou et comprendre la non-linéarité de la relation θ(α_m).",
     steps: [
-      "Appliquez un échelon de 10 V. Relevez la vitesse finale et déduisez Km.",
-      "Mesurez le temps au bout duquel la vitesse atteint 63 % de sa valeur finale : c’est τ.",
-      "Recommencez avec 20 V. Km et τ changent-ils ?",
-      "Vérifiez que la réponse peut se mettre sous la forme Ω(t) = Km·U0·(1 − e^(−t/τ))."
+      "Faites varier α_m et observez la translation x de l’écrou.",
+      "Vérifiez la relation x = (p/2π)·α_m pour α_m = 360° (un tour de vis).",
+      "Observez que θ n’est pas proportionnel à α_m : la loi est non linéaire.",
+      "Pour de petits angles, vérifiez que θ ≈ x/(a+b) (linéarisation)."
     ],
     defi: {
-      q: "Un système du premier ordre a pour réponse indicielle s(t) = K·(1 − e^(−t/τ)). Quelle est la valeur de s(τ) ?",
-      a: "s(τ) = K·(1 − e^(−1)) ≈ 0,632·K. La constante de temps est le temps nécessaire pour atteindre 63 % de la valeur finale."
+      q: "Un tour de vis (α_m = 360°) correspond à quelle translation x ?",
+      a: "x = (p/2π)·2π = p = 4 mm. La vis a un pas de 4 mm : un tour déplace l’écrou de 4 mm."
     },
     qcm: [
-      { q: "Sur un échelon, la constante de temps τ correspond au temps pour atteindre :", o: ["50 % de la valeur finale", "63 % de la valeur finale", "95 % de la valeur finale", "100 % de la valeur finale"], a: 1, w: "Par définition, à t = τ, la réponse a atteint 1 − e^(−1) ≈ 63,2 % de sa valeur finale." },
-      { q: "Le gain statique Km se lit :", o: ["Sur l’axe des temps", "Comme la valeur finale de la sortie divisée par l’amplitude de l’échelon", "Comme la pente initiale", "Comme le temps de réponse à 5 %"], a: 1, w: "En régime permanent, Ω = Km·U. Donc Km = Ω_finale / U." }
+      { q: "La loi entrée-sortie du système vis-écrou est :", o: ["x = p·α_m", "x = (p/2π)·α_m", "x = 2π·p·α_m", "x = α_m/p"], a: 1, w: "Un tour (2π rad) correspond à un pas p : x = (p/2π)·α_m." },
+      { q: "La relation θ(α_m) du bras MaxPID est :", o: ["Linéaire", "Quadratique", "Non linéaire (fermeture géométrique)", "Exponentielle"], a: 2, w: "La fermeture géométrique du mécanisme conduit à une relation non linéaire entre x et θ." }
+    ]
+  },
+  statique: {
+    title: "Statique", level: "Niveau 2 · Analyser", time: "20 min", course: "statique",
+    goal: "Déterminer le couple de maintien en fonction de la position angulaire et de la masse embarquée.",
+    steps: [
+      "Pour m = 0,32 kg, tracez le couple de maintien pour θ = 0°, 45° et 90°.",
+      "Vérifiez que le couple est maximal à l’horizontale et nul à la verticale.",
+      "Doublez la masse : le couple double-t-il ?",
+      "Déduisez-en la puissance nécessaire pour maintenir le bras."
+    ],
+    defi: {
+      q: "Calculer le couple de maintien pour m = 0,5 kg, L = 80 mm et θ = 30°.",
+      a: "C = m·g·L·cos(θ) = 0,5 × 9,81 × 0,08 × cos(30°) ≈ 0,5 × 9,81 × 0,08 × 0,866 ≈ 0,34 N·m."
+    },
+    qcm: [
+      { q: "Le couple de maintien est maximal lorsque le bras est :", o: ["Vertical", "Horizontal", "À 45°", "Peu importe"], a: 1, w: "C = m·g·L·cos(θ) : cos(0°) = 1, donc le couple est maximal à l’horizontale." },
+      { q: "Si la masse double, le couple de maintien :", o: ["Est divisé par 2", "Double", "Ne change pas", "Est multiplié par 4"], a: 1, w: "Le couple est proportionnel à la masse : C = m·g·L·cos(θ)." }
+    ]
+  },
+  inertie: {
+    title: "Inertie équivalente", level: "Niveau 2 · Modéliser", time: "20 min", course: "inertie",
+    goal: "Calculer l’inertie équivalente ramenée à l’arbre moteur et comprendre l’influence du rapport de réduction.",
+    steps: [
+      "Pour m = 0,32 kg, calculez J_eq et comparez la contribution du bras à celle du moteur.",
+      "Augmentez la masse à 1,5 kg : quelle est la nouvelle valeur de J_eq ?",
+      "Expliquez pourquoi le rapport de réduction r intervient au carré."
+    ],
+    defi: {
+      q: "Pourquoi le rapport de réduction intervient-il au carré dans l’inertie équivalente ?",
+      a: "L’énergie cinétique du bras est (1/2)·J_bras·ω_bras². Comme ω_bras = ω_moteur/r, on a (1/2)·J_bras·(ω_moteur/r)² = (1/2)·(J_bras/r²)·ω_moteur². L’inertie équivalente ramenée à l’arbre moteur est donc J_bras/r²."
+    },
+    qcm: [
+      { q: "L’inertie équivalente J_eq est :", o: ["Toujours dominée par le bras", "Toujours dominée par le moteur", "La somme des inerties ramenées à l’arbre moteur", "Indépendante de la masse"], a: 2, w: "J_eq = J_moteur + J_vis + J_bras/r² : c’est la somme de toutes les inerties ramenées à l’arbre moteur." },
+      { q: "Le rapport de réduction r intervient dans J_eq :", o: ["Au carré", "Linéairement", "En racine carrée", "Pas du tout"], a: 0, w: "J_bras ramenée = J_bras/r² : le rapport intervient au carré." }
+    ]
+  },
+  dynamique: {
+    title: "Dynamique", level: "Niveau 3 · Approfondir", time: "25 min", course: "dynamique",
+    goal: "Relier l’inertie équivalente à la constante de temps du moteur et comprendre l’influence de la charge.",
+    steps: [
+      "Pour m = 0,32 kg, calculez τ. Comparez à la valeur identifiée (80 ms).",
+      "Augmentez la masse : τ augmente-t-il ? Pourquoi ?",
+      "Inclinez le plan : le couple résistant change-t-il ? le temps de réponse ?"
+    ],
+    defi: {
+      q: "Pourquoi la constante de temps τ dépend-elle de l’inertie équivalente ?",
+      a: "L’équation électromécanique du moteur CC conduit à τ = R·J_eq / (R·f_v + K_e·K_c). Plus l’inertie est grande, plus le moteur met de temps à accélérer, donc plus τ est grand."
+    },
+    qcm: [
+      { q: "La constante de temps τ du moteur est proportionnelle à :", o: ["1/J_eq", "J_eq", "√J_eq", "J_eq²"], a: 1, w: "τ = R·J_eq / (R·f_v + K_e·K_c) : τ est proportionnelle à J_eq." },
+      { q: "Une inclinaison du plan :", o: ["Modifie l’inertie équivalente", "Ajoute un couple résistant gravitaire", "Annule le frottement", "Réduit τ"], a: 1, w: "L’inclinaison ajoute un couple résistant dû à la pesanteur, mais ne modifie pas l’inertie." }
+    ]
+  },
+  nonlin: {
+    title: "Non-linéarités", level: "Niveau 3 · Analyser", time: "20 min", course: "nonlin",
+    goal: "Identifier les principales non-linéarités du MaxPID et leurs conséquences sur le comportement en boucle fermée.",
+    steps: [
+      "Activez la saturation (Kp très grand) et observez la réponse.",
+      "Activez le frottement sec et comparez avec la réponse linéaire.",
+      "Activez le jeu et observez le retard ou la zone morte."
+    ],
+    defi: {
+      q: "Pourquoi la saturation de la tension peut-elle provoquer un dépassement plus important ?",
+      a: "Lorsque la commande sature, le système fonctionne en boucle ouverte : l’erreur continue de s’accumuler dans l’intégrateur. Lorsque la saturation cesse, l’intégrateur est « chargé » et provoque un dépassement (effet de vent)."
+    },
+    qcm: [
+      { q: "La saturation de la tension est une non-linéarité de type :", o: ["Linéaire", "Seuil", "Saturation (limite)", "Hystérésis"], a: 2, w: "La saturation est une non-linéarité statique qui limite la sortie à ±U_max." },
+      { q: "Le frottement sec introduit :", o: ["Une erreur statique nulle", "Un couple résistant constant opposé au mouvement", "Une augmentation de l’inertie", "Aucun effet"], a: 1, w: "Le frottement sec est un couple résistant d’amplitude constante, opposé au mouvement." }
     ]
   }
 };
 
-/* ================= COURS ================= */
 const COURSE = [];
 COURSE.push({ id:'modele', t:'Modèle du MaxPID', h:`
-<p>Le MaxPID est un bras robotisé à vis à billes actionné par un moteur à courant continu. Pour l’étude des asservissements, on en retient un modèle de connaissance linéarisé.</p>
-<h3>Moteur à courant continu</h3>
-<p>Avec les notations usuelles (induit, couple, charge ramenée à l’arbre moteur) :</p>
-<div class="formula">u(t) = R·i(t) + e(t), &nbsp; e(t) = Ke·ω(t), &nbsp; Cm(t) = Kc·i(t), &nbsp; J·dω/dt + f·ω = Cm − Cr</div>
-<p>En négligeant l’inductance et le couple résistant constant, on obtient la fonction de transfert du premier ordre :</p>
-<div class="formula">Ω(p)/U(p) = Km / (1 + τ·p), &nbsp; avec Km = Kc / (R·f + Ke·Kc) et τ = R·J / (R·f + Ke·Kc)</div>
-<p>Les valeurs typiques du banc MaxPID (moteur Maxon RE035G, réduction 1/50, vis au pas de 4 mm) conduisent à une constante de temps de l’ordre de 50 à 100 ms et à un gain statique de quelques dizaines de rad/s/V selon la charge[reference:2][reference:3].</p>
-<h3>Chaîne de position</h3>
-<p>La vitesse du bras est proportionnelle à la vitesse moteur : ω_bras = ω_moteur / r (r ≈ 50). La position angulaire du bras (en degrés) s’obtient par intégration :</p>
-<div class="formula">θ(p) = (180/π)/r · Ω(p)/p = K_θ · Ω(p)/p</div>
-<p>Le capteur potentiométrique délivre une tension proportionnelle à θ. Le schéma‑bloc en boucle fermée fait apparaître : comparateur, correcteur PID, saturation de la tension (±24 V), moteur du premier ordre, intégrateur de position et capteur unitaire.</p>
-<div class="retain"><b>À retenir.</b> Le MaxPID se modélise par un premier ordre en vitesse suivi d’un intégrateur pour la position. Le gain statique et la constante de temps s’identifient sur une réponse indicielle en boucle ouverte.</div>
+<p>Le MaxPID est un bras robotisé à vis à billes actionné par un moteur à courant continu. Il reprend l’architecture d’un robot cueilleur de pommes[reference:0]. La chaîne d’énergie comprend un motoréducteur, une vis (pas p = 4 mm) et un écrou qui transforme la rotation en translation[reference:1].</p>
+<h3>Chaîne d’information et d’énergie</h3>
+<p>Le capteur angulaire mesure θ, la génératrice tachymétrique mesure la vitesse de la vis[reference:2]. La carte de commande élabore la tension moteur via un hacheur.</p>
+<h3>Modèle de connaissance</h3>
+<p>Le moteur CC est modélisé par les équations électrique et mécanique classiques[reference:3]. En négligeant l’inductance, on obtient un premier ordre en vitesse :</p>
+<div class="formula">Ω(p)/U(p) = Km / (1 + τ·p)</div>
+<p>La position du bras s’obtient par intégration de la vitesse, avec la loi entrée-sortie de la vis-écrou.</p>
+<div class="retain"><b>À retenir.</b> Le MaxPID est un système mécatronique : moteur CC, vis-écrou, capteurs, correcteur numérique. Le modèle de connaissance permet de simuler son comportement.</div>
 ` });
 
-COURSE.push({ id:'identification', t:'Identification temporelle', h:`
-<p>Identifier un système, c’est déterminer les paramètres d’un modèle de comportement à partir de mesures.</p>
-<h3>Système du premier ordre</h3>
-<p>Réponse à un échelon d’amplitude U₀ :</p>
-<div class="formula">s(t) = K·U₀·(1 − e^(−t/τ))</div>
+COURSE.push({ id:'cinematique', t:'Cinématique', h:`
+<p>La vis-écrou transforme la rotation de la vis (α<sub>m</sub>) en translation de l’écrou (x)[reference:4] :</p>
+<div class="formula">x(t) = (p / 2π) · α<sub>m</sub>(t)</div>
+<p>Le bras est articulé : la relation entre x et θ est donnée par la fermeture géométrique du mécanisme[reference:5]. Elle est non linéaire, mais linéarisable autour de θ = 0.</p>
+<div class="retain"><b>À retenir.</b> La loi entrée-sortie globale θ(α_m) est non linéaire. On peut la linéariser pour les petites variations.</div>
+` });
+
+COURSE.push({ id:'statique', t:'Statique', h:`
+<p>En position maintenue, le moteur doit fournir un couple qui équilibre les actions extérieures (pesanteur)[reference:6]. Pour un bras de longueur L et une masse m :</p>
+<div class="formula">C<sub>maintien</sub>(θ) = m · g · L · cos(θ)</div>
+<p>Le couple est maximal à l’horizontale (θ = 0°) et nul à la verticale (θ = 90°). Il dépend de la masse embarquée[reference:7].</p>
+<div class="retain"><b>À retenir.</b> Le couple de maintien est une fonction cosinusoïdale de l’angle. Il faut en tenir compte pour dimensionner le moteur et le correcteur.</div>
+` });
+
+COURSE.push({ id:'inertie', t:'Inertie équivalente', h:`
+<p>Pour appliquer le principe fondamental de la dynamique à l’arbre moteur, on ramène toutes les inerties à cet arbre[reference:8] :</p>
+<div class="formula">J<sub>eq</sub> = J<sub>moteur</sub> + J<sub>vis</sub> + (m · L²) / r²</div>
+<p>Le rapport de réduction r intervient au carré : plus r est grand, plus l’inertie du bras ramenée est faible[reference:9].</p>
+<div class="retain"><b>À retenir.</b> J_eq est dominée par le moteur si r est grand. La masse embarquée influence J_eq via le terme (m·L²)/r².</div>
+` });
+
+COURSE.push({ id:'dynamique', t:'Dynamique', h:`
+<p>L’équation de mouvement ramenée à l’arbre moteur s’écrit :</p>
+<div class="formula">J<sub>eq</sub> · dω<sub>m</sub>/dt = C<sub>m</sub> − C<sub>r</sub> − f<sub>v</sub>·ω<sub>m</sub></div>
+<p>La constante de temps du moteur dépend de J_eq :</p>
+<div class="formula">τ = R · J<sub>eq</sub> / (R·f<sub>v</sub> + K<sub>e</sub>·K<sub>c</sub>)</div>
+<p>Plus la charge est importante, plus τ est grand, plus la réponse est lente.</p>
+<div class="retain"><b>À retenir.</b> La dynamique du bras est régie par J_eq et le couple résistant. La constante de temps caractérise la rapidité.</div>
+` });
+
+COURSE.push({ id:'nonlin', t:'Non-linéarités', h:`
+<p>Les systèmes réels ne sont pas parfaitement linéaires[reference:10]. Les principales non-linéarités du MaxPID sont :</p>
 <ul>
-<li><b>Gain statique</b> : K = s(∞)/U₀.</li>
-<li><b>Constante de temps</b> : τ est le temps pour atteindre 63 % de la valeur finale. Le temps de réponse à 5 % vaut environ 3τ.</li>
+<li><b>Saturation</b> de la tension (±24 V) : la commande ne peut pas dépasser cette limite[reference:11].</li>
+<li><b>Frottement sec</b> : couple résistant constant opposé au mouvement.</li>
+<li><b>Jeu</b> mécanique : zone morte dans la transmission.</li>
 </ul>
-<p>On peut aussi utiliser la pente initiale : la tangente à l’origine coupe l’asymptote à t = τ.</p>
-<h3>Méthode pratique sur le MaxPID</h3>
-<p>En boucle ouverte, on applique un échelon de tension et on relève la vitesse moteur (génératrice tachymétrique). On vérifie que la réponse est bien du premier ordre, puis on lit Km et τ. Attention à la saturation de la commande et aux frottements secs, qui peuvent fausser l’identification si l’échelon est trop faible[reference:4].</p>
-<div class="retain"><b>À retenir.</b> Sur un échelon, Km = sortie finale / entrée, et τ correspond à 63 % de la valeur finale.</div>
-` });
-
-COURSE.push({ id:'pid', t:'Correction PID et performances', h:`
-<p>Le correcteur PID calcule la commande à partir de l’erreur ε = consigne − mesure :</p>
-<div class="formula">u(t) = Kp·ε(t) + Ki·∫ε dt + Kd·dε/dt</div>
-<h3>Rôle de chaque terme</h3>
-<table class="ctable"><thead><tr><th>Terme</th><th>Effet principal</th><th>Risque</th></tr></thead><tbody>
-<tr><td>Proportionnel Kp</td><td>Rapidité, réduction de l’erreur statique</td><td>Dépassement, instabilité si trop grand</td></tr>
-<tr><td>Intégral Ki</td><td>Annulation de l’erreur statique (classe +1)</td><td>Dépassement, effet de vent en cas de saturation</td></tr>
-<tr><td>Dérivé Kd</td><td>Amortissement, réduction du dépassement</td><td>Sensibilité au bruit, saturation si dérivée forte</td></tr>
-</tbody></table>
-<h3>Compromis stabilité‑précision‑rapidité</h3>
-<p>Un réglage trop « rapide » (Kp élevé) peut rendre le système oscillant, voire instable. L’intégrateur annule l’erreur statique mais peut réduire la marge de stabilité. Le dérivé améliore l’amortissement mais amplifie le bruit. En pratique, on utilise la méthode de Ziegler‑Nichols ou on ajuste progressivement.</p>
-<div class="retain"><b>À retenir.</b> P : rapidité et précision approximative. I : précision exacte en régime permanent. D : amortissement et stabilité.</div>
-` });
-
-COURSE.push({ id:'stabilite', t:'Stabilité et marges', h:`
-<p>Un système asservi est stable si sa réponse à une entrée bornée reste bornée. Pour un système linéaire, la stabilité en boucle fermée se déduit de l’étude de la fonction de transfert en boucle ouverte.</p>
-<h3>Critères</h3>
-<ul>
-<li><b>Condition nécessaire</b> : tous les pôles de la fonction de transfert en boucle fermée ont une partie réelle strictement négative.</li>
-<li><b>Marges de stabilité</b> : marge de gain et marge de phase, lues sur le diagramme de Bode de la boucle ouverte. Une marge de phase de 45° et une marge de gain de 10 dB sont des ordres de grandeur courants.</li>
-</ul>
-<p>Sur le jumeau numérique, l’augmentation de Kp ou de Ki réduit les marges et peut conduire à des oscillations persistantes. La saturation de la tension de commande peut également déstabiliser le système en limitant l’action corrective[reference:5].</p>
-<div class="retain"><b>À retenir.</b> Stabilité = pôles à partie réelle négative. Marges de phase et de gain quantifient la robustesse.</div>
-` });
-
-COURSE.push({ id:'precisions', t:'Précision et erreur statique', h:`
-<p>L’erreur statique est l’écart entre la consigne et la mesure en régime permanent.</p>
-<table class="ctable"><thead><tr><th>Type de système (boucle ouverte)</th><th>Échelon</th><th>Rampe</th></tr></thead><tbody>
-<tr><td>Type 0 (pas d’intégrateur)</td><td>Erreur non nulle</td><td>Erreur infinie</td></tr>
-<tr><td>Type 1 (un intégrateur)</td><td>Erreur nulle</td><td>Erreur finie</td></tr>
-<tr><td>Type 2 (deux intégrateurs)</td><td>Erreur nulle</td><td>Erreur nulle</td></tr>
-</tbody></table>
-<p>Sur le MaxPID, la position est déjà un intégrateur de la vitesse : la boucle ouverte est de type 1. Un correcteur proportionnel laisse donc une erreur statique sur un échelon (elle diminue quand Kp augmente). L’ajout d’un intégrateur dans le correcteur (Ki ≠ 0) fait passer le système en type 2 et annule l’erreur statique.</p>
-<div class="retain"><b>À retenir.</b> L’erreur statique dépend du type du système et de l’entrée. L’intégrateur du correcteur augmente le type et annule l’erreur pour l’échelon.</div>
+<p>La saturation est particulièrement importante lors des grands transitoires : elle limite la vitesse et peut provoquer des dépassements.</p>
+<div class="retain"><b>À retenir.</b> Les non-linéarités dégradent les performances linéaires. Il faut les identifier et les prendre en compte dans la commande.</div>
 ` });
 
 COURSE.push({ id:'gloss', t:'Vocabulaire', h:`
 <dl class="gloss">
-<dt>SLCI</dt><dd>Système Linéaire Continu et Invariant.</dd>
-<dt>Fonction de transfert</dt><dd>Rapport des transformées de Laplace de la sortie et de l’entrée, à conditions initiales nulles.</dd>
-<dt>Boucle ouverte / fermée</dt><dd>Sans / avec retour de la mesure et comparaison à la consigne.</dd>
-<dt>Erreur statique</dt><dd>Écart en régime permanent pour une entrée donnée.</dd>
-<dt>Dépassement</dt><dd>Amplitude maximale au‑delà de la consigne, en pourcentage.</dd>
-<dt>Temps de réponse à 5 %</dt><dd>Temps pour que la sortie reste dans un intervalle de ±5 % autour de la valeur finale.</dd>
-<dt>Marge de phase / de gain</dt><dd>Indicateurs de robustesse de la stabilité en boucle fermée.</dd>
-<dt>Saturation</dt><dd>Limitation physique de l’actionneur (tension, couple, etc.).</dd>
+<dt>Loi entrée-sortie</dt><dd>Relation entre la grandeur d’entrée et la grandeur de sortie d’un mécanisme.</dd>
+<dt>Vis-écrou</dt><dd>Transformation rotation → translation. Pas p : translation par tour.</dd>
+<dt>Couple de maintien</dt><dd>Couple moteur nécessaire pour maintenir le bras en position statique.</dd>
+<dt>Inertie équivalente</dt><dd>Inertie totale ramenée à l’arbre moteur.</dd>
+<dt>Constante de temps</dt><dd>Temps caractéristique de la réponse d’un premier ordre.</dd>
+<dt>Saturation</dt><dd>Limitation physique de la commande (tension, couple).</dd>
+<dt>Frottement sec</dt><dd>Couple résistant constant opposé au mouvement.</dd>
 </dl>
 ` });
 
-/* ================= UI ================= */
+/* ==================================================================
+   UI (identique à la version précédente, adaptée)
+   ================================================================== */
 function wsById(id){ return WORKSHOPS.find(w=>w.id===id) || WORKSHOPS[0]; }
 function renderSeg(){
   const seg = $('#wsSeg'); seg.innerHTML = '';
@@ -655,11 +943,6 @@ function renderAct(){
     body.append(h('ol',{class:'steps'},a.steps.map(s=>h('li',{html:s}))));
     body.append(h('div',{class:'defi'},h('b',null,'Défi'),h('p',{html:a.defi.q}),h('details',null,h('summary',null,'Voir la réponse'),h('p',{html:a.defi.a}))));
     if(a.course) body.append(h('p',null,h('button',{class:'btn',type:'button',onclick:()=>openCourse(a.course)},'Voir le cours : '+courseSection(a.course).t)));
-    body.append(h('p',null,h('button',{class:'btn',type:'button',onclick:ev=>{
-      const b=ev.currentTarget;
-      if(!AS.arm){ b.textContent='Confirmer ? Votre travail sera effacé'; AS.arm=setTimeout(()=>{ b.textContent='Recommencer l’atelier'; AS.arm=null; },3500); return; }
-      clearTimeout(AS.arm); AS.arm=null; wsById(UI.cur).reset(); mountWs(); renderAct();
-    }},'Recommencer l’atelier')));
     body.append(h('p',null,h('button',{class:'btn pri',type:'button',onclick:()=>{ AS.tab='qcm'; renderAct(); }},'Passer aux questions')));
   } else {
     const s=actState(), show=s.checked||s.shown;
@@ -704,7 +987,7 @@ function renderCourse(){
   art.append(h('div',{class:'cpn'},
     idx>0?h('button',{class:'btn',type:'button',onclick:()=>go(COURSE[idx-1].id)},'← '+COURSE[idx-1].t):h('span'),
     idx<COURSE.length-1?h('button',{class:'btn pri',type:'button',onclick:()=>go(COURSE[idx+1].id)},COURSE[idx+1].t+' →'):h('span')));
-  const top = h('div',{class:'ctop'},h('b',null,'Cours : MaxPID et asservissements'),h('button',{class:'btn pri sm',type:'button',onclick:()=>{ CS.open=false; renderCourse(); }},'Retour à l’atelier'));
+  const top = h('div',{class:'ctop'},h('b',null,'Cours : MaxPID'),h('button',{class:'btn pri sm',type:'button',onclick:()=>{ CS.open=false; renderCourse(); }},'Retour à l’atelier'));
   box.append(top,sel,h('div',{class:'cwrap'},nav,art));
   const sc=box.querySelector('.cwrap'); if(sc) sc.scrollTop=0;
 }
@@ -720,14 +1003,16 @@ function openDlg(title, body){
 document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !$('#dlg').hidden) closeDlg(); });
 $('#bHelp').addEventListener('click',()=>{
   openDlg('Aide', h('div',{html:`
-    <p>Ce support propose un <b>jumeau numérique simplifié du MaxPID</b> et trois ateliers pour le programme de SII (PCSI/PSI*) :</p>
+    <p>Ce support propose un <b>jumeau numérique du MaxPID</b> avec animation 2D et six ateliers couvrant le programme de SII :</p>
     <ul>
-      <li><b>Jumeau numérique</b> : réglage d’un PID, observation de la réponse (position, vitesse, tension).</li>
-      <li><b>Identification</b> : estimation de Km et τ sur une réponse indicielle en boucle ouverte.</li>
-      <li><b>PID & performances</b> : QCM sur les effets de Kp, Ki, Kd et sur la stabilité.</li>
+      <li><b>Jumeau numérique</b> : PID, masse, non-linéarités, animation 2D synchronisée.</li>
+      <li><b>Cinématique</b> : loi entrée-sortie vis-écrou.</li>
+      <li><b>Statique</b> : couple de maintien gravitaire.</li>
+      <li><b>Inertie équivalente</b> : ramenée à l’arbre moteur.</li>
+      <li><b>Dynamique</b> : équation de mouvement et constante de temps.</li>
+      <li><b>Non-linéarités</b> : saturation, frottement sec, jeu.</li>
     </ul>
-    <p>Le bouton <b>Activité</b> ouvre les consignes, un défi et un QCM avec correction. Le bouton <b>Cours</b> donne les rappels nécessaires.</p>
-    <p>Les réponses aux QCM sont mémorisées dans ce navigateur uniquement.</p>
+    <p>Le bouton <b>Activité</b> ouvre les consignes et un QCM avec correction. Le bouton <b>Cours</b> donne les rappels théoriques.</p>
   `}));
 });
 
