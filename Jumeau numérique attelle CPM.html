@@ -1,0 +1,914 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Jumeau numérique attelle CPM</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Mise en page : barre d'outils, onglets d'ateliers, zone de travail, panneau Activité à droite (feuille basse sur téléphone), vue Cours avec sommaire. Même structure que l'Atelier Algorithmes de tri. */
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+:root{
+  --font-ui:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  --bg:#ffffff;--bar:#eeeeee;--panel:#ffffff;--panel2:#f1f3f6;--field:#ffffff;--line:#b9bfc7;--grid:#e3e6ea;
+  --fg:#111111;--muted:#5a6068;--accent:#2e6da4;--accent-fg:#ffffff;--accent-soft:#dcebf8;--accent-ink:#1b4a76;
+  --ok:#1e7a2e;--warn:#9a5b00;--bad:#c0281f;--violet:#7b4fc2;
+  --c1:#2e6da4;--c2:#c9741a;--c3:#1e7a2e;--c4:#7b4fc2;--c5:#6b7480;
+  --energy:#c9741a;--info:#2e6da4;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#000000;--bar:#111111;--panel:#0a0a0a;--panel2:#1a1a1a;--field:#000000;--line:#3a3a3a;--grid:#222222;
+  --fg:#eeeeee;--muted:#a3a3a3;--accent:#5b9bd5;--accent-fg:#000000;--accent-soft:#1c1c1c;--accent-ink:#a9cdee;
+  --ok:#52b564;--warn:#e0a64a;--bad:#ef6a60;--violet:#a98bea;
+  --c1:#5b9bd5;--c2:#e8a33a;--c3:#52b564;--c4:#a98bea;--c5:#9a9a9a;--energy:#e8a33a;--info:#5b9bd5;
+  color-scheme:dark}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 var(--font-ui)}
+button,input,select,textarea{font:inherit;color:inherit}
+.inner{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#app{height:100%;display:flex;flex-direction:column;min-height:0}
+.band{background:var(--bar);border-bottom:1px solid var(--line);flex:none}
+.row{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding-block:7px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:16px;letter-spacing:.01em}
+.brand small{font-weight:400;color:var(--muted);font-size:13px}
+.files{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.btn{font-weight:500;font-size:13px;padding:6px 11px;border:1px solid var(--line);background:var(--panel);border-radius:7px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.pri{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.sm{padding:3px 8px;font-size:12px}
+:is(button,input,select,textarea,summary):focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;background:var(--panel);max-width:100%;overflow-x:auto}
+.seg button{border:0;background:transparent;padding:7px 14px;font-weight:500;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.work{flex:1;min-height:0;display:flex;gap:10px;padding-block:10px}
+#stage{flex:1;min-width:0;position:relative;border:1px solid var(--line);border-radius:10px;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+#hint{flex:none;padding:6px 12px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--line);background:var(--bar)}
+#scroller{flex:1;min-height:0;overflow:auto}
+.phead{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);flex:none}
+.phead b{font-size:15px}
+.phead .sub{color:var(--muted);font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tabs{display:flex;gap:2px;padding:6px 8px 0;border-bottom:1px solid var(--line);overflow-x:auto;flex:none}
+.tabs button{border:0;border-bottom:2px solid transparent;background:transparent;padding:6px 10px;font-weight:500;font-size:13px;cursor:pointer;white-space:nowrap;color:var(--muted)}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.pbody{overflow:auto;padding:12px;flex:1;min-height:0}
+.fld{display:flex;flex-direction:column;gap:3px;margin-bottom:9px;font-size:12.5px;color:var(--muted)}
+input[type=text],input[type=number],textarea,select{width:100%;background:var(--field);border:1px solid var(--line);border-radius:6px;padding:5px 8px;color:var(--fg)}
+input[type=range]{width:100%;padding:0;accent-color:var(--accent)}
+input[type=checkbox]{accent-color:var(--accent)}
+.mono{font-family:var(--font-mono);font-size:12.5px}
+.small{font-size:12px;color:var(--muted);margin:0 0 9px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;z-index:60;max-width:90vw}
+#dlg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.dlgbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:min(640px,100%);max-height:88%;display:flex;flex-direction:column}
+.dlgbox header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.dlgbox header b{font-size:16px}
+.dlgbox .dbody{padding:14px 16px;overflow:auto}
+.dlgbox h3{margin:14px 0 4px;font-size:14px}.dlgbox p,.dlgbox li{margin:4px 0;font-size:13.5px}
+#act{flex:none;width:clamp(280px,24vw,340px);display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--panel);min-height:0;max-height:100%}
+#act .pbody{font-size:13.5px}
+.goal{background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:8px 10px;margin:0 0 10px}
+.steps{margin:0 0 10px;padding-left:20px}.steps li{margin-bottom:9px}
+.defi{border:1px dashed var(--accent);border-radius:8px;padding:8px 10px;margin:0 0 12px}.defi p{margin:6px 0}
+.defi summary{cursor:pointer;font-weight:500;color:var(--accent-ink)}
+fieldset.q{border:1px solid var(--line);border-radius:8px;padding:8px 10px 6px;margin:0 0 10px;min-width:0}
+fieldset.q legend{font-weight:600;padding:0 4px;max-width:100%}
+.opt{display:flex;gap:8px;align-items:flex-start;padding:4px 6px;border-radius:6px;cursor:pointer}
+.opt input{margin-top:3px;width:auto;flex:none}
+.opt.good{background:rgba(30,122,46,.18)}.opt.bad{background:rgba(192,40,31,.18)}
+.why{font-size:12.5px;color:var(--muted);margin:6px 4px 2px}
+.score{font-weight:600;font-size:15px;margin:4px 0 8px}
+/* cours */
+#course{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg)}
+.ctop,.cwrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.ctop{flex:none;display:flex;justify-content:space-between;align-items:center;gap:10px;padding-block:8px;border-bottom:1px solid var(--line);background:var(--bar)}
+.cwrap{flex:1;min-height:0;display:flex;gap:28px;padding-block:14px}
+.ctoc{flex:none;width:250px;overflow:auto;display:flex;flex-direction:column;gap:1px}
+.ctoc button{display:block;width:100%;text-align:left;padding:6px 10px;border:0;border-left:3px solid transparent;background:transparent;cursor:pointer;font-size:13.5px}
+.ctoc button:hover{background:var(--panel2)}
+.ctoc button.on{border-left-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.ctoc-sel{display:none;margin:8px max(16px,env(safe-area-inset-left,0px)) 0;width:auto}
+.cbody{flex:1;min-width:0;overflow:auto;max-width:860px;padding-right:6px}
+.ckick{color:var(--muted);font-size:12.5px;margin:0}
+.cbody h2{font-size:26px;margin:2px 0 12px;text-wrap:balance}
+.cbody h3{font-size:16.5px;margin:22px 0 6px}
+.cbody p,.cbody li{font-size:14.5px;line-height:1.6}
+.cbody ul,.cbody ol{padding-left:22px}.cbody li{margin-bottom:4px}
+.cbody table{display:block;overflow-x:auto;max-width:100%}
+.ctable{border-collapse:collapse;font-size:13.5px;margin:8px 0 12px}
+.ctable th,.ctable td{border:1px solid var(--line);padding:5px 9px;text-align:left;vertical-align:top}
+.ctable th{background:var(--panel2);font-weight:600}
+.retain{background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:9px 12px;margin:16px 0 6px;font-size:14px}
+.formula{background:var(--panel2);border-left:3px solid var(--accent);padding:8px 12px;margin:8px 0;font-size:15px;overflow-x:auto;font-family:var(--font-mono)}
+pre.code{font:12.5px/1.55 var(--font-mono);margin:8px 0;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-x:auto;white-space:pre}
+.gloss{display:grid;grid-template-columns:max-content 1fr;gap:5px 18px;font-size:14px}.gloss dt{font-weight:600}.gloss dd{margin:0}
+.cpn{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:24px 0 32px}
+/* ateliers */
+#ws{padding:16px max(16px,env(safe-area-inset-left,0px)) 30px;max-width:980px}
+#ws h2{font-size:24px;margin:0 0 8px;text-wrap:balance}
+#ws h3{font-size:16.5px;margin:24px 0 6px}
+#ws p,#ws li{font-size:14.5px;line-height:1.55}
+#ws .small{font-size:12.5px}
+.opts{display:flex;gap:10px 18px;flex-wrap:wrap;align-items:flex-end;margin:6px 0 10px}.opts .fld{margin:0}
+.opts input[type=range]{width:190px;max-width:100%}
+.opts textarea{font-family:var(--font-mono);min-width:240px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:4px 11px;font-size:13px;cursor:pointer}
+.chip:hover{border-color:var(--accent)}.chip.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.gstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0}
+.stat{border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--panel);display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat span{font-size:12px;color:var(--muted)}.stat b{font-size:14px;font-family:var(--font-mono);overflow-wrap:anywhere}
+.verdict{border-radius:8px;padding:9px 12px;margin:10px 0;font-size:14px;background:var(--panel2);border:1px solid var(--line)}
+.verdict.yes{background:rgba(30,122,46,.16);border-color:var(--ok)}.verdict.no{background:rgba(192,40,31,.14);border-color:var(--bad)}.verdict.warn{background:rgba(154,91,0,.15);border-color:var(--warn)}
+.dwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:8px 0}
+.dt{border-collapse:collapse;width:100%;font-size:13.5px}
+.dt th,.dt td{padding:5px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.dt thead th{background:var(--panel2);font-weight:600}
+.dt td.m{font-family:var(--font-mono);font-size:12.5px}
+.dt tr:last-child td{border-bottom:0}
+.dt input[type=number]{width:84px;font-family:var(--font-mono)}
+.tag{display:inline-block;font-size:11.5px;border-radius:10px;padding:1px 8px;border:1px solid var(--line);white-space:nowrap}
+.tag.doc{border-color:var(--ok);color:var(--ok)}.tag.cat{border-color:var(--info);color:var(--info)}.tag.cal{border-color:var(--warn);color:var(--warn)}
+/* tracés */
+.pbox{border:1px solid var(--line);border-radius:10px;padding:8px 10px 6px;background:var(--panel);margin:8px 0}
+.pbox svg{display:block;width:100%;height:auto;touch-action:pan-y}
+.pbox .pt{font-size:12.5px;font-weight:600;margin:0 0 2px}
+.leg{display:flex;gap:4px 14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:2px 0 4px}
+.leg i{display:inline-block;width:14px;height:0;border-top:3px solid;vertical-align:3px;margin-right:5px}
+.leg i.d{border-top-style:dashed}
+.ro{font:12px var(--font-mono);color:var(--muted);min-height:17px;margin-top:2px}
+.twocol{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.armbox svg{width:100%;max-width:520px;height:auto;display:block}
+@media (max-width:820px){
+  .ctoc{display:none}.ctoc-sel{display:block}.cwrap{padding-top:8px}.cbody{padding-right:0}.gloss{grid-template-columns:1fr}.gloss dd{margin-bottom:6px}
+  #act{position:fixed;left:0;right:0;bottom:0;width:auto;height:70%;max-height:none;border-radius:14px 14px 0 0;z-index:35;box-shadow:0 -8px 30px rgba(0,0,0,.28);padding-bottom:env(safe-area-inset-bottom,0px)}
+  .work{flex-direction:column;gap:8px}
+  .twocol{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:no-preference){.btn{transition:border-color .12s,background .12s}}
+</style>
+<div id="app">
+  <header class="band"><div class="inner row">
+    <div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="6" cy="19" r="3" fill="var(--energy)"/><path d="M6 19 L21 7" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/><circle cx="21" cy="7" r="2.5" fill="var(--ok)"/></svg><span>Jumeau numérique attelle CPM <small>SII · PCSI / PSI*</small></span></div>
+    <div class="files">
+      <button class="btn" id="bAct" type="button" aria-pressed="false">Activité</button>
+      <button class="btn" id="bCourse" type="button" aria-pressed="false">Cours</button>
+      <button class="btn" id="bHelp" type="button">Aide</button>
+      <button class="btn" id="bTheme" type="button" aria-pressed="false">Mode sombre</button>
+    </div>
+  </div></header>
+  <div class="band" id="modes"><div class="inner row"><div class="seg" id="wsSeg" role="tablist" aria-label="Ateliers"></div></div></div>
+  <main class="inner work" id="work">
+    <section id="stage"><div id="hint"></div><div id="scroller"><div id="ws"></div></div></section>
+    <aside id="act" hidden aria-label="Activité"></aside>
+  </main>
+  <section id="course" hidden aria-label="Cours"></section>
+</div>
+<div id="dlg" hidden></div>
+<div id="toast" hidden></div>
+<script>
+'use strict';
+const $ = (s, r) => (r || document).querySelector(s);
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v === false || v == null) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'html') el.innerHTML = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (v === true) el.setAttribute(k, '');
+    else el.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) el.append(k.nodeType ? k : document.createTextNode(k));
+  return el;
+}
+function isSmall() { try { return window.matchMedia('(max-width:820px)').matches; } catch (e) { return false; } }
+const KEYS = { act: 'cpm-twin-v1' };
+function lsGet(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* stockage indisponible */ } }
+let toastT = null;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3500); }
+const WORKSHOPS = [];
+/*LOGIC-START*/
+const D2R = Math.PI / 180, G0 = 9.81;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+/* géométrie générique : vérin de longueur x entre deux points, bras a et c, angle du triangle = θ + OFF */
+const GEO = { a: 0.10, c: 0.16, off: 30 };
+const xOf = thDeg => Math.sqrt(GEO.a ** 2 + GEO.c ** 2 - 2 * GEO.a * GEO.c * Math.cos((thDeg + GEO.off) * D2R));
+const thOf = x => Math.acos(clamp((GEO.a ** 2 + GEO.c ** 2 - x * x) / (2 * GEO.a * GEO.c), -1, 1)) / D2R - GEO.off;
+const dxdth = thDeg => GEO.a * GEO.c * Math.sin((thDeg + GEO.off) * D2R) / xOf(thDeg);   /* m/rad */
+const TH_MIN = -10, TH_MAX = 120;
+const Q0 = { R: 1.0, L: 0.3e-3, kt: 0.025, ke: 0.025, J: 1.0e-5, f: 1e-6, cs: 5e-3, N: 16, p: 0.005, Umax: 24, Imax: 3, wmax: 630,
+  m: 4.0, lg: 0.25, incl: 30, kpat: 0.4, wi: 1000, wv: 150, Kp: 5, Ki: 0, Kd: 0, ff: true };
+const Ileg = Q => Q.m * (Q.lg ** 2 + 0.05);
+/* gain cinématique dθ/dφ_moteur (rad/rad) */
+const Gk = (Q, thDeg) => (Q.p / (2 * Math.PI * Q.N)) / dxdth(thDeg);
+const xmin = xOf(TH_MIN);
+/* couples côté genou (N·m, positif = vers la flexion) */
+const Cgrav = (Q, thDeg) => Q.m * G0 * Q.lg * Math.cos((Q.incl - thDeg) * D2R);
+const Cstiff = (Q, thDeg) => Q.kpat * (Math.max(0, thDeg - 100) - Math.max(0, -5 - thDeg));
+const loopGains = Q => { const Kpv = Q.J * Q.wv / Q.kt; return { Kpc: Q.L * Q.wi, Kic: Q.R * Q.wi, Kpv, Kiv: Kpv * Q.wv / 4 }; };
+/* profil trapézoïdal de vitesse : amplitude D (°), vitesse max v (°/s), accélération a (°/s²) */
+function trap(D, v, a) {
+  let ta = v / a, tc = D / v - ta; if (tc < 0) { ta = Math.sqrt(D / a); tc = 0; v = a * ta; }
+  const T = 2 * ta + tc;
+  const f = t => { t = clamp(t, 0, T); if (t < ta) return [0.5 * a * t * t, a * t]; if (t < ta + tc) return [0.5 * a * ta * ta + v * (t - ta), v]; const u = T - t; return [D - 0.5 * a * u * u, a * u]; };
+  return { T, f };
+}
+/* cycle : θa → θb, palier, retour. renvoie {T, f(t) = [pos, vel]} */
+function cycle(thA, thB, v, a, dwell) {
+  const D = Math.abs(thB - thA), s = Math.sign(thB - thA) || 1, tp = trap(D, v, a);
+  const T = 2 * tp.T + dwell;
+  return { T, tp: tp.T, f: t => { if (t < tp.T) { const r = tp.f(t); return [thA + s * r[0], s * r[1]]; } if (t < tp.T + dwell) return [thB, 0]; const r = tp.f(t - tp.T - dwell); return [thB - s * r[0], -s * r[1]]; } };
+}
+/* simulation de l'asservissement en cascade (position PID → vitesse PI → courant PI) */
+function simulate(Q, o) {
+  const dt = 1e-4, nsub = 10, Ts = dt * nsub, tend = o.tend, g = loopGains(Q), Gn = Gk(Q, o.gnomTh == null ? 45 : o.gnomTh);
+  let th = o.th0, phi = 2 * Math.PI * Q.N * (xOf(th) - xmin) / Q.p, w = 0, i = 0;
+  let Ip = 0, ePrev = 0, dF = 0, Iv = 0, Ic = 0, wref = 0, iref = 0, u = 0, k = 0, satI = 0, satU = 0;
+  const out = { t: [], th: [], ref: [], err: [], u: [], i: [], w: [], F: [] }, dec = 10;
+  const Jeff0 = Q.J, Il = Ileg(Q), cs = o.noDry ? 0 : Q.cs;
+  for (let t = 0; t <= tend + 1e-12; t += dt, k++) {
+    const r = o.ref(t), thr = r[0], vr = r[1];
+    if (k % nsub === 0) {
+      const e = thr - th;
+      if (o.openRef == null) {
+        const dRaw = k === 0 ? 0 : (e - ePrev) / Ts; ePrev = e; dF += Ts / (0.01 + Ts) * (dRaw - dF);
+        const out1 = (Q.Kp * e + Q.Ki * Ip + Q.Kd * dF + (Q.ff ? vr : 0)) * D2R / Gn;
+        const wc = clamp(out1, -Q.wmax, Q.wmax);
+        if (!(wc !== out1 && Math.sign(e) === Math.sign(out1))) Ip += e * Ts;
+        wref = wc;
+      } else wref = o.openRef(t);
+      const ev = wref - w, iu = g.Kpv * ev + g.Kiv * Iv, ic = clamp(iu, -Q.Imax, Q.Imax);
+      satI = ic !== iu ? 1 : 0; if (!satI || Math.sign(ev) !== Math.sign(iu)) Iv += ev * Ts; iref = ic;
+    }
+    const ei = iref - i, uu = g.Kpc * ei + g.Kic * Ic, us = clamp(uu, -Q.Umax, Q.Umax); satU = us !== uu ? 1 : 0;
+    if (!satU || Math.sign(ei) !== Math.sign(uu)) Ic += ei * dt; u = us;
+    i = (i + dt / Q.L * (u - Q.ke * w)) / (1 + dt * Q.R / Q.L);
+    const G = Gk(Q, th), spasm = o.spasm && t >= o.spasm.t0 && t < o.spasm.t0 + o.spasm.dur ? o.spasm.C : 0;
+    const Cj = Cgrav(Q, th) - Cstiff(Q, th) + spasm;
+    const Jeff = Jeff0 + Il * G * G;
+    w += dt * (Q.kt * i - Q.f * w - cs * Math.tanh(w / 0.5) + G * Cj) / Jeff;
+    phi += w * dt;
+    const x = xmin + Q.p * phi / (2 * Math.PI * Q.N);
+    th = thOf(x);
+    if (th <= TH_MIN - 2 && w < 0 || th >= TH_MAX + 2 && w > 0) w = 0;
+    if (k % dec === 0) { out.t.push(t); out.th.push(th); out.ref.push(thr); out.err.push(thr - th); out.u.push(u); out.i.push(i); out.w.push(w); out.F.push((Cj - Il * 0) / dxdth(th)); }
+  }
+  return out;
+}
+function perfC(out, tmove) {
+  let em = 0, n = out.t.length, si = 0, sI = 0;
+  for (let k = 0; k < n; k++) { em = Math.max(em, Math.abs(out.err[k])); }
+  const Imax = Math.max(...out.i.map(Math.abs)), Umax = Math.max(...out.u.map(Math.abs));
+  const rms = Math.sqrt(out.err.reduce((a, b) => a + b * b, 0) / n);
+  return { emax: em, efin: out.err[n - 1], rms, Imax, Umax, Fmax: Math.max(...out.F.map(Math.abs)) };
+}
+/* analyse fréquentielle de la boucle de position, linéarisée autour de θ0 */
+const cm = (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]], cd = (a, b) => { const d = b[0] ** 2 + b[1] ** 2; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; }, ca = (a, b) => [a[0] + b[0], a[1] + b[1]];
+function speedLoop(Q, w, th0) {
+  const g = loopGains(Q), s = [0, w], Jt = Q.J + Ileg(Q) * Gk(Q, th0) ** 2;
+  const Cc = ca([g.Kpc, 0], cd([g.Kic, 0], s)), Cv = ca([g.Kpv, 0], cd([g.Kiv, 0], s));
+  const mech = ca([Q.f, 0], cm([Jt, 0], s)), el = ca(ca([Q.R, 0], cm([Q.L, 0], s)), Cc);
+  const D = ca(ca(cm(mech, el), [Q.kt * Q.ke, 0]), cm([Q.kt, 0], cm(Cc, Cv)));
+  return cd(cm([Q.kt, 0], cm(Cc, Cv)), D);   /* Ω / Ωref */
+}
+function bodePos(Q, th0, ws, delay) {
+  const Gn = Gk(Q, 45), G = Gk(Q, th0);
+  return ws.map(w => {
+    const s = [0, w]; let C = [Q.Kp, 0]; if (Q.Ki) C = ca(C, cd([Q.Ki, 0], s)); if (Q.Kd) C = ca(C, [0, Q.Kd * w]);
+    let H = cm(C, cm(speedLoop(Q, w, th0), cd([G / Gn, 0], s)));
+    if (delay) { const a = -w * delay; H = cm(H, [Math.cos(a), Math.sin(a)]); }
+    return { w, mag: Math.hypot(H[0], H[1]), ph: Math.atan2(H[1], H[0]) / D2R };
+  });
+}
+/*LOGIC-END*/
+/* ---------- aides d'interface ---------- */
+const trTxt = (tr, te) => tr >= te - 0.02 ? '> ' + fm(te, 1) + ' s' : fm(tr, 2) + ' s';
+const fm = (v, d) => (v == null || !isFinite(v)) ? '—' : v.toFixed(d == null ? 1 : d).replace('.', ',');
+function stats(list) { return h('div', { class: 'gstats' }, list.map(k => h('div', { class: 'stat' }, h('span', null, k[0]), h('b', null, k[1])))); }
+function setMsg(sel, text, kind) { const m = $(sel); if (!m) return; m.textContent = text; m.className = 'verdict' + (kind ? ' ' + kind : ''); }
+function sld(label, min, max, step, val, fmt, cb) {
+  const out = h('b', { class: 'mono' }, fmt(val));
+  const inp = h('input', { type: 'range', min, max, step, value: val, 'aria-label': label });
+  inp.addEventListener('input', () => { const v = +inp.value; out.textContent = fmt(v); cb(v); });
+  return h('label', { class: 'fld' }, h('span', null, label + ' : ', out), inp);
+}
+function chk(label, val, cb) { const i = h('input', { type: 'checkbox', checked: !!val }); i.addEventListener('change', () => cb(i.checked)); return h('label', { class: 'fld', style: 'flex-direction:row;align-items:center;gap:6px' }, i, h('span', null, label)); }
+let raf = {}; function later(key, fn) { cancelAnimationFrame(raf[key]); raf[key] = requestAnimationFrame(fn); }
+const P = Object.assign({}, Q0);
+
+/* ---------- tracés SVG ---------- */
+function niceTicks(a, b, n) {
+  const raw = (b - a) / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag, s = (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag, t = [];
+  for (let v = Math.ceil(a / s - 1e-9) * s; v <= b + 1e-9; v += s) t.push(+v.toFixed(10));
+  return t;
+}
+let plotId = 0;
+/* o : {title, series:[{x,y,c,l,dash,w}], xr, yr, xl, yl, logx, hl:[{y,l}], h} */
+function plot(o) {
+  const W = 720, H = o.h || 230, m = { l: 48, r: 12, t: 8, b: 34 }, id = 'pc' + (++plotId);
+  let xr = o.xr, yr = o.yr;
+  if (!xr) { let a = Infinity, b = -Infinity; o.series.forEach(s => { a = Math.min(a, s.x[0]); b = Math.max(b, s.x[s.x.length - 1]); }); xr = [a, b]; }
+  if (!yr) { let a = Infinity, b = -Infinity; o.series.forEach(s => s.y.forEach(v => { if (isFinite(v)) { a = Math.min(a, v); b = Math.max(b, v); } })); const p = (b - a) * 0.08 || 1; yr = [a - p, b + p]; }
+  const lx = a => o.logx ? Math.log10(a) : a;
+  const sx = v => m.l + (lx(v) - lx(xr[0])) / (lx(xr[1]) - lx(xr[0])) * (W - m.l - m.r);
+  const sy = v => H - m.b - (v - yr[0]) / (yr[1] - yr[0]) * (H - m.t - m.b);
+  const xt = o.logx ? (() => { const t = []; for (let e = Math.ceil(Math.log10(xr[0])); e <= Math.floor(Math.log10(xr[1])); e++) t.push(Math.pow(10, e)); return t; })() : niceTicks(xr[0], xr[1], 6);
+  const yt = niceTicks(yr[0], yr[1], 5);
+  let g = '';
+  yt.forEach(v => { g += `<line x1="${m.l}" x2="${W - m.r}" y1="${sy(v)}" y2="${sy(v)}" style="stroke:var(--grid)" stroke-width="1"/><text x="${m.l - 6}" y="${sy(v) + 4}" text-anchor="end" font-size="11" font-family="var(--font-mono)" style="fill:var(--muted)">${String(v).replace('.', ',')}</text>`; });
+  xt.forEach(v => { g += `<line x1="${sx(v)}" x2="${sx(v)}" y1="${m.t}" y2="${H - m.b}" style="stroke:var(--grid)" stroke-width="1"/><text x="${sx(v)}" y="${H - m.b + 15}" text-anchor="middle" font-size="11" font-family="var(--font-mono)" style="fill:var(--muted)">${String(v).replace('.', ',')}</text>`; });
+  g += `<line x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}" style="stroke:var(--line)"/><line x1="${m.l}" x2="${m.l}" y1="${m.t}" y2="${H - m.b}" style="stroke:var(--line)"/>`;
+  if (o.xl) g += `<text x="${(m.l + W - m.r) / 2}" y="${H - 4}" text-anchor="middle" font-size="11.5" style="fill:var(--muted)">${o.xl}</text>`;
+  if (o.yl) g += `<text x="12" y="${(m.t + H - m.b) / 2}" text-anchor="middle" font-size="11.5" transform="rotate(-90 12 ${(m.t + H - m.b) / 2})" style="fill:var(--muted)">${o.yl}</text>`;
+  (o.hl || []).forEach(l => { if (l.y >= yr[0] && l.y <= yr[1]) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${sy(l.y)}" y2="${sy(l.y)}" style="stroke:var(--bad)" stroke-dasharray="2 4" stroke-width="1.2"/><text x="${W - m.r - 3}" y="${sy(l.y) - 4}" text-anchor="end" font-size="11" style="fill:var(--bad)">${l.l}</text>`; });
+  let paths = '';
+  o.series.forEach(s => {
+    const n = s.x.length, st = Math.max(1, Math.floor(n / 700)); let d = '';
+    for (let k = 0; k < n; k += st) { const yv = clamp(s.y[k], yr[0] - (yr[1] - yr[0]), yr[1] + (yr[1] - yr[0])); d += (d ? 'L' : 'M') + sx(s.x[k]).toFixed(1) + ' ' + sy(yv).toFixed(1); }
+    paths += `<path d="${d}" fill="none" style="stroke:${s.c}" stroke-width="${s.w || 2}" stroke-linejoin="round"${s.dash ? ` stroke-dasharray="${s.dash}"` : ''}/>`;
+  });
+  const wrap = h('div', { class: 'pbox' });
+  if (o.title) wrap.append(h('p', { class: 'pt' }, o.title));
+  wrap.append(h('div', { class: 'leg', html: o.series.filter(s => s.l).map(s => `<span><i class="${s.dash ? 'd' : ''}" style="border-color:${s.c}"></i>${s.l}</span>`).join('') }));
+  const holder = h('div'); holder.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.title || 'Tracé'}"><defs><clipPath id="${id}"><rect x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}"/></clipPath></defs>${g}<g clip-path="url(#${id})">${paths}</g><line class="cur" x1="0" x2="0" y1="${m.t}" y2="${H - m.b}" style="stroke:var(--fg)" stroke-width="1" opacity="0"/></svg>`;
+  const svg = holder.firstChild, cur = svg.querySelector('.cur'), ro = h('div', { class: 'ro' }, 'Survolez le tracé pour lire les valeurs.');
+  const move = ev => {
+    const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * W;
+    if (px < m.l || px > W - m.r) return;
+    const f = (px - m.l) / (W - m.l - m.r); const xv = o.logx ? Math.pow(10, lx(xr[0]) + f * (lx(xr[1]) - lx(xr[0]))) : xr[0] + f * (xr[1] - xr[0]);
+    cur.setAttribute('x1', px); cur.setAttribute('x2', px); cur.setAttribute('opacity', '.5');
+    const parts = [(o.xn || 't') + ' = ' + fm(xv, o.logx ? 2 : 3)];
+    o.series.forEach(s => { if (!s.l) return; let lo = 0, hi = s.x.length - 1; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (s.x[mid] < xv) lo = mid; else hi = mid; } const k = Math.abs(s.x[lo] - xv) < Math.abs(s.x[hi] - xv) ? lo : hi; parts.push(s.l.replace(/ \(.*\)/, '') + ' = ' + fm(s.y[k], 2)); });
+    ro.textContent = parts.join(' · ');
+  };
+  svg.addEventListener('pointermove', move); svg.addEventListener('pointerleave', () => cur.setAttribute('opacity', '0'));
+  wrap.append(holder.firstChild, ro); return wrap;
+}
+
+function blk(x, y, w, hh, t, kind) {
+  const col = kind === 'e' ? 'var(--energy)' : 'var(--info)';
+  return `<rect x="${x}" y="${y}" width="${w}" height="${hh}" rx="7" style="fill:var(--panel2);stroke:${col}" stroke-width="2"/>` + t.split('|').map((l, i, a) => `<text x="${x + w / 2}" y="${y + hh / 2 + 4 + (i - (a.length - 1) / 2) * 14}" text-anchor="middle" font-size="12" style="fill:var(--fg)">${l}</text>`).join('');
+}
+function arrow(x1, y1, x2, y2, kind, lab) {
+  const col = kind === 'e' ? 'var(--energy)' : 'var(--info)';
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke:${col}" stroke-width="2"/><path d="M${x2} ${y2} l${x2 > x1 ? -7 : x2 < x1 ? 7 : -4} ${y2 > y1 ? -7 : y2 < y1 ? 7 : -4} m0 0" fill="none"/>` +
+    `<circle cx="${x2}" cy="${y2}" r="3" style="fill:${col}"/>` + (lab ? (x1 === x2 ? `<text x="${x1 + 8}" y="${(y1 + y2) / 2 + 4}" font-size="11" style="fill:var(--muted)">${lab}</text>` : `<text x="${(x1 + x2) / 2}" y="${Math.min(y1, y2) - 5}" text-anchor="middle" font-size="11" style="fill:var(--muted)">${lab}</text>`) : '');
+}
+/* ---------- schéma de l'attelle ---------- */
+function legSvg(thDeg, m) {
+  const s = 0.8, ox = 250, oy = 115, th = thDeg * D2R, inc = P.incl * D2R, L1 = 190, L2 = 190;
+  /* genou en K ; cuisse inclinée de incl au-dessus de l'horizontale vers la gauche ; jambe tourne de θ vers le bas */
+  const K = [ox, oy], H = [ox - L1 * Math.cos(inc) * s, oy - L1 * Math.sin(inc) * s];
+  const ang = inc - th, A = [K[0] + L2 * Math.cos(ang) * s, K[1] - L2 * Math.sin(ang) * s];
+  const a = GEO.a * 1000 * s * 1.6, c = GEO.c * 1000 * s * 1.6; /* points d'attache du vérin */
+  const F = [H[0] + (K[0] - H[0]) * 0.45 + 18 * Math.sin(inc), H[1] + (K[1] - H[1]) * 0.45 + 18 * Math.cos(inc)];
+  const Pp = [K[0] + 90 * Math.cos(ang) * s * 0.55 - 10 * Math.sin(ang), K[1] - 90 * Math.sin(ang) * s * 0.55 - 10 * Math.cos(ang)];
+  const x = xOf(thDeg) * 1000;
+  return `<svg viewBox="0 0 480 290" role="img" aria-label="Schéma de l'attelle : genou à ${fm(thDeg, 0)} degrés, vérin de ${fm(x, 0)} mm">
+  <line x1="${H[0]}" y1="${H[1]}" x2="${K[0]}" y2="${K[1]}" style="stroke:var(--accent)" stroke-width="9" stroke-linecap="round"/>
+  <line x1="${K[0]}" y1="${K[1]}" x2="${A[0]}" y2="${A[1]}" style="stroke:var(--accent)" stroke-width="7" stroke-linecap="round"/>
+  <line x1="${F[0]}" y1="${F[1]}" x2="${Pp[0]}" y2="${Pp[1]}" style="stroke:var(--energy)" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="${K[0]}" cy="${K[1]}" r="7" style="fill:var(--fg)"/><circle cx="${Pp[0]}" cy="${Pp[1]}" r="5" style="fill:var(--ok)"/><circle cx="${F[0]}" cy="${F[1]}" r="5" style="fill:var(--ok)"/>
+  <circle cx="${A[0]}" cy="${A[1]}" r="${4 + m * 1.2}" style="fill:var(--warn);opacity:.85"/>
+  <text x="${H[0]}" y="${H[1] - 12}" font-size="12" style="fill:var(--muted)">cuisse</text>
+  <text x="${K[0] + 12}" y="${K[1] + 20}" font-size="12" style="fill:var(--muted)">genou</text>
+  <text x="${A[0] - 20}" y="${Math.min(A[1] + 24, 284)}" font-size="12" style="fill:var(--accent)">jambe θ = ${fm(thDeg, 0)}°</text>
+  <text x="${(F[0] + Pp[0]) / 2 - 40}" y="${(F[1] + Pp[1]) / 2 - 16}" font-size="12" style="fill:var(--energy)">vérin x = ${fm(x, 0)} mm</text></svg>`;
+}
+const CTRL = { kind: 0 };
+/* ================= Atelier 1 : le système ================= */
+const S1 = { th: 45, m: 4 };
+const PARAMS = [
+  ['Actionneur', 'vérin linéaire à vis à billes', 'doc', 'fiche Didastel CPM-130'],
+  ['Motorisation', 'motoréducteur maxon CC 24 V, 40 W, réduction 1:16', 'doc', 'fiche Didastel CPM-130'],
+  ['Amplitude du genou', '−10° à 120°', 'doc', 'fiche Didastel CPM-130'],
+  ['Commande', 'carte maxon EPOS : PI courant, PI vitesse, PID position', 'doc', 'fiche Didastel CPM-130'],
+  ['Capteurs', 'angle du genou sans contact ; effort de traction type S, 50 kg', 'doc', 'fiche Didastel CPM-130'],
+  ['Consigne en mode passif', 'trapèze de vitesse et profil de position', 'doc', 'fiche Didastel CPM-130'],
+  ['Vitesse angulaire de référence', '40 à 145 °/min (appareil réel Kinetec Prima Advance)', 'cat', 'manuel Kinetec'],
+  ['Constantes du moteur', 'R, L, Kt = Ke, J, frottements', 'cal', 'valeurs génériques d’un moteur 24 V 40 W : à remplacer par la fiche du motoréducteur'],
+  ['Pas de la vis à billes', 'p = 5 mm/tr', 'cal', 'ordre de grandeur'],
+  ['Loi entrée-sortie', 'triangle à vérin : x² = a² + c² − 2ac·cos(θ + 30°), a = 100 mm, c = 160 mm', 'cal', 'schéma générique : la cinématique réelle n’est pas publiée'],
+  ['Jambe du patient', 'm = 4 kg, centre de masse à 0,25 m du genou, cuisse inclinée à 30°', 'cal', 'ordre de grandeur'],
+  ['Réglages de la cascade', 'bande passante courant 1000 rad/s, vitesse 150 rad/s, position Kp = 5 s⁻¹', 'cal', 'réglages d’école, pas ceux de l’EPOS d’usine']
+];
+const EDIT = [
+  ['Résistance R (Ω)', () => P.R, v => { P.R = v; }, 0.1],
+  ['Constante Kt = Ke (N·m/A)', () => P.kt, v => { P.kt = v; P.ke = v; }, 0.001],
+  ['Inertie J du motoréducteur (kg·m²)', () => P.J, v => { P.J = v; }, 1e-6],
+  ['Pas de la vis p (mm/tr)', () => P.p * 1000, v => { P.p = v / 1000; }, 0.5],
+  ['Longueur a (mm)', () => GEO.a * 1000, v => { GEO.a = v / 1000; }, 1],
+  ['Longueur c (mm)', () => GEO.c * 1000, v => { GEO.c = v / 1000; }, 1]
+];
+function mount1(root) {
+  root.append(h('h2', null, 'L’attelle CPM de genou et son jumeau'),
+    h('p', null, 'Une attelle CPM (mobilisation passive continue) fait fléchir et étendre le genou d’un patient pour éviter la raideur après une opération. Le CPM-130 est son équivalent didactique : un vérin à vis à billes entraîné par un motoréducteur fait tourner la jambe autour du genou, sous le contrôle d’une carte EPOS. Le jumeau reproduit cette chaîne avec le mouvement du patient, la pesanteur, les frottements et la cascade de régulation.'));
+  root.append(h('h3', null, 'Chaînes d’information et d’énergie'));
+  const dg = h('div', { class: 'pbox' }); dg.innerHTML = `<svg viewBox="0 0 880 250" role="img" aria-label="Schéma-blocs de l'attelle CPM" style="width:100%;height:auto">
+  ${blk(10, 30, 150, 50, 'Consigne|trapèze de vitesse', 'i')}${blk(185, 30, 150, 50, 'PID position|(boucle externe)', 'i')}${blk(360, 30, 150, 50, 'PI vitesse|(boucle intermédiaire)', 'i')}${blk(535, 30, 150, 50, 'PI courant|(boucle interne)', 'i')}${blk(710, 30, 150, 50, 'Hacheur 24 V|saturation ±24 V', 'i')}
+  ${blk(710, 150, 150, 50, 'Motoréducteur|maxon 40 W, 1:16', 'e')}${blk(535, 150, 150, 50, 'Vis à billes|+ vérin', 'e')}${blk(360, 150, 150, 50, 'Genou et jambe|θ (loi E/S)', 'e')}${blk(185, 150, 150, 50, 'Capteur d’angle|sans contact', 'i')}
+  ${arrow(160, 55, 185, 55, 'i')}${arrow(335, 55, 360, 55, 'i', '')}${arrow(510, 55, 535, 55, 'i')}${arrow(685, 55, 710, 55, 'i')}
+  ${arrow(785, 80, 785, 150, 'e', 'couple')}${arrow(710, 175, 685, 175, 'e')}${arrow(535, 175, 510, 175, 'e', 'F')}${arrow(360, 175, 335, 175, 'i', 'θ')}${arrow(260, 150, 260, 80, 'i', 'mesure')}
+  <text x="10" y="232" font-size="12" style="fill:var(--info)">■ chaîne d’information</text><text x="190" y="232" font-size="12" style="fill:var(--energy)">■ chaîne d’énergie</text>
+  <text x="380" y="232" font-size="11.5" style="fill:var(--muted)">Le courant et la vitesse du moteur sont aussi mesurés pour les deux boucles internes.</text></svg>`;
+  root.append(dg);
+  root.append(h('h3', null, 'Mouvement du genou'), h('p', { class: 'small' }, 'Schéma de principe : les positions des attaches du vérin sont celles du triangle générique du jumeau, pas celles de l’appareil réel.'));
+  const arm = h('div', { class: 'pbox armbox' }), info = h('div');
+  const draw = () => {
+    arm.innerHTML = legSvg(S1.th, S1.m); info.innerHTML = '';
+    info.append(stats([['Longueur du vérin x', fm(xOf(S1.th) * 1000, 1) + ' mm'], ['Course depuis −10°', fm((xOf(S1.th) - xmin) * 1000, 1) + ' mm'], ['Tours moteur depuis −10°', fm((xOf(S1.th) - xmin) / P.p * P.N, 0)], ['Gain cinématique dθ/dφm', fm(Gk(P, S1.th) * 1000, 3) + '·10⁻³'], ['Couple de pesanteur au genou', fm(Cgrav(Object.assign({}, P, { m: S1.m }), S1.th), 1) + ' N·m']]));
+  };
+  root.append(h('div', { class: 'opts' }, sld('Angle du genou θ', -10, 120, 1, S1.th, v => v + ' °', v => { S1.th = v; draw(); }), sld('Masse de la jambe', 2, 8, 0.5, S1.m, v => fm(v, 1) + ' kg', v => { S1.m = v; draw(); })), arm, info);
+  draw();
+  root.append(h('h3', null, 'Paramètres du jumeau et leur statut'), h('p', { class: 'small' }, 'documenté = relevé dans une source publique ; catalogue = valeur d’un appareil voisin ; calé = choisi par l’auteur de cette page faute de donnée publiée. Les ateliers 2 à 6 utilisent les valeurs ci-dessous.'));
+  const rows = PARAMS.map(p => h('tr', null, h('td', null, p[0]), h('td', null, p[1]), h('td', null, h('span', { class: 'tag ' + p[2] }, p[2] === 'doc' ? 'documenté' : p[2] === 'cat' ? 'catalogue' : 'calé')), h('td', { class: 'small' }, p[3])));
+  root.append(h('div', { class: 'dwrap' }, h('table', { class: 'dt' }, h('thead', null, h('tr', null, ['Grandeur', 'Valeur', 'Statut', 'Source'].map(x => h('th', null, x)))), h('tbody', null, rows))));
+  root.append(h('h3', null, 'Recaler le jumeau avec vos valeurs'), h('p', { class: 'small' }, 'Si vous disposez du dossier technique du CPM-130, saisissez ici les valeurs réelles : tous les ateliers se recalculent.'));
+  const ed = h('div', { class: 'dwrap' }, h('table', { class: 'dt' }, h('tbody', null, EDIT.map(e => { const inp = h('input', { type: 'number', step: 'any', value: +e[1]().toPrecision(4), 'aria-label': e[0] }); inp.addEventListener('change', () => { const v = parseFloat(inp.value); if (isFinite(v) && v > 0) { e[2](v); toast('Valeur enregistrée : ' + e[0]); draw(); } }); return h('tr', null, h('td', null, e[0]), h('td', null, inp)); }))));
+  root.append(ed);
+}
+WORKSHOPS.push({ id: 's1', title: 'Le système', hint: 'Découvrez la chaîne de commande, le mouvement du genou et l’origine de chaque paramètre du jumeau.', mount: mount1, reset: () => { Object.assign(S1, { th: 45, m: 4 }); } });
+
+/* ================= Atelier 2 : loi entrée-sortie ================= */
+const S2 = { v: 145, m: 4, k: 0.4 };
+function mount2(root) {
+  root.append(h('h2', null, 'Loi entrée-sortie : du vérin au genou'),
+    h('p', null, 'Quand la vis sort, le vérin s’allonge et la jambe tourne. Le rapport entre l’allongement et l’angle change avec la position : la vitesse du moteur et l’effort dans la vis dépendent donc de l’angle du genou.'));
+  const box = h('div'), st = h('div'), msg = h('div', { class: 'verdict', id: 'm2' });
+  const draw = () => {
+    const Q = Object.assign({}, P, { m: S2.m, kpat: S2.k }); box.innerHTML = ''; st.innerHTML = '';
+    const th = [], x = [], rpm = [], F = []; for (let a = TH_MIN; a <= TH_MAX; a += 1) { th.push(a); x.push(xOf(a) * 1000); rpm.push((S2.v * D2R / 60) / Gk(Q, a) * 60 / (2 * Math.PI)); F.push((Cgrav(Q, a) - Cstiff(Q, a)) / dxdth(a)); }
+    box.append(plot({ title: 'Longueur du vérin', xn: 'θ', xl: 'angle du genou θ (°)', yl: 'x (mm)', series: [{ x: th, y: x, c: 'var(--c1)', l: 'x(θ)' }] }));
+    box.append(plot({ title: 'Vitesse du moteur nécessaire à ' + S2.v + ' °/min', xn: 'θ', xl: 'angle du genou θ (°)', yl: 'tr/min moteur', yr: [0, Math.max(...rpm) * 1.1], series: [{ x: th, y: rpm, c: 'var(--c2)', l: 'ωm (tr/min)' }] }));
+    box.append(plot({ title: 'Effort dans le vérin pour tenir la jambe', xn: 'θ', xl: 'angle du genou θ (°)', yl: 'N', series: [{ x: th, y: F, c: 'var(--c3)', l: 'effort (N)' }, { x: [TH_MIN, TH_MAX], y: [0, 0], c: 'var(--c5)', dash: '3 4' }] }));
+    const rmax = Math.max(...rpm), Fm = Math.max(...F.map(Math.abs)), wlim = P.Umax / P.ke * 60 / (2 * Math.PI);
+    st.append(stats([['Course totale du vérin', fm((xOf(TH_MAX) - xmin) * 1000, 0) + ' mm'], ['Vitesse moteur max requise', fm(rmax, 0) + ' tr/min'], ['Vitesse à vide à 24 V (≈ U/Ke)', fm(wlim, 0) + ' tr/min'], ['Effort max dans le vérin', fm(Fm, 0) + ' N'], ['Gain dθ/dφm min / max', fm(Math.min(...th.map(a => Gk(Q, a))) * 1000, 2) + ' / ' + fm(Math.max(...th.map(a => Gk(Q, a))) * 1000, 2) + '·10⁻³']]));
+    setMsg('#m2', rmax < wlim * 0.5 ? 'À ' + S2.v + ' °/min, le moteur n’a besoin que de ' + fm(rmax / wlim * 100, 0) + ' % de sa vitesse à vide : la vitesse d’un CPM réel est très faible devant ses capacités.' : 'La vitesse demandée atteint ' + fm(rmax / wlim * 100, 0) + ' % de la vitesse à vide : la tension disponible devient limitante.', rmax < wlim * 0.5 ? 'yes' : 'warn');
+  };
+  root.append(h('div', { class: 'opts' }, sld('Vitesse angulaire du genou', 20, 3000, 5, S2.v, v => v + ' °/min', v => { S2.v = v; later('d2', draw); }), sld('Masse de la jambe', 2, 8, 0.5, S2.m, v => fm(v, 1) + ' kg', v => { S2.m = v; later('d2', draw); }), sld('Raideur du genou (fin de course)', 0, 1, 0.05, S2.k, v => fm(v, 2) + ' N·m/°', v => { S2.k = v; later('d2', draw); })), box, st, msg);
+  draw();
+}
+WORKSHOPS.push({ id: 's2', title: 'Loi entrée-sortie', hint: 'Lisez la longueur du vérin, la vitesse du moteur et l’effort selon l’angle du genou.', mount: mount2, reset: () => { Object.assign(S2, { v: 145, m: 4, k: 0.4 }); } });
+
+/* ================= Atelier 3 : trapèze et dimensionnement ================= */
+const S3 = { a: -10, b: 90, v: 145, acc: 2, m: 4, k: 0.4 };
+function mount3(root) {
+  root.append(h('h2', null, 'Trapèze de vitesse et dimensionnement du moteur'),
+    h('p', null, 'En mode passif, la consigne est un trapèze de vitesse : accélération, palier à vitesse constante, décélération. On en déduit, sans simuler la régulation, la vitesse, le courant et la tension que le moteur doit fournir, puis on les compare à ses limites.'));
+  const box = h('div'), st = h('div'), msg = h('div', { class: 'verdict', id: 'm3' });
+  const draw = () => {
+    const Q = Object.assign({}, P, { m: S3.m, kpat: S3.k }), cy = cycle(S3.a, S3.b, S3.v / 60, S3.acc, 0.5), dt = 0.005, tt = [], th = [], om = [], ii = [], uu = [];
+    let wPrev = 0, iPrev = 0, Pm = 0;
+    for (let t = 0; t <= cy.T + 1e-9; t += dt) {
+      const r = cy.f(t), G = Gk(Q, r[0]), w = r[1] * D2R / G, al = (w - wPrev) / dt; wPrev = w;
+      const Cj = Cgrav(Q, r[0]) - Cstiff(Q, r[0]), Jeff = Q.J + Ileg(Q) * G * G;
+      const Cm = Jeff * al + Q.f * w + Q.cs * Math.tanh(w / 0.5) - G * Cj, I = Cm / Q.kt, U = Q.R * I + Q.L * (I - iPrev) / dt + Q.ke * w; iPrev = I;
+      Pm = Math.max(Pm, Math.abs(Cm * w));
+      tt.push(t); th.push(r[0]); om.push(w * 60 / (2 * Math.PI)); ii.push(I); uu.push(U);
+    }
+    box.innerHTML = ''; st.innerHTML = '';
+    box.append(plot({ title: 'Angle du genou (profil de position)', xl: 'temps (s)', yl: 'θ (°)', series: [{ x: tt, y: th, c: 'var(--c1)', l: 'θ(t)' }] }));
+    box.append(plot({ title: 'Vitesse du moteur', xl: 'temps (s)', yl: 'tr/min', h: 190, series: [{ x: tt, y: om, c: 'var(--c2)', l: 'ωm' }], hl: [{ y: Q.wmax * 60 / (2 * Math.PI), l: 'limite' }] }));
+    box.append(plot({ title: 'Courant moteur', xl: 'temps (s)', yl: 'A', h: 190, series: [{ x: tt, y: ii, c: 'var(--c3)', l: 'i' }], hl: [{ y: Q.Imax, l: '+Imax' }, { y: -Q.Imax, l: '−Imax' }] }));
+    box.append(plot({ title: 'Tension nécessaire', xl: 'temps (s)', yl: 'V', h: 190, series: [{ x: tt, y: uu, c: 'var(--c4)', l: 'u' }], hl: [{ y: Q.Umax, l: '+24 V' }, { y: -Q.Umax, l: '−24 V' }] }));
+    const wm = Math.max(...om.map(Math.abs)), Im = Math.max(...ii.map(Math.abs)), Um = Math.max(...uu.map(Math.abs));
+    st.append(stats([['Durée d’un cycle', fm(cy.T, 1) + ' s'], ['Vitesse moteur max', fm(wm, 0) + ' tr/min'], ['Courant max', fm(Im, 2) + ' A'], ['Tension max', fm(Um, 1) + ' V'], ['Puissance mécanique max', fm(Pm, 1) + ' W (moteur : 40 W)']]));
+    const ok = Im <= Q.Imax && Um <= Q.Umax && wm <= Q.wmax * 60 / (2 * Math.PI);
+    setMsg('#m3', ok ? 'Le moteur convient : vitesse, courant et tension restent dans leurs limites.' : 'Une limite est dépassée (' + [Im > Q.Imax ? 'courant' : '', Um > Q.Umax ? 'tension' : '', wm > Q.wmax * 60 / (2 * Math.PI) ? 'vitesse' : ''].filter(Boolean).join(', ') + ') : la consigne n’est pas réalisable, il faut réduire la vitesse ou l’accélération.', ok ? 'yes' : 'no');
+  };
+  root.append(h('div', { class: 'opts' }, sld('Angle de départ', -10, 100, 1, S3.a, v => v + ' °', v => { S3.a = v; later('d3', draw); }), sld('Angle d’arrivée', 0, 120, 1, S3.b, v => v + ' °', v => { S3.b = v; later('d3', draw); }), sld('Vitesse de palier', 20, 6000, 5, S3.v, v => v + ' °/min', v => { S3.v = v; later('d3', draw); }), sld('Accélération', 0.2, 100, 0.2, S3.acc, v => fm(v, 1) + ' °/s²', v => { S3.acc = v; later('d3', draw); }), sld('Masse de la jambe', 2, 8, 0.5, S3.m, v => fm(v, 1) + ' kg', v => { S3.m = v; later('d3', draw); })), box, st, msg);
+  draw();
+}
+WORKSHOPS.push({ id: 's3', title: 'Trapèze et moteur', hint: 'Construisez le trapèze de vitesse et vérifiez que le moteur peut le suivre.', mount: mount3, reset: () => { Object.assign(S3, { a: -10, b: 90, v: 145, acc: 2, m: 4, k: 0.4 }); } });
+
+/* ================= Atelier 4 : asservissement ================= */
+const S4 = { th0: 10, th1: 40, v: 10, Kp: 5, Ki: 0, ff: true, m: 4, k: 0.4, spasm: false, meas: '', rep: 2 };
+function parseMeas(txt) {
+  const x = [], y = []; txt.split(/\r?\n/).forEach(l => { l = l.trim(); if (!l) return; const p = /[;\t]/.test(l) ? l.replace(/,/g, '.').split(/[;\t]/) : l.split(','); const a = parseFloat(p[0]), b = parseFloat(p[1]); if (isFinite(a) && isFinite(b)) { x.push(a); y.push(b); } });
+  return x.length > 1 ? { x, y } : null;
+}
+function runScenario(S, extra) {
+  const Q = Object.assign({}, P, { m: S.m, kpat: S.k }, extra), cy = cycle(S.th0, S.th1, S.v, S.v * 2, 0.5), tend = Math.min(cy.T + 0.5, 25);
+  return { Q, cy, out: simulate(Q, { th0: S.th0, ref: cy.f, tend, spasm: S.spasm ? { t0: cy.tp * 0.5, dur: 0.6, C: -40 } : null }) };
+}
+function mount4(root) {
+  root.append(h('h2', null, 'Asservissement du genou en cascade'),
+    h('p', null, 'Le jumeau exécute un cycle de flexion puis d’extension. La boucle de position envoie une consigne de vitesse à la boucle de vitesse, qui envoie une consigne de courant à la boucle de courant. Observez l’erreur de traînage, le courant et la tension, avec et sans anticipation de vitesse.'));
+  const out = h('div'), st = h('div'), msg = h('div', { class: 'verdict', id: 'm4' }), armBox = h('div', { class: 'pbox armbox' });
+  let last = null;
+  const showArm = () => { if (!last) return; const k = Math.min(last.t.length - 1, Math.round(S4.rep / 0.001)); armBox.innerHTML = legSvg(last.th[k], S4.m); };
+  const draw = () => {
+    const r = runScenario(S4, { Kp: S4.Kp, Ki: S4.Ki, Kd: 0, ff: S4.ff }); last = r.out; const p = perfC(r.out);
+    out.innerHTML = ''; st.innerHTML = '';
+    const ser = [{ x: r.out.t, y: r.out.ref, c: 'var(--c5)', l: 'consigne', dash: '2 4' }, { x: r.out.t, y: r.out.th, c: 'var(--c1)', l: 'jumeau' }];
+    const me = parseMeas(S4.meas); if (me) ser.push({ x: me.x, y: me.y, c: 'var(--c2)', l: 'mesure importée' });
+    out.append(plot({ title: 'Angle du genou', xl: 'temps (s)', yl: 'θ (°)', series: ser }));
+    out.append(plot({ title: 'Erreur de traînage', xl: 'temps (s)', yl: 'consigne − mesure (°)', h: 170, series: [{ x: r.out.t, y: r.out.err, c: 'var(--c4)', l: 'erreur' }] }));
+    out.append(plot({ title: 'Courant moteur', xl: 'temps (s)', yl: 'A', h: 170, series: [{ x: r.out.t, y: r.out.i, c: 'var(--c3)', l: 'i' }], hl: [{ y: r.Q.Imax, l: '+Imax' }, { y: -r.Q.Imax, l: '−Imax' }] }));
+    st.append(stats([['Erreur de traînage max', fm(p.emax, 2) + ' °'], ['Erreur quadratique moyenne', fm(p.rms, 2) + ' °'], ['Erreur finale', fm(p.efin, 2) + ' °'], ['Courant max', fm(p.Imax, 2) + ' A'], ['Tension max', fm(p.Umax, 1) + ' V'], ['Effort max dans le vérin', fm(p.Fmax, 0) + ' N']]));
+    setMsg('#m4', (S4.ff ? 'Avec anticipation de vitesse, ' : 'Sans anticipation, ') + 'l’erreur de traînage maximale est de ' + fm(p.emax, 2) + ' °. ' + (!S4.ff && p.emax > 1 ? 'Le correcteur proportionnel doit créer un écart pour produire la vitesse : activez l’anticipation ou augmentez Kp.' : '') + (S4.spasm ? ' Le spasme fait monter l’effort dans le vérin à ' + fm(p.Fmax, 0) + ' N : la réduction isole le moteur, l’erreur change peu.' : ''), p.emax < 0.5 ? 'yes' : p.emax < 2 ? 'warn' : 'no');
+    showArm();
+  };
+  const chips = h('div', { class: 'chips' }, [['Cycle réel (2,4 °/s)', { th0: 10, th1: 30, v: 2.4 }], ['Mode rapide (20 °/s)', { th0: 10, th1: 60, v: 20 }], ['Avec spasme', { spasm: true }], ['Sans anticipation', { ff: false }]].map(c => h('button', { class: 'chip', type: 'button', onclick: () => { Object.assign(S4, c[1]); root.innerHTML = ''; mount4(root); } }, c[0])));
+  const ta = h('textarea', { rows: 3, placeholder: 't;θ (une ligne par point)', 'aria-label': 'Mesure à importer' }); ta.value = S4.meas; ta.addEventListener('input', () => { S4.meas = ta.value; later('d4', draw); });
+  root.append(chips, h('div', { class: 'opts' },
+    sld('Angle de départ', -10, 100, 1, S4.th0, v => v + ' °', v => { S4.th0 = v; later('d4', draw); }),
+    sld('Angle d’arrivée', 0, 120, 1, S4.th1, v => v + ' °', v => { S4.th1 = v; later('d4', draw); }),
+    sld('Vitesse de palier', 2, 40, 0.5, S4.v, v => fm(v, 1) + ' °/s', v => { S4.v = v; later('d4', draw); }),
+    sld('Gain Kp de position', 0.5, 40, 0.5, S4.Kp, v => fm(v, 1) + ' s⁻¹', v => { S4.Kp = v; later('d4', draw); }),
+    sld('Gain Ki de position', 0, 10, 0.5, S4.Ki, v => fm(v, 1), v => { S4.Ki = v; later('d4', draw); }),
+    sld('Masse de la jambe', 2, 8, 0.5, S4.m, v => fm(v, 1) + ' kg', v => { S4.m = v; later('d4', draw); }),
+    sld('Raideur du genou', 0, 1, 0.05, S4.k, v => fm(v, 2) + ' N·m/°', v => { S4.k = v; later('d4', draw); }),
+    chk('Anticipation de vitesse', S4.ff, v => { S4.ff = v; later('d4', draw); }),
+    chk('Spasme du patient (−40 N·m, 0,6 s)', S4.spasm, v => { S4.spasm = v; later('d4', draw); })), out, st, msg);
+  root.append(h('h3', null, 'Rejouer le mouvement'), h('div', { class: 'opts' }, sld('Instant du rejeu', 0, 20, 0.1, S4.rep, v => fm(v, 1) + ' s', v => { S4.rep = v; showArm(); })), armBox,
+    h('h3', null, 'Comparer avec une mesure réelle'), h('p', { class: 'small' }, 'Collez un relevé de votre CPM-130 (temps en s, angle en °, séparés par « ; » ou une tabulation) : la courbe s’ajoute au tracé.'), h('label', { class: 'fld' }, h('span', null, 'Mesure importée'), ta));
+  draw();
+}
+WORKSHOPS.push({ id: 's4', title: 'Asservissement', hint: 'Exécutez un cycle de flexion et d’extension et observez l’erreur de traînage, le courant et la tension.', mount: mount4, reset: () => { Object.assign(S4, { th0: 10, th1: 40, v: 10, Kp: 5, Ki: 0, ff: true, m: 4, k: 0.4, spasm: false, meas: '', rep: 2 }); } });
+
+/* ================= Atelier 5 : fréquentiel (PSI*) ================= */
+const S5 = { th0: 45, Kp: 5, Ki: 0, Kd: 0, wv: 150, delay: false };
+function margins(b) {
+  let wc = null, pm = null, w180 = null, gm = null, ph = [], prev = null, off = 0;
+  b.forEach(p => { let v = p.ph + off; if (prev != null && v - prev > 180) { off -= 360; v -= 360; } else if (prev != null && v - prev < -180) { off += 360; v += 360; } ph.push(v); prev = v; });
+  for (let k = 1; k < b.length; k++) {
+    if (wc == null && b[k - 1].mag >= 1 && b[k].mag < 1) { const f = (1 - b[k - 1].mag) / (b[k].mag - b[k - 1].mag); wc = b[k - 1].w * Math.pow(b[k].w / b[k - 1].w, f); pm = 180 + ph[k - 1] + f * (ph[k] - ph[k - 1]); }
+    if (w180 == null && ph[k - 1] > -180 && ph[k] <= -180) { const f = (ph[k - 1] + 180) / (ph[k - 1] - ph[k]); w180 = b[k - 1].w * Math.pow(b[k].w / b[k - 1].w, f); gm = -20 * Math.log10(b[k - 1].mag * Math.pow(b[k].mag / b[k - 1].mag, f)); }
+  }
+  return { wc, pm, w180, gm, ph };
+}
+function mount5(root) {
+  root.append(h('h2', null, 'Boucle de position : marges et bande passante'),
+    h('p', null, 'On linéarise la cascade autour d’un angle. La boucle de vitesse, fermée, se comporte comme un filtre passe-bas ; la boucle de position la complète par un intégrateur (le vérin). Le diagramme de Bode donne ω_c et les marges. Le gain cinématique change avec l’angle : les marges aussi.'));
+  const box = h('div'), st = h('div'), msg = h('div', { class: 'verdict', id: 'm5' });
+  const draw = () => {
+    const Q = Object.assign({}, P, { Kp: S5.Kp, Ki: S5.Ki, Kd: S5.Kd, wv: S5.wv }), ws = []; for (let k = -1; k <= 3; k += 0.02) ws.push(Math.pow(10, k));
+    const b = bodePos(Q, S5.th0, ws, S5.delay ? 0.0015 : 0), mg = margins(b);
+    box.innerHTML = ''; st.innerHTML = '';
+    box.append(plot({ title: 'Gain de la boucle ouverte de position', xn: 'ω', logx: true, xr: [0.1, 1000], xl: 'pulsation ω (rad/s)', yl: 'dB', series: [{ x: ws, y: b.map(p => 20 * Math.log10(p.mag)), c: 'var(--c1)', l: '|FTBO| (dB)' }, { x: [0.1, 1000], y: [0, 0], c: 'var(--c5)', l: '0 dB', dash: '3 4' }] }));
+    box.append(plot({ title: 'Phase de la boucle ouverte de position', xn: 'ω', logx: true, xr: [0.1, 1000], xl: 'pulsation ω (rad/s)', yl: 'degrés', yr: [-270, 0], series: [{ x: ws, y: mg.ph, c: 'var(--c2)', l: 'phase (°)' }, { x: [0.1, 1000], y: [-180, -180], c: 'var(--bad)', l: '−180°', dash: '3 4' }] }));
+    const th1 = Math.min(S5.th0 + 5, 118), r = simulate(Q, { th0: S5.th0, ref: () => [th1, 0], tend: 2 }), y = r.th, A = th1 - S5.th0;
+    let pk = -Infinity; y.forEach(v => { pk = Math.max(pk, v - S5.th0); }); const D = Math.max(0, (pk - A) / A * 100);
+    box.append(plot({ title: 'Échelon de 5° (jumeau complet)', xl: 'temps (s)', yl: 'θ (°)', h: 190, series: [{ x: r.t, y: r.ref, c: 'var(--c5)', l: 'consigne', dash: '2 4' }, { x: r.t, y: y, c: 'var(--c1)', l: 'jumeau' }] }));
+    st.append(stats([['Pulsation de coupure ω_c', mg.wc ? fm(mg.wc, 1) + ' rad/s' : '—'], ['Marge de phase', mg.pm != null ? fm(mg.pm, 0) + ' °' : '—'], ['Marge de gain', mg.gm != null ? fm(mg.gm, 0) + ' dB' : '∞'], ['Dépassement simulé', fm(D, 0) + ' %'], ['Gain cinématique à θ0 / nominal', fm(Gk(Q, S5.th0) / Gk(Q, 45), 2)]]));
+    const pm = mg.pm;
+    setMsg('#m5', pm == null ? 'La boucle ouverte ne coupe pas 0 dB sur la plage tracée.' : pm >= 45 ? 'Marge de phase ' + fm(pm, 0) + ' ° : réglage stable avec une marge confortable.' : pm > 0 ? 'Marge de phase ' + fm(pm, 0) + ' ° : stable mais oscillant.' : 'Marge de phase négative : le système est instable en boucle fermée.', pm >= 45 ? 'yes' : pm > 0 ? 'warn' : 'no');
+  };
+  root.append(h('div', { class: 'opts' },
+    sld('Angle de fonctionnement θ0', -5, 115, 1, S5.th0, v => v + ' °', v => { S5.th0 = v; later('d5', draw); }),
+    sld('Kp de position', 0.5, 60, 0.5, S5.Kp, v => fm(v, 1) + ' s⁻¹', v => { S5.Kp = v; later('d5', draw); }),
+    sld('Ki de position', 0, 20, 0.5, S5.Ki, v => fm(v, 1), v => { S5.Ki = v; later('d5', draw); }),
+    sld('Kd de position', 0, 0.5, 0.01, S5.Kd, v => fm(v, 2) + ' s', v => { S5.Kd = v; later('d5', draw); }),
+    sld('Bande passante de la boucle de vitesse', 20, 400, 5, S5.wv, v => v + ' rad/s', v => { S5.wv = v; later('d5', draw); }),
+    chk('Retard d’échantillonnage de 1,5 ms', S5.delay, v => { S5.delay = v; later('d5', draw); })), box, st, msg);
+  draw();
+}
+WORKSHOPS.push({ id: 's5', title: 'Fréquentiel (PSI*)', hint: 'Lisez ω_c et les marges de la boucle de position, puis vérifiez sur un échelon du jumeau complet.', mount: mount5, reset: () => { Object.assign(S5, { th0: 45, Kp: 5, Ki: 0, Kd: 0, wv: 150, delay: false }); } });
+
+/* ================= Atelier 6 : correcteurs (PSI*) ================= */
+const S6 = { th0: 10, th1: 40, v: 10, m: 4, k: 0.4, spasm: true, C: [{ nm: 'P seul', Kp: 5, Ki: 0, Kd: 0, ff: false }, { nm: 'P + anticipation', Kp: 5, Ki: 0, Kd: 0, ff: true }, { nm: 'PID + anticipation', Kp: 5, Ki: 2, Kd: 0.05, ff: true }] };
+function mount6(root) {
+  root.append(h('h2', null, 'Correcteurs et perturbations du patient'),
+    h('p', null, 'Trois réglages sont comparés sur le même cycle. L’anticipation de vitesse supprime l’erreur de traînage due à la rampe de consigne. Un spasme du patient est une perturbation brève : seule une régulation vigoureuse la réduit, au prix d’un courant plus élevé.'));
+  const out = h('div'), tab = h('div'), msg = h('div', { class: 'verdict', id: 'm6' }), cols = ['var(--c1)', 'var(--c2)', 'var(--c4)'];
+  const draw = () => {
+    out.innerHTML = ''; tab.innerHTML = '';
+    const rs = S6.C.map(c => runScenario(S6, { Kp: c.Kp, Ki: c.Ki, Kd: c.Kd, ff: c.ff })), ps = rs.map(r => perfC(r.out));
+    out.append(plot({ title: 'Erreur de traînage', xl: 'temps (s)', yl: 'consigne − mesure (°)', series: rs.map((r, i) => ({ x: r.out.t, y: r.out.err, c: cols[i], l: S6.C[i].nm })) }));
+    out.append(plot({ title: 'Courant moteur', xl: 'temps (s)', yl: 'A', h: 180, series: rs.map((r, i) => ({ x: r.out.t, y: r.out.i, c: cols[i], l: S6.C[i].nm })), hl: [{ y: P.Imax, l: '+Imax' }, { y: -P.Imax, l: '−Imax' }] }));
+    const num = (c, k, step) => { const inp = h('input', { type: 'number', min: 0, step, value: c[k], 'aria-label': c.nm + ' ' + k }); inp.addEventListener('change', () => { c[k] = Math.max(0, +inp.value || 0); later('d6', draw); }); return h('td', null, inp); };
+    tab.append(h('div', { class: 'dwrap' }, h('table', { class: 'dt' }, h('thead', null, h('tr', null, ['Réglage', 'Kp', 'Ki', 'Kd', 'Anticipation', 'Erreur max', 'Erreur RMS', 'Courant max', 'Effort max'].map(x => h('th', null, x)))),
+      h('tbody', null, S6.C.map((c, i) => h('tr', null, h('td', null, h('b', { style: 'color:' + cols[i] }, c.nm)), num(c, 'Kp', 0.5), num(c, 'Ki', 0.5), num(c, 'Kd', 0.01),
+        h('td', null, (() => { const x = h('input', { type: 'checkbox', checked: c.ff, 'aria-label': c.nm + ' anticipation' }); x.addEventListener('change', () => { c.ff = x.checked; later('d6', draw); }); return x; })()),
+        h('td', { class: 'm' }, fm(ps[i].emax, 2) + ' °'), h('td', { class: 'm' }, fm(ps[i].rms, 2) + ' °'), h('td', { class: 'm' }, fm(ps[i].Imax, 2) + ' A'), h('td', { class: 'm' }, fm(ps[i].Fmax, 0) + ' N')))))));
+    setMsg('#m6', 'Erreur max : ' + S6.C.map((c, i) => c.nm + ' ' + fm(ps[i].emax, 2) + ' °').join(', ') + '. ' + (ps[1].rms < ps[0].rms / 2 ? 'L’anticipation divise l’erreur quadratique par ' + fm(ps[0].rms / Math.max(ps[1].rms, 1e-6), 0) + '. ' : '') + (S6.spasm ? 'Le spasme fait monter l’effort à ' + fm(ps[1].Fmax, 0) + ' N sans dégrader le suivi : la réduction absorbe la perturbation.' : ''), 'warn');
+  };
+  const chips = h('div', { class: 'chips' }, [['Cycle réel (2,4 °/s)', { th0: 10, th1: 30, v: 2.4, spasm: true }], ['Mode rapide (20 °/s)', { th0: 10, th1: 60, v: 20, spasm: false }], ['Spasme fort, jambe lourde', { m: 7, v: 10, spasm: true }]].map(c => h('button', { class: 'chip', type: 'button', onclick: () => { Object.assign(S6, c[1]); root.innerHTML = ''; mount6(root); } }, c[0])));
+  root.append(chips, h('div', { class: 'opts' },
+    sld('Vitesse de palier', 2, 40, 0.5, S6.v, v => fm(v, 1) + ' °/s', v => { S6.v = v; later('d6', draw); }),
+    sld('Masse de la jambe', 2, 8, 0.5, S6.m, v => fm(v, 1) + ' kg', v => { S6.m = v; later('d6', draw); }),
+    sld('Raideur du genou', 0, 1, 0.05, S6.k, v => fm(v, 2) + ' N·m/°', v => { S6.k = v; later('d6', draw); }),
+    chk('Spasme du patient (−40 N·m)', S6.spasm, v => { S6.spasm = v; later('d6', draw); })), out, tab, msg);
+  draw();
+}
+WORKSHOPS.push({ id: 's6', title: 'Correcteurs (PSI*)', hint: 'Comparez trois réglages de la boucle de position face à la rampe de consigne et à un spasme.', mount: mount6, reset: () => { Object.assign(S6, { th0: 10, th1: 40, v: 10, m: 4, k: 0.4, spasm: true, C: [{ nm: 'P seul', Kp: 5, Ki: 0, Kd: 0, ff: false }, { nm: 'P + anticipation', Kp: 5, Ki: 0, Kd: 0, ff: true }, { nm: 'PID + anticipation', Kp: 5, Ki: 2, Kd: 0.05, ff: true }] }); } });
+/* ---------- activités ---------- */
+const ACT = {
+  s1: {
+    title: 'Découvrir l’attelle CPM', level: 'Niveau 1 · Découvrir', time: '25 min', course: 'presentation',
+    goal: 'Repérer les chaînes du CPM-130, comprendre le rôle de la cascade de régulation et distinguer les paramètres documentés des paramètres calés.',
+    steps: [
+      'Sur le schéma-blocs, suivez la chaîne d’énergie du hacheur jusqu’au genou. Quels blocs la composent ? Quelle information revient vers la commande ?',
+      'Faites varier l’angle du genou de −10° à 120° et relevez la longueur du vérin et le nombre de tours moteur : quelle est la course totale ?',
+      'Ajoutez de la masse à la jambe : quelle grandeur change (couple de pesanteur) et pourquoi pas la longueur du vérin ?',
+      'Dans le tableau, comptez les paramètres documentés et les paramètres calés. Quelle conséquence pour un calcul chiffré ?',
+      'Saisissez une valeur différente pour le pas de la vis : quelles grandeurs du jumeau sont modifiées ?'
+    ],
+    defi: { q: 'Avec un pas de vis de 5 mm/tr et une réduction de 1:16, combien de tours du moteur faut-il pour 1 mm de course du vérin ? Et pour toute la course de 177 mm ?',
+      a: 'Un tour de vis avance de 5 mm et demande 16 tours du moteur : 16 / 5 = <b>3,2 tr/mm</b>. Pour 177 mm : 3,2 × 177 ≈ <b>567 tours</b> du moteur.' },
+    qcm: [
+      { q: 'Quelle est l’amplitude angulaire du genou indiquée par la fiche du CPM-130 ?', o: ['0° à 90°', '−10° à 120°', '−45° à 45°', '0° à 180°'], a: 1, w: 'Le CPM-130 reprend le mécanisme réel d’une attelle de mobilisation du genou : amplitude de −10° à 120°.' },
+      { q: 'Quelle est la structure de régulation de la carte EPOS ?', o: ['Un seul PID de position', 'PI courant, PI vitesse et PID position', 'Un correcteur tout ou rien', 'Un correcteur flou'], a: 1, w: 'La fiche cite les boucles PI courant, PI vitesse et PID position, réglables depuis l’interface PC.' },
+      { q: 'Lequel de ces éléments appartient à la chaîne d’énergie ?', o: ['Le capteur d’angle sans contact', 'La vis à billes', 'Le profil de consigne', 'Le calcul du PID'], a: 1, w: 'La vis à billes transmet de la puissance mécanique. Le capteur, la consigne et le PID traitent de l’information.' },
+      { q: 'Que signifie « calé » dans le tableau des paramètres ?', o: ['Relevé dans la fiche du constructeur', 'Choisi par l’auteur de la page, faute de donnée publiée', 'Mesuré sur le banc', 'Sans effet sur le modèle'], a: 1, w: 'Les constantes du moteur, le pas de la vis et la géométrie du vérin ne sont pas publiés : ce sont des ordres de grandeur à recaler.' },
+      { q: 'Quel est le rôle du capteur d’effort de type S de 50 kg ?', o: ['Mesurer l’angle du genou', 'Mesurer l’effort de traction exercé par le genou', 'Mesurer le courant du moteur', 'Mesurer la vitesse de la vis'], a: 1, w: 'Il mesure l’effort de traction du genou et sert en mode patient actif, où l’axe est asservi en couple.' }
+    ]
+  },
+  s2: {
+    title: 'Loi entrée-sortie du vérin', level: 'Niveau 1 · Découvrir', time: '30 min', course: 'cinematique',
+    goal: 'Interpréter la loi entrée-sortie du vérin, calculer le gain cinématique et en déduire la vitesse moteur et l’effort selon l’angle.',
+    steps: [
+      'Relevez x(−10°) et x(120°). Quelle est la course du vérin ?',
+      'Réglez la vitesse à 145 °/min. À quel angle la vitesse moteur requise est-elle maximale ? Quelle fraction de la vitesse à vide cela représente-t-il ?',
+      'Augmentez la raideur du genou à 1 N·m/° : où l’effort dans le vérin est-il le plus élevé ? Pourquoi ?',
+      'Doublez la masse de la jambe. L’effort maximal double-t-il ? Justifiez avec le couple de pesanteur.',
+      'Augmentez la vitesse jusqu’à 3000 °/min : à partir de quelle valeur la vitesse moteur approche-t-elle sa limite ?'
+    ],
+    defi: { q: 'À θ = 45°, avec a = 100 mm et c = 160 mm, x = 165 mm. Calculez dx/dθ puis le gain dθ/dφm (pas 5 mm/tr, réduction 16), puis la vitesse moteur pour 145 °/min.',
+      a: 'dx/dθ = a·c·sin(θ + 30°)/x = 0,016 × sin 75° / 0,1653 ≈ <b>0,0935 m/rad</b>. Le vérin avance de p/(2π·16) = 4,97·10⁻⁵ m par radian moteur : dθ/dφm ≈ 4,97·10⁻⁵ / 0,0935 ≈ <b>5,3·10⁻⁴</b>. 145 °/min = 0,0422 rad/s, d’où ωm ≈ 0,0422 / 5,3·10⁻⁴ ≈ 80 rad/s, soit <b>environ 760 tr/min</b>.' },
+    qcm: [
+      { q: 'Que vaut la course du vérin entre −10° et 120° avec la géométrie du jumeau ?', o: ['Environ 18 mm', 'Environ 177 mm', 'Environ 1,8 m', 'Environ 5 mm'], a: 1, w: 'x passe de 74 mm à 252 mm : la course est d’environ 177 mm.' },
+      { q: 'À vitesse angulaire du genou fixée, quand la vitesse moteur requise est-elle la plus grande ?', o: ['Là où dx/dθ est le plus petit', 'Là où dx/dθ est le plus grand', 'À θ = 0 toujours', 'Elle ne dépend pas de θ'], a: 1, w: 'ωm = θ̇ · (dx/dθ) / (p/(2π·N)) : la vitesse requise est proportionnelle à dx/dθ.' },
+      { q: 'Pourquoi l’effort dans le vérin est-il élevé à 120° avec un genou raide ?', o: ['La pesanteur est maximale à 120°', 'Le couple de raideur est grand et dx/dθ est petit : F = C / (dx/dθ)', 'Le moteur est saturé', 'La vis a du jeu'], a: 1, w: 'À 120°, dx/dθ ≈ 32 mm/rad est petit : un couple de 8 N·m demande environ 250 N dans le vérin.' },
+      { q: 'À 145 °/min, quelle fraction de sa vitesse à vide le moteur utilise-t-il environ ?', o: ['Environ 9 %', 'Environ 50 %', 'Environ 95 %', 'Plus de 100 %'], a: 0, w: 'La vitesse requise atteint environ 810 tr/min au maximum, contre environ 9 200 tr/min à vide (24 V / Ke).' },
+      { q: 'Quelle relation lie l’effort F dans le vérin au couple C exercé au genou ?', o: ['F = C · dx/dθ', 'F = C / (dx/dθ)', 'F = C · θ', 'F = C / x'], a: 1, w: 'Par conservation de la puissance sans pertes : C·θ̇ = F·ẋ, soit F = C / (dx/dθ).' }
+    ]
+  },
+  s3: {
+    title: 'Trapèze et dimensionnement', level: 'Niveau 2 · Comprendre', time: '35 min', course: 'trapeze',
+    goal: 'Construire un trapèze de vitesse, en déduire la durée d’un cycle puis vérifier que le moteur peut fournir la vitesse, le courant et la tension nécessaires.',
+    steps: [
+      'Gardez −10° → 90°, 145 °/min et 2 °/s². Relevez la durée du cycle, la vitesse moteur max, le courant max et la tension max.',
+      'Comparez la puissance mécanique maximale à la puissance du moteur (40 W). Quelle marge reste-t-il ?',
+      'Passez à 1500 °/min avec une accélération de 40 °/s². Quelles limites sont dépassées en premier ?',
+      'À vitesse constante, de quoi dépend surtout la tension : du courant ou de la vitesse ? Justifiez avec l’équation du moteur.',
+      'Réduisez l’accélération. Quel effet sur le courant au démarrage et sur la durée du cycle ?'
+    ],
+    defi: { q: 'Calculez la durée d’un aller de −10° à 90° (100°) avec une vitesse de palier de 145 °/min et une accélération de 2 °/s².',
+      a: 'v = 145 / 60 ≈ 2,42 °/s. Durée d’accélération : v/a ≈ 1,21 s. Palier : D/v − v/a = 41,4 − 1,2 ≈ 40,2 s. Aller = 2 × 1,21 + 40,2 ≈ <b>42,6 s</b>. Avec 0,5 s de palier et le retour, le cycle dure <b>85,7 s</b>.' },
+    qcm: [
+      { q: 'Que représente l’aire sous la courbe de vitesse d’un trapèze ?', o: ['L’accélération totale', 'L’amplitude du déplacement', 'La puissance', 'Le courant'], a: 1, w: 'La position est l’intégrale de la vitesse : l’aire du trapèze est l’amplitude du mouvement.' },
+      { q: 'À vitesse constante, la tension du moteur est surtout…', o: ['R·i, le terme résistif', 'Ke·ω, la force contre-électromotrice', 'L·di/dt', 'Nulle'], a: 1, w: 'Le courant est faible (frottements, pesanteur) : la tension est dominée par Ke·ω.' },
+      { q: 'À 145 °/min, la tension nécessaire est de l’ordre de…', o: ['2,5 V', '24 V', '100 V', '0,1 V'], a: 0, w: 'La vitesse moteur max est de 810 tr/min, soit 85 rad/s : Ke·ω ≈ 2,1 V, plus R·i : environ 2,5 V au total.' },
+      { q: 'Quel est l’effet d’une accélération plus grande sur le courant ?', o: ['Il diminue', 'Le pic de courant au démarrage augmente (J·dω/dt)', 'Il reste identique', 'Il devient nul'], a: 1, w: 'Le couple d’accélération est J·dω/dt : plus l’accélération est forte, plus le pic de courant est grand.' },
+      { q: 'Le moteur de 40 W est-il sollicité près de sa puissance à 145 °/min ?', o: ['Oui, près de 100 %', 'Non, très en dessous', 'Exactement 50 %', 'On ne peut pas le savoir'], a: 1, w: 'La puissance mécanique maximale est de l’ordre de 1 W : le moteur est largement surdimensionné pour une application didactique.' }
+    ]
+  },
+  s4: {
+    title: 'Asservir le genou', level: 'Niveau 2 · Comprendre', time: '40 min', course: 'cascade',
+    goal: 'Comprendre la cascade courant, vitesse, position, expliquer l’erreur de traînage sur une rampe et l’effet de l’anticipation.',
+    steps: [
+      'Choisissez « Cycle réel (2,4 °/s) ». Relevez l’erreur de traînage maximale avec puis sans anticipation.',
+      'Passez en « Mode rapide ». Comment évolue l’erreur sans anticipation ? Que vaut la tension maximale ?',
+      'Augmentez Kp de 5 à 20 s⁻¹ sans anticipation : comparez l’erreur de traînage à v/Kp.',
+      'Activez le spasme. Que se passe-t-il pour l’erreur de suivi ? pour l’effort dans le vérin ?',
+      'Rejouez le mouvement avec le curseur d’instant et repérez l’angle atteint à la fin du palier.'
+    ],
+    defi: { q: 'Sans anticipation, la boucle de position est un correcteur proportionnel Kp suivi d’un intégrateur. Quelle erreur de traînage prévoit-on pour une rampe de 10 °/s avec Kp = 5 s⁻¹ ? et pour 2,4 °/s ? Quel Kp faudrait-il pour rester sous 0,1° à 2,4 °/s ?',
+      a: 'En régime établi, la vitesse de sortie vaut Kp·ε : ε = v/Kp. Pour 10 °/s : <b>2°</b> (le jumeau donne 2,1°). Pour 2,4 °/s : <b>0,48°</b> (le jumeau donne 0,52°). Pour ε < 0,1° à 2,4 °/s : Kp > 24, soit <b>environ 24 s⁻¹</b>.' },
+    qcm: [
+      { q: 'Dans la cascade, quelle boucle est la plus rapide ?', o: ['La boucle de position', 'La boucle de vitesse', 'La boucle de courant', 'Elles ont la même vitesse'], a: 2, w: 'Chaque boucle externe suppose que la boucle interne est quasi instantanée : le courant est la plus rapide, la position la plus lente.' },
+      { q: 'Pourquoi un P seul laisse-t-il une erreur de traînage sur une rampe ?', o: ['À cause de la saturation', 'Il faut un écart non nul pour produire la vitesse demandée : ε = v/Kp', 'À cause du capteur', 'À cause de la pesanteur'], a: 1, w: 'La FTBO est de classe 1 : l’erreur à une rampe de pente v vaut v divisé par le gain de vitesse Kp.' },
+      { q: 'Que fait l’anticipation de vitesse ?', o: ['Elle augmente Kp', 'Elle ajoute la vitesse de consigne à la sortie du correcteur de position', 'Elle supprime la boucle de courant', 'Elle filtre le capteur'], a: 1, w: 'La consigne de vitesse est connue : on l’envoie directement à la boucle de vitesse, et le correcteur ne corrige plus que l’écart résiduel.' },
+      { q: 'Pourquoi un spasme de 40 N·m perturbe-t-il peu le suivi du jumeau ?', o: ['Le moteur est saturé', 'La réduction et la vis ramènent seulement quelques mN·m côté moteur, que la boucle de courant compense', 'Le capteur est insensible', 'La perturbation est filtrée par la consigne'], a: 1, w: '40 N·m × 5,3·10⁻⁴ ≈ 21 mN·m côté moteur, soit moins d’1 A : bien en dessous de la limite de 3 A.' },
+      { q: 'En mode rapide à 20 °/s sans modification de Kp, que constate-t-on ?', o: ['L’erreur de traînage augmente avec la vitesse', 'L’erreur disparaît', 'Le moteur s’arrête', 'La tension devient nulle'], a: 0, w: 'ε = v/Kp augmente avec v ; la tension est plus élevée car Ke·ω croît.' }
+    ]
+  },
+  s5: {
+    title: 'Marges de la boucle de position', level: 'Niveau 3 · Approfondir (PSI*)', time: '40 min', course: 'bode',
+    goal: 'Lire un diagramme de Bode, relier ω_c et la marge de phase à Kp, à l’angle de fonctionnement et au retard, et vérifier sur le jumeau complet.',
+    steps: [
+      'Avec θ0 = 45° et Kp = 5 s⁻¹, relevez ω_c et la marge de phase. Passez à Kp = 20, 60 puis 150.',
+      'Gardez Kp = 60 et passez θ0 à 120°. Que deviennent ω_c et la marge de phase ? Comparez le rapport des gains cinématiques.',
+      'Activez le retard de 1,5 ms avec Kp = 150 : de combien la marge de phase diminue-t-elle ? Comparez à ω_c · 1,5 ms.',
+      'Réglez Kp pour viser 45° de marge à 45° : quelle valeur de Kp convient ? Vérifiez le dépassement sur l’échelon.',
+      'Diminuez la bande passante de la boucle de vitesse à 40 rad/s avec Kp = 20 : que devient la marge ?'
+    ],
+    defi: { q: 'Une boucle de position coupe 0 dB à ω_c = 138 rad/s et l’actionneur introduit un retard de 1,5 ms. Quelle marge de phase est perdue ?',
+      a: 'Un retard τ retire ω_c·τ radians de phase : 138 × 0,0015 = 0,207 rad, soit <b>environ 12°</b> de marge de phase. Le jumeau passe de 35° à 24° pour Kp = 150.' },
+    qcm: [
+      { q: 'Quand Kp augmente, la marge de phase de la boucle de position…', o: ['Augmente', 'Diminue', 'Reste identique', 'Devient infinie'], a: 1, w: 'ω_c augmente avec Kp et se rapproche de la bande passante de la boucle de vitesse : la phase de la boucle de vitesse chute, donc la marge aussi.' },
+      { q: 'Pourquoi la marge est-elle plus faible à 120° qu’à 45° pour le même Kp ?', o: ['Le moteur est plus lent', 'Le gain cinématique dθ/dφm est environ trois fois plus grand : la boucle ouverte est plus forte', 'La pesanteur est plus grande', 'Le capteur sature'], a: 1, w: 'dθ/dφm passe de 0,53·10⁻³ à 1,56·10⁻³ : le gain de boucle triple, ω_c monte et la marge baisse.' },
+      { q: 'Quelle règle vérifie une cascade bien réglée ?', o: ['ω_c de position beaucoup plus petite que la bande passante de la vitesse', 'ω_c de position égale à celle de la vitesse', 'ω_c de position supérieure à celle de la vitesse', 'Aucune règle'], a: 0, w: 'La boucle de vitesse est vue comme un filtre passe-bas rapide par la boucle de position : il faut les séparer d’un facteur 3 à 5.' },
+      { q: 'À Kp = 5 et θ0 = 45°, la marge de phase est proche de…', o: ['10°', '45°', '90°', '180°'], a: 2, w: 'ω_c ≈ 5 rad/s est très inférieure à la bande passante de la boucle de vitesse : le système se comporte presque comme un premier ordre pur (intégrateur) et la marge est voisine de 90°.' },
+      { q: 'Quel est l’effet d’un retard pur de τ sur la FTBO ?', o: ['Il change le gain', 'Il retire ω·τ de phase sans changer le gain', 'Il ajoute de la phase', 'Il ne change rien'], a: 1, w: 'Le retard e^(−τp) a un module de 1 et un argument de −ω·τ.' }
+    ]
+  },
+  s6: {
+    title: 'Corriger et perturber', level: 'Niveau 3 · Approfondir (PSI*)', time: '40 min', course: 'perturbation',
+    goal: 'Comparer P seul, P avec anticipation et PID, puis analyser l’effet d’une perturbation du patient sur le suivi, le courant et l’effort mesuré.',
+    steps: [
+      'Choisissez « Cycle réel (2,4 °/s) ». Comparez les erreurs maximales et quadratiques des trois réglages.',
+      'Passez en « Spasme fort, jambe lourde ». Relevez l’effort maximal et le courant maximal : le capteur de 50 kg est-il saturé ?',
+      'Augmentez Ki du PID jusqu’à 10. Que devient l’erreur finale et l’erreur maximale ?',
+      'Augmentez Kd à 0,3 : quel est l’effet sur le courant ? pourquoi la dérivée est-elle peu utile ici ?',
+      'Quel réglage choisiriez-vous pour un patient réel ? Justifiez en citant l’erreur, le courant et l’effort.'
+    ],
+    defi: { q: 'Un spasme de 40 N·m s’exerce sur le genou. Quel couple et quel courant cela représente-t-il côté moteur à 45° ? Quel effort le capteur d’effort voit-il si dx/dθ ≈ 0,1 m/rad ? Le capteur de 50 kg est-il suffisant ?',
+      a: 'Côté moteur : 40 × 5,3·10⁻⁴ ≈ <b>21 mN·m</b>, soit i = C/Kt ≈ 0,85 A : le moteur le compense sans difficulté. Dans le vérin : F = C / (dx/dθ) = 40/0,1 = <b>400 N</b>. Le capteur de 50 kg mesure jusqu’à environ 490 N : il suffit de justesse.' },
+    qcm: [
+      { q: 'Pourquoi l’anticipation de vitesse réduit-elle beaucoup l’erreur de traînage ?', o: ['Elle augmente Kp', 'Elle fournit directement la vitesse demandée, sans écart nécessaire', 'Elle supprime la pesanteur', 'Elle filtre le bruit'], a: 1, w: 'Avec l’anticipation, la sortie du P n’a plus qu’à compenser l’écart résiduel : l’erreur passe d’environ 2° à 0,14°.' },
+      { q: 'Quel est l’effet d’un spasme sur l’effort mesuré ?', o: ['Il le diminue', 'Il l’augmente fortement, de l’ordre de 300 N, sans dégrader le suivi', 'Il le rend nul', 'Il sature le moteur'], a: 1, w: 'F = C / (dx/dθ) : un couple de 40 N·m demande environ 300 à 400 N dans le vérin, alors que le moteur ne voit que quelques mN·m.' },
+      { q: 'Quel est l’intérêt de la limitation d’effort pour le patient ?', o: ['Elle accélère le mouvement', 'Elle évite de blesser le patient en arrêtant ou en limitant l’axe lorsque l’effort dépasse un seuil', 'Elle économise l’énergie', 'Elle améliore la précision'], a: 1, w: 'Le capteur d’effort sert à protéger le patient : on arrête ou on inverse le mouvement au-delà d’un seuil.' },
+      { q: 'Pourquoi la dérivée est-elle peu utile sur ce système ?', o: ['La boucle de vitesse apporte déjà l’amortissement', 'La dérivée est interdite', 'Le capteur est parfait', 'Le moteur est trop lent'], a: 0, w: 'La cascade comporte déjà une boucle de vitesse qui joue le rôle de l’action dérivée de la boucle de position.' },
+      { q: 'Le capteur d’effort de 50 kg mesure au maximum environ…', o: ['5 N', '49 N', '490 N', '4 900 N'], a: 2, w: '50 kg × 9,81 m/s² ≈ 490 N.' }
+    ]
+  }
+};
+
+/* ---------- cours ---------- */
+const COURSE = [];
+COURSE.push({ id: 'presentation', t: 'L’attelle CPM', h: `
+<p>Une attelle <b>CPM</b> (continuous passive motion, mobilisation passive continue) fait fléchir et étendre le genou d’un patient opéré, sans effort de sa part, pour limiter la raideur articulaire. Le <b>CPM-130</b> est son équivalent didactique : il reprend le mécanisme d’une attelle réelle (Kinetec Prima Advance).</p>
+<table class="ctable"><tr><th>Élément</th><th>Caractéristique publiée</th></tr>
+<tr><td>Actionneur</td><td>vérin linéaire à vis à billes</td></tr>
+<tr><td>Motorisation</td><td>motoréducteur maxon à courant continu, 24 V, 40 W, réduction 1:16</td></tr>
+<tr><td>Amplitude du genou</td><td>−10° à 120°</td></tr>
+<tr><td>Capteurs</td><td>angle du genou sans contact ; effort de traction de type S, 50 kg</td></tr>
+<tr><td>Commande</td><td>carte EPOS de maxon : PI courant, PI vitesse, PID position</td></tr></table>
+<h3>Modes de fonctionnement</h3>
+<ul><li><b>Passif</b> : mobilisation motorisée, consigne en trapèze de vitesse et profil de position.</li><li><b>Actif</b> : le patient pousse, l’axe est asservi en couple et gère l’effort.</li><li><b>Labo</b> : le vérin sert de banc d’asservissement (position, vitesse, courant).</li></ul>
+<div class="retain"><b>À retenir.</b> Le CPM est un système asservi en position dont la charge (la jambe) est vivante : il faut limiter vitesse et effort pour la sécurité du patient.</div>` });
+COURSE.push({ id: 'cinematique', t: 'Loi entrée-sortie', h: `
+<p>Le vérin est une jambe d’un triangle dont deux côtés a et c sont liés à la cuisse et à la jambe. Pour le jumeau, on retient la loi générique :</p>
+<div class="formula">x² = a² + c² − 2·a·c·cos(θ + 30°)     avec a = 100 mm, c = 160 mm</div>
+<p>On en déduit x(−10°) = 74 mm, x(120°) = 252 mm et une course de 177 mm. La cinématique réelle du CPM-130 n’est pas publiée : ces cotes sont des ordres de grandeur.</p>
+<h3>Gain cinématique et conséquences</h3>
+<div class="formula">dx/dθ = a·c·sin(θ + 30°) / x<br>dθ/dφm = ( p / (2π·N) ) / (dx/dθ)   (rad de genou par rad de moteur)<br>F = C / (dx/dθ)   (effort dans le vérin pour un couple C au genou)</div>
+<p>La vitesse du moteur nécessaire pour une vitesse de genou donnée est proportionnelle à dx/dθ, et l’effort à 1/(dx/dθ). Les deux dépendent de l’angle.</p>
+<div class="retain"><b>À retenir.</b> Une loi entrée-sortie non linéaire impose de dimensionner moteur et vis sur le pire angle, pas sur l’angle moyen.</div>` });
+COURSE.push({ id: 'trapeze', t: 'Trapèze et dimensionnement', h: `
+<p>Un profil de vitesse en <b>trapèze</b> comprend une accélération a, un palier à la vitesse v puis une décélération. Pour une amplitude D :</p>
+<div class="formula">t_acc = v/a     t_palier = D/v − v/a     durée = 2·t_acc + t_palier</div>
+<p>Si D < v²/a, il n’y a pas de palier : le profil devient triangulaire.</p>
+<h3>Dimensionnement</h3>
+<p>On remonte du mouvement au moteur sans simuler la régulation :</p>
+<div class="formula">ωm = θ̇ / (dθ/dφm)     Cm = J·dωm/dt + f·ωm + Cs + (dθ/dφm)·C_genou     i = Cm/Kt     u = R·i + L·di/dt + Ke·ωm</div>
+<p>On compare ensuite la vitesse, le courant et la tension à leurs limites. À 145 °/min, la tension nécessaire est d’environ 2,5 V pour 24 V disponibles : le moteur est surdimensionné pour cet usage didactique.</p>
+<div class="retain"><b>À retenir.</b> À vitesse constante, la tension est dominée par Ke·ω ; au démarrage, le courant est dominé par J·dω/dt.</div>` });
+COURSE.push({ id: 'cascade', t: 'Cascade de régulation', h: `
+<p>La carte EPOS associe trois boucles imbriquées : une boucle de <b>courant</b> (PI), une de <b>vitesse</b> (PI) et une de <b>position</b> (PID). Chaque boucle fournit la consigne de la boucle interne.</p>
+<div class="formula">position → consigne de vitesse → consigne de courant → tension du moteur</div>
+<ul><li>La boucle de courant, rapide, impose le couple du moteur : Cm = Kt·i.</li><li>La boucle de vitesse règle ωm autour de sa consigne.</li><li>La boucle de position rend le genou conforme au profil.</li></ul>
+<h3>Réglage d’école utilisé dans le jumeau</h3>
+<p>Courant : Kp = L·ω_i et Ki = R·ω_i (compensation du pôle électrique), avec ω_i = 1000 rad/s. Vitesse : Kp = J·ω_v/Kt, avec ω_v = 150 rad/s. Position : Kp en s⁻¹, la sortie est une vitesse de genou convertie en vitesse moteur par le gain cinématique nominal à 45°. Les sorties sont saturées (±3 A, ±24 V) et les intégrales gelées en saturation.</p>
+<h3>Erreur de traînage</h3>
+<p>La boucle de position est de classe 1. Sur une rampe de vitesse v, l’erreur vaut ε = v/Kp. L’<b>anticipation</b> ajoute la vitesse de consigne à la sortie du correcteur et supprime presque entièrement cette erreur.</p>
+<div class="retain"><b>À retenir.</b> Chaque boucle externe est plus lente que la boucle interne ; l’anticipation traite la rampe, le correcteur traite l’écart résiduel.</div>` });
+COURSE.push({ id: 'bode', t: 'Marges et bande passante (PSI*)', h: `
+<p>La boucle ouverte de position est le produit du correcteur, de la boucle de vitesse fermée Hω(p) et de l’intégrateur du vérin :</p>
+<div class="formula">FTBO(p) = C(p) · (1/Gn) · Hω(p) · (dθ/dφm) / p</div>
+<p>avec Gn le gain cinématique nominal et dθ/dφm celui de l’angle de fonctionnement. Hω est calculée à partir des équations du moteur et des deux PI :</p>
+<div class="formula">Hω = Kt·Cc·Cv / [ (J·p + f)(R + L·p + Cc) + Kt·Ke + Kt·Cc·Cv ]</div>
+<h3>Lecture</h3>
+<ul><li>ω_c augmente avec Kp et avec le gain cinématique : plus l’angle est grand, plus la boucle est forte.</li><li>La marge de phase diminue quand ω_c approche la bande passante de la boucle de vitesse.</li><li>Un retard τ retire ω_c·τ radians de phase.</li></ul>
+<div class="retain"><b>À retenir.</b> Le gain de boucle varie d’un facteur 3 sur la course : régler Kp au pire angle, ou compenser le gain cinématique.</div>` });
+COURSE.push({ id: 'perturbation', t: 'Perturbations et sécurité (PSI*)', h: `
+<p>La jambe du patient est une charge perturbatrice : pesanteur, raideur de l’articulation en fin de course, spasmes. Ramenée sur l’axe moteur par le gain cinématique, elle devient un couple très petit : 40 N·m au genou ne représentent qu’environ 21 mN·m côté moteur à 45°.</p>
+<p>Conséquence : le moteur suit sans difficulté, mais l’<b>effort dans le vérin</b> peut atteindre plusieurs centaines de newtons. Le capteur d’effort de 50 kg (environ 490 N) permet de limiter l’effort et d’arrêter ou d’inverser le mouvement au-delà d’un seuil, pour ne pas blesser le patient.</p>
+<ul><li><b>Intégrale</b> : annule l’erreur due à une perturbation lente, au prix d’une marge de phase réduite.</li><li><b>Dérivée</b> : peu utile ici, la boucle de vitesse amortit déjà.</li><li><b>Saturation et anti-windup</b> : on gèle l’intégrale quand la sortie est saturée.</li></ul>
+<div class="retain"><b>À retenir.</b> La précision de suivi n’est pas le critère de sécurité : surveiller l’effort, pas seulement l’erreur de position.</div>` });
+COURSE.push({ id: 'glossaire', t: 'Glossaire et sources', h: `
+<dl class="gloss">
+<dt>CPM</dt><dd>mobilisation passive continue</dd>
+<dt>dθ/dφm</dt><dd>gain cinématique : rad de genou par rad de moteur</dd>
+<dt>Trapèze</dt><dd>profil de vitesse : accélération, palier, décélération</dd>
+<dt>Cascade</dt><dd>boucles de courant, vitesse et position imbriquées</dd>
+<dt>Anticipation</dt><dd>ajout de la vitesse de consigne à la sortie du correcteur</dd>
+<dt>ε = v/Kp</dt><dd>erreur de traînage d’une boucle de classe 1 sur une rampe</dd>
+</dl>
+<h3>Sources consultées</h3>
+<ul>
+<li>Fiche « CPM-130, attelle de mobilisation du genou » (Didastel) : actionneur, motoréducteur, capteurs, modes, amplitude, boucles EPOS.</li>
+<li>Fiche produit de l’attelle de mobilisation du genou (ATV Systèmes) : mêmes données.</li>
+<li>Manuel de l’attelle Kinetec Prima Advance : vitesses angulaires de 40 à 145 °/min, charge patient de 135 kg.</li>
+</ul>
+<h3>Ce qui n’est pas publié</h3>
+<p>Les constantes électriques et mécaniques du moteur, le pas de la vis, la cinématique exacte du vérin, les inerties et les réglages d’usine de la carte EPOS ne figurent pas dans ces sources. Le jumeau les remplace par des valeurs génériques indiquées comme « calées » dans l’atelier 1, que vous pouvez modifier avec celles du dossier technique.</p>` });
+/* ---------- interface ---------- */
+const UI = { cur: 's1' };
+const AS = { key: 's1', tab: 'steps', open: false, st: lsGet(KEYS.act, {}), arm: null };
+const CS = { open: false, id: 'presentation' };
+function actSave() { lsSet(KEYS.act, AS.st); }
+function actState() { return AS.st[AS.key] || (AS.st[AS.key] = { a: {}, checked: false, shown: false }); }
+function actScore(a) { const s = actState(); return a.qcm.filter((q, i) => s.a[i] === q.a).length; }
+function wsById(id) { return WORKSHOPS.find(w => w.id === id) || WORKSHOPS[0]; }
+function renderSeg() {
+  const seg = $('#wsSeg'); seg.innerHTML = '';
+  WORKSHOPS.forEach((w, i) => seg.append(h('button', { type: 'button', role: 'tab', 'aria-pressed': w.id === UI.cur ? 'true' : 'false', 'aria-selected': w.id === UI.cur ? 'true' : 'false', onclick: () => gotoWs(w.id) }, (i + 1) + '. ' + w.title)));
+}
+function mountWs() {
+  const w = wsById(UI.cur), root = $('#ws');
+  $('#hint').textContent = w.hint; root.innerHTML = '';
+  w.mount(root);
+  const sc = $('#scroller'); if (sc) sc.scrollTop = 0;
+}
+function gotoWs(id) {
+  if (CS.open) { CS.open = false; renderCourse(); }
+  UI.cur = id; AS.key = id; AS.tab = 'steps';
+  renderSeg(); mountWs(); renderAct();
+}
+function renderAct() {
+  const box = $('#act'), btn = $('#bAct');
+  btn.setAttribute('aria-pressed', AS.open ? 'true' : 'false'); btn.classList.toggle('pri', AS.open);
+  box.hidden = !AS.open;
+  if (!AS.open) { box.innerHTML = ''; return; }
+  const oldB = box.querySelector('.pbody'), tag = AS.key + '|' + AS.tab, keep = oldB && box.dataset.k === tag ? oldB.scrollTop : 0;
+  box.dataset.k = tag;
+  box.innerHTML = '';
+  const a = ACT[AS.key];
+  const close = h('button', { class: 'btn sm', type: 'button', onclick: () => { AS.open = false; renderAct(); } }, 'Fermer');
+  box.append(h('div', { class: 'phead' }, h('b', null, 'Activité'), h('span', { class: 'sub' }, a.title), close));
+  const nq = a.qcm.length;
+  box.append(h('div', { class: 'tabs', role: 'tablist' },
+    h('button', { type: 'button', role: 'tab', 'aria-selected': AS.tab === 'steps' ? 'true' : 'false', onclick: () => { AS.tab = 'steps'; renderAct(); } }, 'Consignes'),
+    h('button', { type: 'button', role: 'tab', 'aria-selected': AS.tab === 'qcm' ? 'true' : 'false', onclick: () => { AS.tab = 'qcm'; renderAct(); } }, 'Questions (' + nq + ')')));
+  const body = h('div', { class: 'pbody' });
+  if (AS.tab === 'steps') {
+    body.append(h('p', { class: 'small' }, a.level + ' · environ ' + a.time), h('div', { class: 'goal' }, h('b', null, 'Objectif. '), a.goal));
+    body.append(h('ol', { class: 'steps' }, a.steps.map(s => h('li', { html: s }))));
+    body.append(h('div', { class: 'defi' }, h('b', null, 'Défi'), h('p', { html: a.defi.q }), h('details', null, h('summary', null, 'Voir la réponse'), h('p', { html: a.defi.a }))));
+    if (a.course) body.append(h('p', null, h('button', { class: 'btn', type: 'button', onclick: () => openCourse(a.course) }, 'Voir le cours : ' + courseSection(a.course).t)));
+    body.append(h('p', null, h('button', { class: 'btn', type: 'button', onclick: ev => {
+      const b = ev.currentTarget;
+      if (!AS.arm) { b.textContent = 'Confirmer ? Votre travail sera effacé'; AS.arm = setTimeout(() => { b.textContent = 'Recommencer l’atelier'; AS.arm = null; }, 3500); return; }
+      clearTimeout(AS.arm); AS.arm = null; wsById(UI.cur).reset(); mountWs(); renderAct(); } }, 'Recommencer l’atelier')));
+    body.append(h('p', null, h('button', { class: 'btn pri', type: 'button', onclick: () => { AS.tab = 'qcm'; renderAct(); } }, 'Passer aux questions')));
+  } else {
+    const s = actState(), show = s.checked || s.shown;
+    a.qcm.forEach((q, i) => {
+      const fs = h('fieldset', { class: 'q' }, h('legend', null, (i + 1) + '. ' + q.q));
+      q.o.forEach((o, j) => {
+        const good = show && j === q.a, bad = s.checked && !s.shown && s.a[i] === j && j !== q.a;
+        const inp = h('input', { type: 'radio', name: 'q' + i, checked: show && s.shown ? j === q.a : s.a[i] === j, disabled: show });
+        inp.addEventListener('change', () => { s.a[i] = j; actSave(); renderAct(); });
+        fs.append(h('label', { class: 'opt' + (good ? ' good' : '') + (bad ? ' bad' : '') }, inp, h('span', null, o + (good ? '  ✓' : '') + (bad ? '  ✗' : ''))));
+      });
+      if (show) { const miss = s.a[i] == null && !s.shown; fs.append(h('p', { class: 'why' }, (miss ? 'Sans réponse. ' : '') + q.w)); }
+      body.append(fs);
+    });
+    const done = Object.keys(s.a).length;
+    body.append(h('p', { class: 'small' }, s.shown ? 'Réponses affichées.' : s.checked ? '' : done + ' réponse(s) sur ' + nq + '.'));
+    if (s.checked && !s.shown) body.append(h('p', { class: 'score' }, 'Score : ' + actScore(a) + ' / ' + nq));
+    const row = h('div', { class: 'files' });
+    if (!show) row.append(h('button', { class: 'btn pri', type: 'button', onclick: () => { s.checked = true; actSave(); renderAct(); } }, 'Corriger'));
+    row.append(h('button', { class: 'btn', type: 'button', onclick: () => { s.shown = true; actSave(); renderAct(); } }, 'Afficher les réponses'));
+    if (show) row.append(h('button', { class: 'btn', type: 'button', onclick: () => { AS.st[AS.key] = { a: {}, checked: false, shown: false }; actSave(); renderAct(); } }, 'Recommencer'));
+    body.append(row);
+  }
+  box.append(body); body.scrollTop = keep;
+}
+function actToggle() { if (CS.open) { CS.open = false; renderCourse(); } AS.open = !AS.open; renderAct(); }
+$('#bAct').addEventListener('click', actToggle);
+
+function courseSection(id) { return COURSE.find(s => s.id === id) || COURSE[0]; }
+function renderCourse() {
+  const box = $('#course'), btn = $('#bCourse'), work = $('#work');
+  btn.setAttribute('aria-pressed', CS.open ? 'true' : 'false'); btn.classList.toggle('pri', CS.open);
+  box.hidden = !CS.open; work.hidden = CS.open; $('#modes').hidden = CS.open;
+  if (!CS.open) { box.innerHTML = ''; return; }
+  box.innerHTML = '';
+  const cur = courseSection(CS.id), idx = COURSE.indexOf(cur);
+  const go = id => { CS.id = id; renderCourse(); };
+  const nav = h('nav', { class: 'ctoc', 'aria-label': 'Sommaire du cours' }, COURSE.map((s, i) => h('button', { type: 'button', class: s.id === cur.id ? 'on' : '', 'aria-current': s.id === cur.id ? 'true' : 'false', onclick: () => go(s.id) }, (i + 1) + '. ' + s.t)));
+  const sel = h('select', { class: 'ctoc-sel', 'aria-label': 'Choisir une section', onchange: e => go(e.target.value) }, COURSE.map((s, i) => h('option', { value: s.id, selected: s.id === cur.id }, (i + 1) + '. ' + s.t)));
+  const art = h('article', { class: 'cbody' });
+  art.append(h('p', { class: 'ckick' }, 'Cours · section ' + (idx + 1) + ' sur ' + COURSE.length), h('h2', null, cur.t), h('div', { html: cur.h }));
+  art.append(h('div', { class: 'cpn' },
+    idx > 0 ? h('button', { class: 'btn', type: 'button', onclick: () => go(COURSE[idx - 1].id) }, '← ' + COURSE[idx - 1].t) : h('span'),
+    idx < COURSE.length - 1 ? h('button', { class: 'btn pri', type: 'button', onclick: () => go(COURSE[idx + 1].id) }, COURSE[idx + 1].t + ' →') : h('span')));
+  const top = h('div', { class: 'ctop' }, h('b', null, 'Cours : l’attelle CPM et son asservissement'), h('button', { class: 'btn pri sm', type: 'button', onclick: () => { CS.open = false; renderCourse(); } }, 'Retour à l’atelier'));
+  box.append(top, sel, h('div', { class: 'cwrap' }, nav, art));
+  const sc = box.querySelector('.cwrap'); if (sc) sc.scrollTop = 0; box.scrollTop = 0;
+}
+function openCourse(id) { if (id) CS.id = id; CS.open = true; renderCourse(); }
+$('#bCourse').addEventListener('click', () => { CS.open = !CS.open; renderCourse(); });
+
+function closeDlg() { $('#dlg').hidden = true; $('#dlg').innerHTML = ''; }
+function openDlg(title, body) {
+  const d = $('#dlg'); d.innerHTML = ''; d.hidden = false;
+  d.append(h('div', { class: 'dlgbox', role: 'dialog', 'aria-label': title }, h('header', null, h('b', null, title), h('button', { class: 'btn sm', type: 'button', onclick: closeDlg }, 'Fermer')), h('div', { class: 'dbody' }, body)));
+  d.onclick = ev => { if (ev.target === d) closeDlg(); };
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#dlg').hidden) closeDlg(); });
+$('#bHelp').addEventListener('click', () => {
+  openDlg('Aide', h('div', { html: '<p>Six ateliers autour de l’attelle CPM de genou : présentation du système, loi entrée-sortie du vérin, trapèze et dimensionnement du moteur, asservissement en cascade, analyse fréquentielle et correcteurs. Les deux derniers visent le niveau PSI*.</p>' +
+    '<h3>Utilisation</h3><ul><li>Choisissez un atelier dans la barre du haut et déplacez les curseurs : les tracés se recalculent immédiatement.</li><li>Survolez un tracé pour lire les valeurs.</li><li>Le bouton <b>Activité</b> affiche les consignes, un défi et un QCM avec correction.</li><li>Le bouton <b>Cours</b> reprend les notions et les sources.</li></ul>' +
+    '<h3>Limites du jumeau</h3><p>La fiche publique du CPM-130 ne donne ni les constantes du moteur, ni le pas de la vis, ni la cinématique exacte : ces valeurs sont calées. Vous pouvez les remplacer dans l’atelier 1.</p>' +
+    '<h3>Vos données</h3><p>Les réponses au QCM et le thème sont mémorisés dans ce navigateur uniquement.</p>' }));
+});
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  const b = $('#bTheme'); b.setAttribute('aria-pressed', dark ? 'true' : 'false'); b.textContent = dark ? 'Mode clair' : 'Mode sombre';
+}
+$('#bTheme').addEventListener('click', () => { const d = document.documentElement.getAttribute('data-theme') !== 'dark'; applyTheme(d); lsSet('cpm-theme', d ? 'dark' : 'light'); mountWs(); });
+(function init() { applyTheme(lsGet('cpm-theme', 'light') === 'dark'); AS.open = !isSmall(); renderSeg(); mountWs(); renderAct(); renderCourse(); })();
+</script>
+
+</body></html>
