@@ -1,680 +1,959 @@
-<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Jumeau numérique MaxPID · SII PCSI/PSI*</title>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Jumeau numérique MaxPID</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-  :root{
-    --font-ui:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
-    --font-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
-    --bg:#ffffff;--bar:#eeeeee;--panel:#ffffff;--panel2:#f1f3f6;--field:#ffffff;--line:#b9bfc7;
-    --fg:#111111;--muted:#5a6068;--accent:#2e6da4;--accent-fg:#ffffff;--accent-soft:#dcebf8;--accent-ink:#1b4a76;
-    --ok:#1e7a2e;--warn:#9a5b00;--bad:#c0281f;--violet:#7b4fc2;
-    color-scheme:light;
-  }
-  *{box-sizing:border-box}
-  [hidden]{display:none!important}
-  html,body{height:100%}
-  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 var(--font-ui)}
-  .inner{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-  #app{height:100%;display:flex;flex-direction:column;min-height:0}
-  .band{background:var(--bar);border-bottom:1px solid var(--line);flex:none}
-  .row{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding-block:7px}
-  .brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:16px;letter-spacing:.01em}
-  .brand small{font-weight:400;color:var(--muted);font-size:13px}
-  .files{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-  .btn{font-weight:500;font-size:13px;padding:6px 11px;border:1px solid var(--line);background:var(--panel);border-radius:7px;cursor:pointer}
-  .btn:hover{border-color:var(--accent)}
-  .btn:disabled{opacity:.45;cursor:not-allowed}
-  .btn.pri{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
-  .btn.sm{padding:3px 8px;font-size:12px}
-  :is(button,input,select,textarea,summary):focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;background:var(--panel);max-width:100%;overflow-x:auto}
-  .seg button{border:0;background:transparent;padding:7px 14px;font-weight:500;font-size:13px;cursor:pointer;white-space:nowrap}
-  .seg button+button{border-left:1px solid var(--line)}
-  .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
-  .work{flex:1;min-height:0;display:flex;gap:10px;padding-block:10px}
-  #stage{flex:1;min-width:0;position:relative;border:1px solid var(--line);border-radius:10px;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
-  #hint{flex:none;padding:6px 12px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--line);background:var(--bar)}
-  #scroller{flex:1;min-height:0;overflow:auto}
-  .phead{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);flex:none}
-  .phead b{font-size:15px}
-  .phead .sub{color:var(--muted);font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .tabs{display:flex;gap:2px;padding:6px 8px 0;border-bottom:1px solid var(--line);overflow-x:auto;flex:none}
-  .tabs button{border:0;border-bottom:2px solid transparent;background:transparent;padding:6px 10px;font-weight:500;font-size:13px;cursor:pointer;white-space:nowrap;color:var(--muted)}
-  .tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
-  .pbody{overflow:auto;padding:12px;flex:1;min-height:0}
-  .fld{display:flex;flex-direction:column;gap:3px;margin-bottom:9px;font-size:12.5px;color:var(--muted)}
-  input[type=text],input[type=number],textarea,select{width:100%;background:var(--field);border:1px solid var(--line);border-radius:6px;padding:5px 8px;color:var(--fg)}
-  input[type=range]{width:100%;padding:0;accent-color:var(--accent)}
-  .mono{font-family:var(--font-mono);font-size:12.5px}
-  .small{font-size:12px;color:var(--muted);margin:0 0 9px}
-  #act{flex:none;width:clamp(280px,24vw,340px);display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--panel);min-height:0;max-height:100%}
-  #act .pbody{font-size:13.5px}
-  .goal{background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:8px 10px;margin:0 0 10px}
-  .steps{margin:0 0 10px;padding-left:20px}.steps li{margin-bottom:9px}
-  .defi{border:1px dashed var(--accent);border-radius:8px;padding:8px 10px;margin:0 0 12px}.defi p{margin:6px 0}
-  .defi summary{cursor:pointer;font-weight:500;color:var(--accent-ink)}
-  fieldset.q{border:1px solid var(--line);border-radius:8px;padding:8px 10px 6px;margin:0 0 10px;min-width:0}
-  fieldset.q legend{font-weight:600;padding:0 4px;max-width:100%}
-  .opt{display:flex;gap:8px;align-items:flex-start;padding:4px 6px;border-radius:6px;cursor:pointer}
-  .opt input{margin-top:3px;width:auto;flex:none}
-  .opt.good{background:rgba(30,122,46,.15)}.opt.bad{background:rgba(192,40,31,.15)}
-  .why{font-size:12.5px;color:var(--muted);margin:6px 4px 2px}
-  .score{font-weight:600;font-size:15px;margin:4px 0 8px}
-  #course{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg)}
-  .ctop,.cwrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-  .ctop{flex:none;display:flex;justify-content:space-between;align-items:center;gap:10px;padding-block:8px;border-bottom:1px solid var(--line);background:var(--bar)}
-  .cwrap{flex:1;min-height:0;display:flex;gap:28px;padding-block:14px}
-  .ctoc{flex:none;width:250px;overflow:auto;display:flex;flex-direction:column;gap:1px}
-  .ctoc button{display:block;width:100%;text-align:left;padding:6px 10px;border:0;border-left:3px solid transparent;background:transparent;cursor:pointer;font-size:13.5px}
-  .ctoc button:hover{background:var(--panel2)}
-  .ctoc button.on{border-left-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
-  .ctoc-sel{display:none;margin:8px max(16px,env(safe-area-inset-left,0px)) 0;width:auto}
-  .cbody{flex:1;min-width:0;overflow:auto;max-width:860px;padding-right:6px}
-  .ckick{color:var(--muted);font-size:12.5px;margin:0}
-  .cbody h2{font-size:26px;margin:2px 0 12px;text-wrap:balance}
-  .cbody h3{font-size:16.5px;margin:22px 0 6px}
-  .cbody p,.cbody li{font-size:14.5px;line-height:1.6}
-  .cbody ul,.cbody ol{padding-left:22px}.cbody li{margin-bottom:4px}
-  .cbody table{display:block;overflow-x:auto;max-width:100%}
-  .ctable{border-collapse:collapse;font-size:13.5px;margin:8px 0 12px}
-  .ctable th,.ctable td{border:1px solid var(--line);padding:5px 9px;text-align:left;vertical-align:top}
-  .ctable th{background:var(--panel2);font-weight:600}
-  .retain{background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:9px 12px;margin:16px 0 6px;font-size:14px}
-  .formula{background:var(--panel2);border-left:3px solid var(--accent);padding:8px 12px;margin:8px 0;font-size:15px;overflow-x:auto;font-family:var(--font-mono)}
-  pre.code{font:12.5px/1.55 var(--font-mono);margin:8px 0;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-x:auto;white-space:pre}
-  .gloss{display:grid;grid-template-columns:max-content 1fr;gap:5px 18px;font-size:14px}.gloss dt{font-weight:600}.gloss dd{margin:0}
-  .cpn{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:24px 0 32px}
-  #ws{padding:16px max(16px,env(safe-area-inset-left,0px)) 30px;max-width:980px}
-  #ws h2{font-size:24px;margin:0 0 8px;text-wrap:balance}
-  #ws h3{font-size:16.5px;margin:24px 0 6px}
-  #ws p,#ws li{font-size:14.5px;line-height:1.55}
-  #ws .small{font-size:12.5px}
-  .opts{display:flex;gap:10px 18px;flex-wrap:wrap;align-items:flex-end;margin:6px 0 10px}.opts .fld{margin:0}
-  .chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
-  .chip{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:4px 11px;font-size:13px;cursor:pointer}
-  .chip:hover{border-color:var(--accent)}.chip.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
-  .gstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0}
-  .stat{border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--panel);display:flex;flex-direction:column;gap:2px;min-width:0}
-  .stat span{font-size:12px;color:var(--muted)}.stat b{font-size:14px;font-family:var(--font-mono);overflow-wrap:anywhere}
-  .verdict{border-radius:8px;padding:9px 12px;margin:10px 0;font-size:14px;background:var(--panel2);border:1px solid var(--line)}
-  .verdict.yes{background:rgba(30,122,46,.15);border-color:var(--ok)}.verdict.no{background:rgba(192,40,31,.13);border-color:var(--bad)}.verdict.warn{background:rgba(154,91,0,.13);border-color:var(--warn)}
-  .canvas-wrap{border:1px solid var(--line);border-radius:10px;padding:8px;background:#fff;margin:8px 0;overflow-x:auto}
-  canvas{display:block;max-width:100%;height:auto}
-  .legend{display:flex;gap:10px 16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:4px 0}
-  .legend i{display:inline-block;width:12px;height:3px;border-radius:2px;vertical-align:2px;margin-right:4px}
-  @media (max-width:820px){
-    .ctoc{display:none}.ctoc-sel{display:block}.cwrap{padding-top:8px}.cbody{padding-right:0}.gloss{grid-template-columns:1fr}.gloss dd{margin-bottom:6px}
-    #act{position:fixed;left:0;right:0;bottom:0;width:auto;height:70%;max-height:none;border-radius:14px 14px 0 0;z-index:35;box-shadow:0 -8px 30px rgba(0,0,0,.28);padding-bottom:env(safe-area-inset-bottom,0px)}
-    .work{flex-direction:column;gap:8px}
-  }
+/* Mise en page : barre d'outils, onglets d'ateliers, zone de travail, panneau Activité à droite (feuille basse sur téléphone), vue Cours avec sommaire. Même structure que l'Atelier Algorithmes de tri. */
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+:root{
+  --font-ui:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  --bg:#ffffff;--bar:#eeeeee;--panel:#ffffff;--panel2:#f1f3f6;--field:#ffffff;--line:#b9bfc7;--grid:#e3e6ea;
+  --fg:#111111;--muted:#5a6068;--accent:#2e6da4;--accent-fg:#ffffff;--accent-soft:#dcebf8;--accent-ink:#1b4a76;
+  --ok:#1e7a2e;--warn:#9a5b00;--bad:#c0281f;--violet:#7b4fc2;
+  --c1:#2e6da4;--c2:#c9741a;--c3:#1e7a2e;--c4:#7b4fc2;--c5:#6b7480;
+  --energy:#c9741a;--info:#2e6da4;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#000000;--bar:#111111;--panel:#0a0a0a;--panel2:#1a1a1a;--field:#000000;--line:#3a3a3a;--grid:#222222;
+  --fg:#eeeeee;--muted:#a3a3a3;--accent:#5b9bd5;--accent-fg:#000000;--accent-soft:#1c1c1c;--accent-ink:#a9cdee;
+  --ok:#52b564;--warn:#e0a64a;--bad:#ef6a60;--violet:#a98bea;
+  --c1:#5b9bd5;--c2:#e8a33a;--c3:#52b564;--c4:#a98bea;--c5:#9a9a9a;--energy:#e8a33a;--info:#5b9bd5;
+  color-scheme:dark}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 var(--font-ui)}
+button,input,select,textarea{font:inherit;color:inherit}
+.inner{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#app{height:100%;display:flex;flex-direction:column;min-height:0}
+.band{background:var(--bar);border-bottom:1px solid var(--line);flex:none}
+.row{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding-block:7px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:16px;letter-spacing:.01em}
+.brand small{font-weight:400;color:var(--muted);font-size:13px}
+.files{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.btn{font-weight:500;font-size:13px;padding:6px 11px;border:1px solid var(--line);background:var(--panel);border-radius:7px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.pri{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.sm{padding:3px 8px;font-size:12px}
+:is(button,input,select,textarea,summary):focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;background:var(--panel);max-width:100%;overflow-x:auto}
+.seg button{border:0;background:transparent;padding:7px 14px;font-weight:500;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.work{flex:1;min-height:0;display:flex;gap:10px;padding-block:10px}
+#stage{flex:1;min-width:0;position:relative;border:1px solid var(--line);border-radius:10px;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+#hint{flex:none;padding:6px 12px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--line);background:var(--bar)}
+#scroller{flex:1;min-height:0;overflow:auto}
+.phead{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);flex:none}
+.phead b{font-size:15px}
+.phead .sub{color:var(--muted);font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tabs{display:flex;gap:2px;padding:6px 8px 0;border-bottom:1px solid var(--line);overflow-x:auto;flex:none}
+.tabs button{border:0;border-bottom:2px solid transparent;background:transparent;padding:6px 10px;font-weight:500;font-size:13px;cursor:pointer;white-space:nowrap;color:var(--muted)}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.pbody{overflow:auto;padding:12px;flex:1;min-height:0}
+.fld{display:flex;flex-direction:column;gap:3px;margin-bottom:9px;font-size:12.5px;color:var(--muted)}
+input[type=text],input[type=number],textarea,select{width:100%;background:var(--field);border:1px solid var(--line);border-radius:6px;padding:5px 8px;color:var(--fg)}
+input[type=range]{width:100%;padding:0;accent-color:var(--accent)}
+input[type=checkbox]{accent-color:var(--accent)}
+.mono{font-family:var(--font-mono);font-size:12.5px}
+.small{font-size:12px;color:var(--muted);margin:0 0 9px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;z-index:60;max-width:90vw}
+#dlg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.dlgbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:min(640px,100%);max-height:88%;display:flex;flex-direction:column}
+.dlgbox header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.dlgbox header b{font-size:16px}
+.dlgbox .dbody{padding:14px 16px;overflow:auto}
+.dlgbox h3{margin:14px 0 4px;font-size:14px}.dlgbox p,.dlgbox li{margin:4px 0;font-size:13.5px}
+#act{flex:none;width:clamp(280px,24vw,340px);display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--panel);min-height:0;max-height:100%}
+#act .pbody{font-size:13.5px}
+.goal{background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:8px 10px;margin:0 0 10px}
+.steps{margin:0 0 10px;padding-left:20px}.steps li{margin-bottom:9px}
+.defi{border:1px dashed var(--accent);border-radius:8px;padding:8px 10px;margin:0 0 12px}.defi p{margin:6px 0}
+.defi summary{cursor:pointer;font-weight:500;color:var(--accent-ink)}
+fieldset.q{border:1px solid var(--line);border-radius:8px;padding:8px 10px 6px;margin:0 0 10px;min-width:0}
+fieldset.q legend{font-weight:600;padding:0 4px;max-width:100%}
+.opt{display:flex;gap:8px;align-items:flex-start;padding:4px 6px;border-radius:6px;cursor:pointer}
+.opt input{margin-top:3px;width:auto;flex:none}
+.opt.good{background:rgba(30,122,46,.18)}.opt.bad{background:rgba(192,40,31,.18)}
+.why{font-size:12.5px;color:var(--muted);margin:6px 4px 2px}
+.score{font-weight:600;font-size:15px;margin:4px 0 8px}
+/* cours */
+#course{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg)}
+.ctop,.cwrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.ctop{flex:none;display:flex;justify-content:space-between;align-items:center;gap:10px;padding-block:8px;border-bottom:1px solid var(--line);background:var(--bar)}
+.cwrap{flex:1;min-height:0;display:flex;gap:28px;padding-block:14px}
+.ctoc{flex:none;width:250px;overflow:auto;display:flex;flex-direction:column;gap:1px}
+.ctoc button{display:block;width:100%;text-align:left;padding:6px 10px;border:0;border-left:3px solid transparent;background:transparent;cursor:pointer;font-size:13.5px}
+.ctoc button:hover{background:var(--panel2)}
+.ctoc button.on{border-left-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.ctoc-sel{display:none;margin:8px max(16px,env(safe-area-inset-left,0px)) 0;width:auto}
+.cbody{flex:1;min-width:0;overflow:auto;max-width:860px;padding-right:6px}
+.ckick{color:var(--muted);font-size:12.5px;margin:0}
+.cbody h2{font-size:26px;margin:2px 0 12px;text-wrap:balance}
+.cbody h3{font-size:16.5px;margin:22px 0 6px}
+.cbody p,.cbody li{font-size:14.5px;line-height:1.6}
+.cbody ul,.cbody ol{padding-left:22px}.cbody li{margin-bottom:4px}
+.cbody table{display:block;overflow-x:auto;max-width:100%}
+.ctable{border-collapse:collapse;font-size:13.5px;margin:8px 0 12px}
+.ctable th,.ctable td{border:1px solid var(--line);padding:5px 9px;text-align:left;vertical-align:top}
+.ctable th{background:var(--panel2);font-weight:600}
+.retain{background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:9px 12px;margin:16px 0 6px;font-size:14px}
+.formula{background:var(--panel2);border-left:3px solid var(--accent);padding:8px 12px;margin:8px 0;font-size:15px;overflow-x:auto;font-family:var(--font-mono)}
+pre.code{font:12.5px/1.55 var(--font-mono);margin:8px 0;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-x:auto;white-space:pre}
+.gloss{display:grid;grid-template-columns:max-content 1fr;gap:5px 18px;font-size:14px}.gloss dt{font-weight:600}.gloss dd{margin:0}
+.cpn{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:24px 0 32px}
+/* ateliers */
+#ws{padding:16px max(16px,env(safe-area-inset-left,0px)) 30px;max-width:980px}
+#ws h2{font-size:24px;margin:0 0 8px;text-wrap:balance}
+#ws h3{font-size:16.5px;margin:24px 0 6px}
+#ws p,#ws li{font-size:14.5px;line-height:1.55}
+#ws .small{font-size:12.5px}
+.opts{display:flex;gap:10px 18px;flex-wrap:wrap;align-items:flex-end;margin:6px 0 10px}.opts .fld{margin:0}
+.opts input[type=range]{width:190px;max-width:100%}
+.opts textarea{font-family:var(--font-mono);min-width:240px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:4px 11px;font-size:13px;cursor:pointer}
+.chip:hover{border-color:var(--accent)}.chip.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.gstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0}
+.stat{border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--panel);display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat span{font-size:12px;color:var(--muted)}.stat b{font-size:14px;font-family:var(--font-mono);overflow-wrap:anywhere}
+.verdict{border-radius:8px;padding:9px 12px;margin:10px 0;font-size:14px;background:var(--panel2);border:1px solid var(--line)}
+.verdict.yes{background:rgba(30,122,46,.16);border-color:var(--ok)}.verdict.no{background:rgba(192,40,31,.14);border-color:var(--bad)}.verdict.warn{background:rgba(154,91,0,.15);border-color:var(--warn)}
+.dwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:8px 0}
+.dt{border-collapse:collapse;width:100%;font-size:13.5px}
+.dt th,.dt td{padding:5px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.dt thead th{background:var(--panel2);font-weight:600}
+.dt td.m{font-family:var(--font-mono);font-size:12.5px}
+.dt tr:last-child td{border-bottom:0}
+.dt input[type=number]{width:84px;font-family:var(--font-mono)}
+.tag{display:inline-block;font-size:11.5px;border-radius:10px;padding:1px 8px;border:1px solid var(--line);white-space:nowrap}
+.tag.doc{border-color:var(--ok);color:var(--ok)}.tag.cat{border-color:var(--info);color:var(--info)}.tag.cal{border-color:var(--warn);color:var(--warn)}
+/* tracés */
+.pbox{border:1px solid var(--line);border-radius:10px;padding:8px 10px 6px;background:var(--panel);margin:8px 0}
+.pbox svg{display:block;width:100%;height:auto;touch-action:pan-y}
+.pbox .pt{font-size:12.5px;font-weight:600;margin:0 0 2px}
+.leg{display:flex;gap:4px 14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:2px 0 4px}
+.leg i{display:inline-block;width:14px;height:0;border-top:3px solid;vertical-align:3px;margin-right:5px}
+.leg i.d{border-top-style:dashed}
+.ro{font:12px var(--font-mono);color:var(--muted);min-height:17px;margin-top:2px}
+.twocol{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.armbox svg{width:100%;max-width:520px;height:auto;display:block}
+@media (max-width:820px){
+  .ctoc{display:none}.ctoc-sel{display:block}.cwrap{padding-top:8px}.cbody{padding-right:0}.gloss{grid-template-columns:1fr}.gloss dd{margin-bottom:6px}
+  #act{position:fixed;left:0;right:0;bottom:0;width:auto;height:70%;max-height:none;border-radius:14px 14px 0 0;z-index:35;box-shadow:0 -8px 30px rgba(0,0,0,.28);padding-bottom:env(safe-area-inset-bottom,0px)}
+  .work{flex-direction:column;gap:8px}
+  .twocol{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:no-preference){.btn{transition:border-color .12s,background .12s}}
 </style>
-</head>
-<body>
 <div id="app">
   <header class="band"><div class="inner row">
-    <div class="brand">
-      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="3" y="14" width="4" height="9" fill="var(--accent)"/><rect x="9" y="9" width="4" height="14" fill="var(--ok)"/><rect x="15" y="5" width="4" height="18" fill="var(--warn)"/><rect x="21" y="11" width="2.5" height="12" fill="var(--bad)"/></svg>
-      <span>Jumeau numérique MaxPID <small>SII · PCSI/PSI*</small></span>
-    </div>
+    <div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="6" cy="19" r="3" fill="var(--energy)"/><path d="M6 19 L21 7" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/><circle cx="21" cy="7" r="2.5" fill="var(--ok)"/></svg><span>Jumeau numérique MaxPID <small>SII · PCSI / PSI*</small></span></div>
     <div class="files">
       <button class="btn" id="bAct" type="button" aria-pressed="false">Activité</button>
       <button class="btn" id="bCourse" type="button" aria-pressed="false">Cours</button>
       <button class="btn" id="bHelp" type="button">Aide</button>
+      <button class="btn" id="bTheme" type="button" aria-pressed="false">Mode sombre</button>
     </div>
   </div></header>
-
   <div class="band" id="modes"><div class="inner row"><div class="seg" id="wsSeg" role="tablist" aria-label="Ateliers"></div></div></div>
-
   <main class="inner work" id="work">
     <section id="stage"><div id="hint"></div><div id="scroller"><div id="ws"></div></div></section>
     <aside id="act" hidden aria-label="Activité"></aside>
   </main>
-
   <section id="course" hidden aria-label="Cours"></section>
 </div>
-
 <div id="dlg" hidden></div>
-
+<div id="toast" hidden></div>
 <script>
-(function() {
-  'use strict';
-
-  // Utilitaires
-  const qs = (s, r) => (r || document).querySelector(s);
-  function mk(tag, attrs, ...kids) {
-    const el = document.createElement(tag);
-    if (attrs) for (const [k, v] of Object.entries(attrs)) {
-      if (v === false || v == null) continue;
-      if (k === 'class') el.className = v;
-      else if (k === 'html') el.innerHTML = v;
-      else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
-      else if (v === true) el.setAttribute(k, '');
-      else el.setAttribute(k, v);
-    }
-    for (const k of kids.flat()) if (k != null && k !== false) el.append(k.nodeType ? k : document.createTextNode(k));
-    return el;
+'use strict';
+const $ = (s, r) => (r || document).querySelector(s);
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v === false || v == null) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'html') el.innerHTML = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (v === true) el.setAttribute(k, '');
+    else el.setAttribute(k, v);
   }
-  function isSmall(){ try { return window.matchMedia('(max-width:820px)').matches; } catch(e){ return false; } }
-  const KEYS = { act: 'maxpid-jumeau-v5' };
-  function lsGet(k,d){ try { const v=localStorage.getItem(k); return v?JSON.parse(v):d; } catch(e){ return d; } }
-  function lsSet(k,v){ try { localStorage.setItem(k,JSON.stringify(v)); } catch(e){} }
-
-  /* ==================================================================
-     MODÈLE MAXPID (Données de la plaque signalétique et du modèle 3D)
-     ================================================================== */
-  const MAXPID = {
-    // Géométrie
-    L_bras: 0.15,       // Longueur du bras (m) - estimée d'après la photo
-    pas_vis: 0.005,     // Pas de la vis (m/tr) - 5mm
-    r: 50,              // Rapport de réduction
-    // Moteur Maxon (ordre de grandeur)
-    R: 2.0,             // Résistance (Ohms)
-    Ke: 0.05,           // Constante de f.e.m (V.s/rad)
-    Kc: 0.05,           // Constante de couple (N.m/A)
-    Umax: 24,           // Tension d'alimentation (V)
-    // Mécanique
-    m_bras: 0.45,       // Masse du bras + écrou + masselotte (kg)
-    fv: 0.001,          // Frottement visqueux ramené (N.m.s/rad)
-    Cf: 0.02,           // Frottement sec (N.m)
-    // Simulation
-    dt: 0.002,          // Pas de temps (s)
-    T: 4.0              // Durée de simulation (s)
-  };
-
-  function getJeq(m = MAXPID.m_bras) {
-    const Jm = 0.000015; // Inertie rotor Maxon (15 g.cm²)
-    const Jvis = 0.000005; 
-    const Jbras = m * Math.pow(MAXPID.L_bras, 2);
-    return Jm + Jvis + Jbras / Math.pow(MAXPID.r, 2);
-  }
-
-  function getCoupleMaintien(thetaDeg) {
-    const theta = thetaDeg * Math.PI / 180;
-    return MAXPID.m_bras * 9.81 * (MAXPID.L_bras / 2) * Math.cos(theta);
-  }
-
-  // Simulation temporelle (Génération de toutes les données à l'avance)
-  function genererSimulation(params) {
-    const { Kp, Ki, Kd, consigne, masse, frottementSec } = params;
-    const dt = MAXPID.dt, N = Math.floor(MAXPID.T / dt);
-    const t = new Float64Array(N), theta = new Float64Array(N), omega = new Float64Array(N),
-          u = new Float64Array(N), couple = new Float64Array(N);
-    
-    let theta_m = 0, omega_m = 0, integral = 0, prev_err = 0;
-    const m = masse || MAXPID.m_bras;
-    const J = getJeq(m);
-    
-    for (let k = 0; k < N; k++) {
-      const tk = k * dt; t[k] = tk;
-      // Consigne (Échelon à t = 0.2s)
-      let c = (tk >= 0.2) ? consigne : 0;
-      
-      const e = c - theta_m;
-      integral += e * dt;
-      const deriv = (e - prev_err) / dt;
-      let uc = Kp * e + Ki * integral + Kd * deriv;
-      
-      // Saturation tension
-      uc = Math.max(-MAXPID.Umax, Math.min(MAXPID.Umax, uc));
-      u[k] = uc;
-      
-      // Dynamique
-      const Cm = MAXPID.Kc * (uc / MAXPID.R); // Simplification i = u/R
-      const Cg = m * 9.81 * (MAXPID.L_bras / 2) * Math.cos(theta_m * Math.PI / 180);
-      const Cvisq = MAXPID.fv * omega_m;
-      const frot = (frottementSec && Math.abs(omega_m) > 1e-3) ? -Math.sign(omega_m) * MAXPID.Cf : 0;
-      
-      couple[k] = Cm - Cg - Cvisq + frot;
-      
-      // Intégration Euler
-      omega_m += (couple[k] / J) * dt;
-      theta_m += (180 / Math.PI) * omega_m / MAXPID.r * dt;
-      
-      theta[k] = theta_m; omega[k] = omega_m;
-      prev_err = e;
-    }
-    return { t, theta, omega, u, couple, N };
-  }
-
-  /* ==================================================================
-     DESSIN 2D (Inspiré du modèle CAO)
-     ================================================================== */
-  function drawMaxPID(canvas, thetaDeg, consDeg, currentTime) {
-    if(!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height;
-    ctx.clearRect(0, 0, W, H);
-    
-    // Point de pivot (centre du capteur)
-    const cx = W * 0.35, cy = H * 0.55;
-    const L_pixel = W * 0.45; // Longueur visuelle du bras
-    const theta = thetaDeg * Math.PI / 180;
-    const consTheta = consDeg * Math.PI / 180;
-
-    // 1. Bâti gris (Forme en U)
-    ctx.fillStyle = '#d0d4d8'; // Gris clair
-    ctx.strokeStyle = '#9ea4a8';
-    ctx.lineWidth = 2;
-    // Montant vertical gauche
-    ctx.fillRect(cx - 60, cy - 20, 40, H - cy + 10);
-    ctx.strokeRect(cx - 60, cy - 20, 40, H - cy + 10);
-    // Base horizontale
-    ctx.fillRect(cx - 80, H - 30, 160, 30);
-    ctx.strokeRect(cx - 80, H - 30, 160, 30);
-    // Support capteur central
-    ctx.beginPath();
-    ctx.arc(cx, cy, 35, 0, 2*Math.PI);
-    ctx.fill();
-    ctx.stroke();
-
-    // 2. Moteur noir (Maxon)
-    ctx.fillStyle = '#222';
-    ctx.fillRect(cx - 120, cy - 60, 60, 30); // Corps du moteur
-    ctx.fillStyle = '#888'; // Bride
-    ctx.fillRect(cx - 60, cy - 65, 10, 40);
-    // Arbre moteur
-    ctx.strokeStyle = '#ccc'; ctx.lineWidth = 6;
-    ctx.beginPath(); ctx.moveTo(cx - 50, cy - 45); ctx.lineTo(cx - 20, cy - 45); ctx.stroke();
-
-    // 3. Vis sans fin (tige filetée argentée)
-    // On la dessine de l'arrière vers le point d'ancrage
-    ctx.strokeStyle = '#b0b0b0'; ctx.lineWidth = 8;
-    ctx.beginPath();
-    ctx.moveTo(cx - 20, cy - 45);
-    ctx.lineTo(cx + L_pixel * 0.8, cy - 45 + L_pixel * 0.8 * Math.tan(theta) * 0.5); // Approximation visuelle
-    ctx.stroke();
-    // Filetage (hachures)
-    ctx.strokeStyle = '#777'; ctx.lineWidth = 1;
-    for(let i=0; i<20; i++) {
-       let px = cx - 20 + i*10;
-       let py = cy - 45 + (i*10) * Math.tan(theta) * 0.5;
-       ctx.beginPath(); ctx.moveTo(px, py-4); ctx.lineTo(px, py+4); ctx.stroke();
-    }
-
-    // 4. Bras jaune
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(theta);
-    
-    // Corps du bras
-    ctx.fillStyle = '#c8b942'; // Jaune MaxPID
-    ctx.beginPath();
-    ctx.moveTo(20, -15); // Épaulement
-    ctx.lineTo(L_pixel, -10);
-    ctx.arc(L_pixel, 0, 15, -Math.PI/2, Math.PI/2); // Bout arrondi
-    ctx.lineTo(20, 15);
-    ctx.closePath();
-    ctx.fill();
-    
-    // Écrou (pièce dorée sur la vis)
-    ctx.fillStyle = '#a88b2a';
-    ctx.fillRect(30, -18, 20, 36);
-
-    // Masselotte au bout
-    ctx.fillStyle = '#666';
-    ctx.fillRect(L_pixel - 5, -25, 10, 50);
-
-    // Axe de pivot
-    ctx.fillStyle = '#e0e0e0';
-    ctx.beginPath(); ctx.arc(0, 0, 15, 0, 2*Math.PI); ctx.fill();
-    ctx.strokeStyle = '#999'; ctx.lineWidth=2; ctx.stroke();
-
-    ctx.restore();
-
-    // 5. Capteur (grand cercle au centre)
-    ctx.fillStyle = '#888';
-    ctx.beginPath(); ctx.arc(cx, cy, 25, 0, 2*Math.PI); ctx.fill();
-    ctx.fillStyle = '#ccc';
-    ctx.beginPath(); ctx.arc(cx, cy, 20, 0, 2*Math.PI); ctx.fill();
-    // Trait de mesure sur le capteur (tourne avec le bras)
-    ctx.save();
-    ctx.translate(cx, cy); ctx.rotate(theta);
-    ctx.strokeStyle = '#333'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0, -18); ctx.stroke();
-    ctx.restore();
-
-    // 6. Rapporteur / Cercle gradué
-    ctx.strokeStyle = '#333'; ctx.lineWidth = 12;
-    ctx.beginPath(); ctx.arc(cx, cy, W*0.4, -Math.PI/2 - 0.5, -Math.PI/2 + Math.PI/2 + 0.5); ctx.stroke();
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
-    for(let i=-90; i<=90; i+=10) {
-      let a = i * Math.PI/180;
-      let r1 = W*0.4 - 6, r2 = W*0.4 + 6;
-      ctx.beginPath();
-      ctx.moveTo(cx + r1*Math.sin(a), cy - r1*Math.cos(a));
-      ctx.lineTo(cx + r2*Math.sin(a), cy - r2*Math.cos(a));
-      ctx.stroke();
-    }
-
-    // 7. Consigne (Ligne pointillée)
-    ctx.strokeStyle = '#d9534f'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
-    ctx.beginPath(); ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + W*0.4*Math.sin(consTheta), cy - W*0.4*Math.cos(consTheta));
-    ctx.stroke(); ctx.setLineDash([]);
-
-    // 8. Affichage LCD
-    ctx.fillStyle = '#111'; ctx.fillRect(10, 10, 140, 60);
-    ctx.fillStyle = '#0f0'; ctx.font = 'bold 14px IBM Plex Mono';
-    ctx.textAlign = 'left';
-    ctx.fillText('Position :', 20, 30);
-    ctx.fillText('Consigne :', 20, 55);
-    ctx.fillStyle = '#fff';
-    ctx.fillText(thetaDeg.toFixed(1).padStart(5, ' ') + '°', 90, 30);
-    ctx.fillText(consDeg.toFixed(1).padStart(5, ' ') + '°', 90, 55);
-  }
-
-  /* ==================================================================
-     ATELIER 1 : JUMEAU AVEC REAL-TIME PACER
-     ================================================================== */
-  let animReq = null;
-  
-  function mountJumeau(root) {
-    root.innerHTML = `
-      <h2>Jumeau numérique MaxPID</h2>
-      <p>Inspiré du modèle CAO. Le moteur Maxon entraîne une vis qui translate l'écrou, faisant pivoter le bras.</p>
-      
-      <div class="opts">
-        <label class="fld"><span>Consigne (°)</span><input type="number" id="j-cons" value="30" min="0" max="80" step="5"></label>
-        <label class="fld"><span>K<sub>p</sub></span><input type="range" id="j-kp" min="0" max="20" step="0.5" value="5"><b id="j-kp-out">5</b></label>
-        <label class="fld"><span>K<sub>i</sub></span><input type="range" id="j-ki" min="0" max="10" step="0.1" value="0"><b id="j-ki-out">0</b></label>
-        <label class="fld"><span>K<sub>d</sub></span><input type="range" id="j-kd" min="0" max="2" step="0.05" value="0"><b id="j-kd-out">0</b></label>
-        <label class="fld"><span>Masse (kg)</span><input type="range" id="j-masse" min="0.1" max="1.5" step="0.1" value="0.45"><b id="j-masse-out">0.45</b></label>
-      </div>
-      
-      <div class="opts">
-        <label class="fld" style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="j-frot"> Frottement sec</label>
-        <button class="btn pri" id="j-run" type="button" style="font-size:15px;padding:10px 20px;">▶ Lancer l'essai (Temps réel)</button>
-      </div>
-      
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0">
-        <div class="canvas-wrap" style="flex:1.2;min-width:300px;background:#f8f9fa;">
-          <canvas id="j-bras" width="500" height="350"></canvas>
-        </div>
-        <div class="canvas-wrap" style="flex:1;min-width:300px;">
-          <canvas id="j-canvas" width="500" height="350"></canvas>
-        </div>
-      </div>
-      
-      <div class="legend"><span><i style="background:#2e6da4"></i>Position θ (°)</span><span><i style="background:#c0281f"></i>Consigne</span></div>
-      <div id="j-indic"></div>
-      <div id="j-msg" class="verdict" aria-live="polite">Prêt. Cliquez sur "Lancer l'essai".</div>
-    `;
-    
-    ['kp','ki','kd','masse'].forEach(id => {
-      const el = qs('#j-'+id), out = qs('#j-'+id+'-out');
-      el.addEventListener('input', ()=>{ out.textContent = el.value; });
-    });
-    
-    qs('#j-run').addEventListener('click', runEssai);
-    
-    // État initial statique
-    drawMaxPID(qs('#j-bras'), 0, 30, 0);
-    drawGraph(qs('#j-canvas'), null, 0, 30);
-  }
-
-  function runEssai() {
-    if (animReq) cancelAnimationFrame(animReq);
-    
-    const cons = parseFloat(qs('#j-cons').value) || 30;
-    const Kp = parseFloat(qs('#j-kp').value) || 5;
-    const Ki = parseFloat(qs('#j-ki').value) || 0;
-    const Kd = parseFloat(qs('#j-kd').value) || 0;
-    const masse = parseFloat(qs('#j-masse').value) || 0.45;
-    const frottementSec = qs('#j-frot').checked;
-    
-    // 1. Calcul de la simulation complète (comme Simulink)
-    const res = genererSimulation({ Kp, Ki, Kd, consigne: cons, masse, frottementSec });
-    
-    const brasCanvas = qs('#j-bras');
-    const graphCanvas = qs('#j-canvas');
-    const msg = qs('#j-msg');
-    const btn = qs('#j-run');
-    
-    msg.textContent = "Essai en cours... (Real-Time)";
-    msg.className = 'verdict warn';
-    btn.disabled = true;
-    
-    // 2. Implémentation du Real-Time Pacer
-    // On veut que 1s de temps simulé = 1s réel (speedup = 1)
-    const startTimeReal = performance.now();
-    
-    function pacerLoop() {
-      const elapsedReal = (performance.now() - startTimeReal) / 1000; // en secondes
-      
-      // Trouver l'index correspondant au temps écoulé
-      // On pourrait faire une recherche, mais comme dt est fixe, on divise
-      let idx = Math.floor(elapsedReal / MAXPID.dt);
-      
-      if (idx >= res.N) {
-        idx = res.N - 1;
-        // Fin de la simulation
-        drawMaxPID(brasCanvas, res.theta[idx], cons, elapsedReal);
-        drawGraph(graphCanvas, res, idx, cons);
-        updateIndicators(res, cons, masse);
-        msg.textContent = "Essai terminé.";
-        msg.className = 'verdict yes';
-        btn.disabled = false;
-        return; // On arrête la boucle
+  for (const k of kids.flat()) if (k != null && k !== false) el.append(k.nodeType ? k : document.createTextNode(k));
+  return el;
+}
+function isSmall() { try { return window.matchMedia('(max-width:820px)').matches; } catch (e) { return false; } }
+const KEYS = { act: 'maxpid-twin-v1' };
+function lsGet(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* stockage indisponible */ } }
+let toastT = null;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3500); }
+const WORKSHOPS = [];
+/*LOGIC-START*/
+const D2R = Math.PI / 180, G0 = 9.81;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const KIN = { a: 69.5, b: 82, c: 80, p: 4 };
+KIN.R = Math.hypot(KIN.a, KIN.b); KIN.d = Math.atan2(KIN.b, KIN.a);
+const xOf = th => Math.sqrt(KIN.a ** 2 + KIN.b ** 2 + KIN.c ** 2 + 2 * KIN.c * (KIN.a * Math.cos(th) - KIN.b * Math.sin(th)));
+KIN.x0 = xOf(0); KIN.x90 = xOf(Math.PI / 2);
+const thOf = x => Math.acos(clamp((x * x - KIN.a ** 2 - KIN.b ** 2 - KIN.c ** 2) / (2 * KIN.c * KIN.R), -1, 1)) - KIN.d;
+const dxdth = th => KIN.c * (-KIN.a * Math.sin(th) - KIN.b * Math.cos(th)) / xOf(th);
+/* gain cinématique : degrés de bras par tour de vis */
+const Gdeg = thDeg => (KIN.p / Math.abs(dxdth(thDeg * D2R))) / D2R;
+const betaOf = thDeg => (KIN.x0 - xOf(thDeg * D2R)) / KIN.p;
+const P0 = { R: 2.32, L: 0.238e-3, kt: 0.0234, ke: 0.0234, J0: 50e-6, Jm: 8e-6, f: 2e-6, cs: 2e-3, N: 7,
+  Umax: 21.6, Ka: 0.45e-3, pts: 44, m0: 0.5, l0: 0.10, mi: 0.65, l1: 0.26, Te: 0.002 };
+const Jtot = (P, n) => P.J0 + P.Jm * n;
+/* modèle linéaire du moteur (L négligée) : Km (rad/s/V), T (s) */
+function motorLin(P, n) { const J = Jtot(P, n), den = P.R * P.f + P.kt * P.ke; return { Km: P.kt / den, T: P.R * J / den, T2: P.L / P.R, J }; }
+/* simulation temporelle. o: {th0, thc(t)|step, kp, ki, kd, n, sat, aw, lin, open, uOpen, tend, Te, noGrav, noDry} */
+function simulate(P, o) {
+  const dt = 25e-6, tend = o.tend || 1.5, Te = o.Te || P.Te, n = o.n || 0, J = Jtot(P, n);
+  const lin = !!o.lin, G = lin ? Gdeg(o.th0) : 0;
+  let th = o.th0, phi = 2 * Math.PI * P.N * (KIN.x0 - xOf(th * D2R)) / KIN.p, w = 0, i = 0;
+  let I = 0, ePrev = null, dF = 0, u = 0, tNext = 0, sat = false, thLin = o.th0;
+  const out = { t: [], th: [], thc: [], u: [], w: [], i: [], sat: [] }; const dec = Math.max(1, Math.round(0.002 / dt)); let k = 0;
+  for (let t = 0; t <= tend + 1e-12; t += dt, k++) {
+    const thc = typeof o.thc === 'function' ? o.thc(t) : o.thc;
+    if (t >= tNext - 1e-12) {
+      tNext += Te;
+      if (o.open) { u = o.uOpen(t); }
+      else {
+        const pm = clamp(Math.round(P.pts * (lin ? thLin : th)), 0, 4095);
+        const e = P.pts * thc - pm;
+        if (ePrev == null) ePrev = e;
+        const dRaw = (e - ePrev) / Te; ePrev = e;
+        const tf = 0.02; dF += (Te / (tf + Te)) * (dRaw - dF);
+        const ui = o.ki ? o.ki / 4 * I : 0;
+        let uc = P.Ka * (o.kp * e + ui + 16 * (o.kd || 0) * dF);
+        const lim = lin ? 1e9 : (o.sat === false ? 1e9 : P.Umax);
+        const us = clamp(uc, -lim, lim); sat = us !== uc;
+        const block = o.aw && sat && Math.sign(e) === Math.sign(uc);
+        if (!block) I += e * Te;
+        u = us;
       }
-      
-      // Mise à jour des vues
-      drawMaxPID(brasCanvas, res.theta[idx], cons, elapsedReal);
-      drawGraph(graphCanvas, res, idx, cons);
-      
-      // Appel pour la frame suivante
-      animReq = requestAnimationFrame(pacerLoop);
     }
-    
-    pacerLoop();
+    const uu = lin ? u : clamp(u, -P.Umax, P.Umax);
+    // courant : Euler implicite
+    i = (i + dt / P.L * (uu - P.ke * w)) / (1 + dt * P.R / P.L);
+    let tl = 0;
+    if (!lin) {
+      const thR = th * D2R;
+      const Cg = (P.m0 * P.l0 + n * P.mi * P.l1) * G0 * Math.cos(thR) * (o.noGrav ? 0 : 1);
+      const dthdphi = (KIN.p / (2 * Math.PI * P.N)) / Math.abs(dxdth(thR));
+      tl = Cg * dthdphi + (o.noDry ? 0 : P.cs * Math.tanh(w / 1.0));
+    }
+    const C = P.kt * i - P.f * w - tl;
+    w += dt * C / J;
+    if (lin) { thLin += (G / (2 * Math.PI * P.N)) * w * dt; th = thLin; }
+    else {
+      phi += w * dt;
+      const x = KIN.x0 - KIN.p * phi / (2 * Math.PI * P.N);
+      if (x >= KIN.x0) { phi = 0; w = Math.max(w, 0) * 0 ; } else if (x <= KIN.x90 - 8) { phi = 2 * Math.PI * P.N * (KIN.x0 - (KIN.x90 - 8)) / KIN.p; w = 0; }
+      th = thOf(KIN.x0 - KIN.p * phi / (2 * Math.PI * P.N)) / D2R;
+    }
+    if (k % dec === 0) { out.t.push(t); out.th.push(th); out.thc.push(thc); out.u.push(uu); out.w.push(w); out.i.push(i); out.sat.push(sat ? 1 : 0); }
   }
+  return out;
+}
+/* indicateurs d'une réponse à un échelon (consigne finale thf, départ th0) */
+function perf(out, th0, thf) {
+  const t = out.t, y = out.th, A = thf - th0, s = Math.sign(A) || 1, n = y.length;
+  const yf = y[n - 1], ess = thf - yf;
+  let peak = -Infinity; for (const v of y) peak = Math.max(peak, s * (v - th0));
+  const D = Math.max(0, (peak - Math.abs(A)) / Math.abs(A) * 100);
+  const band = 0.05 * Math.abs(A); let tr = 0;
+  for (let k = n - 1; k >= 0; k--) if (Math.abs(y[k] - thf) > Math.max(band, 0.3)) { tr = t[Math.min(k + 1, n - 1)]; break; }
+  let t10 = null, t90 = null; for (let k = 0; k < n; k++) { const f = s * (y[k] - th0) / Math.abs(A); if (t10 == null && f >= 0.1) t10 = t[k]; if (t90 == null && f >= 0.9) { t90 = t[k]; break; } }
+  return { ess, D, tr, tm: t90 != null && t10 != null ? t90 - t10 : null, yf, satFrac: out.sat.reduce((a, b) => a + b, 0) / n, umax: Math.max(...out.u.map(Math.abs)) };
+}
+/* boucle ouverte : K (s^-1) pour Kp donné, à l'angle thDeg ; modèle P seul */
+function loopK(P, n, thDeg, kp) { const m = motorLin(P, n); return { K: P.Ka * P.pts * kp * m.Km * Gdeg(thDeg) / (2 * Math.PI * P.N), m }; }
+/* réponse harmonique de la BO : C(jw)·M(jw)·K/(jw) ; Te = retard ZOH Te/2 */
+function bodeBO(P, n, thDeg, c, wlist, delay) {
+  const m = motorLin(P, n), Kg = P.Ka * P.pts * m.Km * Gdeg(thDeg) / (2 * Math.PI * P.N);
+  return wlist.map(w => {
+    const re = (a, b) => [a, b], mul = (x, y) => [x[0] * y[0] - x[1] * y[1], x[0] * y[1] + x[1] * y[0]], div = (x, y) => { const d = y[0] ** 2 + y[1] ** 2; return [(x[0] * y[0] + x[1] * y[1]) / d, (x[1] * y[0] - x[0] * y[1]) / d]; };
+    let C = [c.kp, 0];
+    if (c.ki) C = [C[0], C[1] - c.ki / 4 / w];
+    if (c.kd) C = [C[0], C[1] + 16 * c.kd * w / (1 + w * 0.02 * 0)]; // dérivée pure (filtre négligé)
+    let H = div([Kg, 0], mul([0, w], mul([1, w * m.T], [1, w * m.T2])));
+    H = mul(C, H);
+    if (delay) { const a = -w * delay; H = mul(H, [Math.cos(a), Math.sin(a)]); }
+    return { w, mag: Math.hypot(H[0], H[1]), ph: Math.atan2(H[1], H[0]) / D2R };
+  });
+}
+/*LOGIC-END*/
+/* ---------- aides d'interface ---------- */
+const trTxt = (tr, te) => tr >= te - 0.02 ? '> ' + fm(te, 1) + ' s' : fm(tr, 2) + ' s';
+const fm = (v, d) => (v == null || !isFinite(v)) ? '—' : v.toFixed(d == null ? 1 : d).replace('.', ',');
+function stats(list) { return h('div', { class: 'gstats' }, list.map(k => h('div', { class: 'stat' }, h('span', null, k[0]), h('b', null, k[1])))); }
+function setMsg(sel, text, kind) { const m = $(sel); if (!m) return; m.textContent = text; m.className = 'verdict' + (kind ? ' ' + kind : ''); }
+function sld(label, min, max, step, val, fmt, cb) {
+  const out = h('b', { class: 'mono' }, fmt(val));
+  const inp = h('input', { type: 'range', min, max, step, value: val, 'aria-label': label });
+  inp.addEventListener('input', () => { const v = +inp.value; out.textContent = fmt(v); cb(v); });
+  return h('label', { class: 'fld' }, h('span', null, label + ' : ', out), inp);
+}
+function chk(label, val, cb) { const i = h('input', { type: 'checkbox', checked: !!val }); i.addEventListener('change', () => cb(i.checked)); return h('label', { class: 'fld', style: 'flex-direction:row;align-items:center;gap:6px' }, i, h('span', null, label)); }
+let raf = {}; function later(key, fn) { cancelAnimationFrame(raf[key]); raf[key] = requestAnimationFrame(fn); }
+const P = Object.assign({}, P0);
 
-  function drawGraph(canvas, res, currentIndex, consVal) {
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height;
-    ctx.clearRect(0,0,W,H);
-    
-    const maxTheta = Math.max(consVal, 90) * 1.1;
-    const pad = { l: 40, r: 15, t: 15, b: 25 };
-    const plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;
-    
-    // Grille
-    ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 1;
-    for (let g = 0; g <= 4; g++) { const yy = pad.t + (g/4)*plotH; ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W-pad.r, yy); ctx.stroke(); }
-    ctx.strokeStyle = '#5a6068'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, H-pad.b); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(pad.l, H-pad.b); ctx.lineTo(W-pad.r, H-pad.b); ctx.stroke();
-    
-    // Axes
-    ctx.fillStyle = '#5a6068'; ctx.font = '11px IBM Plex Mono'; ctx.textAlign = 'right';
-    for (let g = 0; g <= 4; g++) { ctx.fillText((maxTheta*(1-g/4)).toFixed(0), pad.l-5, pad.t + (g/4)*plotH + 4); }
-    ctx.textAlign = 'center';
-    for (let g = 0; g <= 4; g++) { ctx.fillText((g/4*MAXPID.T).toFixed(1)+'s', pad.l + (g/4)*plotW, H-pad.b+15); }
-    
-    if (!res) return;
-    
-    const N = res.N;
-    const x = i => pad.l + (i / (N-1)) * plotW;
-    const yTheta = v => pad.t + plotH - (v / maxTheta) * plotH;
-    
-    // Consigne
-    ctx.strokeStyle = '#c0281f'; ctx.lineWidth = 2; ctx.setLineDash([4,4]);
-    ctx.beginPath();
-    for (let i = 0; i < currentIndex; i+=2) {
-      let c = res.t[i] >= 0.2 ? consVal : 0;
-      const xx = x(i), yy = yTheta(c); i===0 ? ctx.moveTo(xx,yy) : ctx.lineTo(xx,yy);
-    }
-    ctx.stroke(); ctx.setLineDash([]);
-    
-    // Position
-    ctx.strokeStyle = '#2e6da4'; ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    for (let i = 0; i < currentIndex; i+=2) {
-      const xx = x(i), yy = yTheta(res.theta[i]); i===0 ? ctx.moveTo(xx,yy) : ctx.lineTo(xx,yy);
-    }
-    ctx.stroke();
-    
-    // Curseur
-    if (currentIndex > 0) {
-      ctx.strokeStyle = '#e8a33a'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(x(currentIndex), pad.t); ctx.lineTo(x(currentIndex), H-pad.b); ctx.stroke();
-    }
+/* ---------- tracés SVG ---------- */
+function niceTicks(a, b, n) {
+  const raw = (b - a) / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag, s = (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag, t = [];
+  for (let v = Math.ceil(a / s - 1e-9) * s; v <= b + 1e-9; v += s) t.push(+v.toFixed(10));
+  return t;
+}
+let plotId = 0;
+/* o : {title, series:[{x,y,c,l,dash,w}], xr, yr, xl, yl, logx, hl:[{y,l}], h} */
+function plot(o) {
+  const W = 720, H = o.h || 230, m = { l: 48, r: 12, t: 8, b: 34 }, id = 'pc' + (++plotId);
+  let xr = o.xr, yr = o.yr;
+  if (!xr) { let a = Infinity, b = -Infinity; o.series.forEach(s => { a = Math.min(a, s.x[0]); b = Math.max(b, s.x[s.x.length - 1]); }); xr = [a, b]; }
+  if (!yr) { let a = Infinity, b = -Infinity; o.series.forEach(s => s.y.forEach(v => { if (isFinite(v)) { a = Math.min(a, v); b = Math.max(b, v); } })); const p = (b - a) * 0.08 || 1; yr = [a - p, b + p]; }
+  const lx = a => o.logx ? Math.log10(a) : a;
+  const sx = v => m.l + (lx(v) - lx(xr[0])) / (lx(xr[1]) - lx(xr[0])) * (W - m.l - m.r);
+  const sy = v => H - m.b - (v - yr[0]) / (yr[1] - yr[0]) * (H - m.t - m.b);
+  const xt = o.logx ? (() => { const t = []; for (let e = Math.ceil(Math.log10(xr[0])); e <= Math.floor(Math.log10(xr[1])); e++) t.push(Math.pow(10, e)); return t; })() : niceTicks(xr[0], xr[1], 6);
+  const yt = niceTicks(yr[0], yr[1], 5);
+  let g = '';
+  yt.forEach(v => { g += `<line x1="${m.l}" x2="${W - m.r}" y1="${sy(v)}" y2="${sy(v)}" style="stroke:var(--grid)" stroke-width="1"/><text x="${m.l - 6}" y="${sy(v) + 4}" text-anchor="end" font-size="11" font-family="var(--font-mono)" style="fill:var(--muted)">${String(v).replace('.', ',')}</text>`; });
+  xt.forEach(v => { g += `<line x1="${sx(v)}" x2="${sx(v)}" y1="${m.t}" y2="${H - m.b}" style="stroke:var(--grid)" stroke-width="1"/><text x="${sx(v)}" y="${H - m.b + 15}" text-anchor="middle" font-size="11" font-family="var(--font-mono)" style="fill:var(--muted)">${String(v).replace('.', ',')}</text>`; });
+  g += `<line x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}" style="stroke:var(--line)"/><line x1="${m.l}" x2="${m.l}" y1="${m.t}" y2="${H - m.b}" style="stroke:var(--line)"/>`;
+  if (o.xl) g += `<text x="${(m.l + W - m.r) / 2}" y="${H - 4}" text-anchor="middle" font-size="11.5" style="fill:var(--muted)">${o.xl}</text>`;
+  if (o.yl) g += `<text x="12" y="${(m.t + H - m.b) / 2}" text-anchor="middle" font-size="11.5" transform="rotate(-90 12 ${(m.t + H - m.b) / 2})" style="fill:var(--muted)">${o.yl}</text>`;
+  (o.hl || []).forEach(l => { if (l.y >= yr[0] && l.y <= yr[1]) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${sy(l.y)}" y2="${sy(l.y)}" style="stroke:var(--bad)" stroke-dasharray="2 4" stroke-width="1.2"/><text x="${W - m.r - 3}" y="${sy(l.y) - 4}" text-anchor="end" font-size="11" style="fill:var(--bad)">${l.l}</text>`; });
+  let paths = '';
+  o.series.forEach(s => {
+    const n = s.x.length, st = Math.max(1, Math.floor(n / 700)); let d = '';
+    for (let k = 0; k < n; k += st) { const yv = clamp(s.y[k], yr[0] - (yr[1] - yr[0]), yr[1] + (yr[1] - yr[0])); d += (d ? 'L' : 'M') + sx(s.x[k]).toFixed(1) + ' ' + sy(yv).toFixed(1); }
+    paths += `<path d="${d}" fill="none" style="stroke:${s.c}" stroke-width="${s.w || 2}" stroke-linejoin="round"${s.dash ? ` stroke-dasharray="${s.dash}"` : ''}/>`;
+  });
+  const wrap = h('div', { class: 'pbox' });
+  if (o.title) wrap.append(h('p', { class: 'pt' }, o.title));
+  wrap.append(h('div', { class: 'leg', html: o.series.filter(s => s.l).map(s => `<span><i class="${s.dash ? 'd' : ''}" style="border-color:${s.c}"></i>${s.l}</span>`).join('') }));
+  const holder = h('div'); holder.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.title || 'Tracé'}"><defs><clipPath id="${id}"><rect x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}"/></clipPath></defs>${g}<g clip-path="url(#${id})">${paths}</g><line class="cur" x1="0" x2="0" y1="${m.t}" y2="${H - m.b}" style="stroke:var(--fg)" stroke-width="1" opacity="0"/></svg>`;
+  const svg = holder.firstChild, cur = svg.querySelector('.cur'), ro = h('div', { class: 'ro' }, 'Survolez le tracé pour lire les valeurs.');
+  const move = ev => {
+    const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * W;
+    if (px < m.l || px > W - m.r) return;
+    const f = (px - m.l) / (W - m.l - m.r); const xv = o.logx ? Math.pow(10, lx(xr[0]) + f * (lx(xr[1]) - lx(xr[0]))) : xr[0] + f * (xr[1] - xr[0]);
+    cur.setAttribute('x1', px); cur.setAttribute('x2', px); cur.setAttribute('opacity', '.5');
+    const parts = [(o.xn || 't') + ' = ' + fm(xv, o.logx ? 2 : 3)];
+    o.series.forEach(s => { if (!s.l) return; let lo = 0, hi = s.x.length - 1; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (s.x[mid] < xv) lo = mid; else hi = mid; } const k = Math.abs(s.x[lo] - xv) < Math.abs(s.x[hi] - xv) ? lo : hi; parts.push(s.l.replace(/ \(.*\)/, '') + ' = ' + fm(s.y[k], 2)); });
+    ro.textContent = parts.join(' · ');
+  };
+  svg.addEventListener('pointermove', move); svg.addEventListener('pointerleave', () => cur.setAttribute('opacity', '0'));
+  wrap.append(holder.firstChild, ro); return wrap;
+}
+
+/* ---------- schéma cinématique du bras ---------- */
+function armSvg(thDeg, n) {
+  const s = 1.55, ox = 215, oy = 215, th = thDeg * D2R, X = v => ox + s * v, Y = v => oy - s * v;
+  const C = [KIN.c * Math.cos(th), KIN.c * Math.sin(th)], F = [-KIN.a, KIN.b], T = [1.5 * KIN.c * Math.cos(th), 1.5 * KIN.c * Math.sin(th)];
+  const x = Math.hypot(C[0] - F[0], C[1] - F[1]);
+  let masses = ''; for (let k = 0; k < n; k++) masses += `<circle cx="${X(T[0]) + 6 * Math.sin(th) * 0}" cy="${Y(T[1]) - k * 7}" r="6" style="fill:var(--warn);stroke:var(--bg)" stroke-width="1.5"/>`;
+  return `<svg viewBox="0 0 520 250" role="img" aria-label="Schéma cinématique : bras à ${fm(thDeg, 1)} degrés, longueur de vis ${fm(x, 1)} mm">
+  <line x1="${X(-110)}" y1="${Y(0)}" x2="${X(160)}" y2="${Y(0)}" style="stroke:var(--line)" stroke-dasharray="4 4"/>
+  <path d="M${X(KIN.c)} ${Y(0)} A${s * KIN.c} ${s * KIN.c} 0 0 0 ${X(0)} ${Y(KIN.c)}" fill="none" style="stroke:var(--line)" stroke-dasharray="2 3"/>
+  <line x1="${X(F[0])}" y1="${Y(F[1])}" x2="${X(C[0])}" y2="${Y(C[1])}" style="stroke:var(--energy)" stroke-width="5" stroke-linecap="round"/>
+  <line x1="${X(0)}" y1="${Y(0)}" x2="${X(T[0])}" y2="${Y(T[1])}" style="stroke:var(--accent)" stroke-width="7" stroke-linecap="round"/>
+  ${masses}
+  <rect x="${X(F[0]) - 16}" y="${Y(F[1]) - 12}" width="32" height="24" rx="4" transform="rotate(${-Math.atan2(C[1] - F[1], C[0] - F[0]) / D2R} ${X(F[0])} ${Y(F[1])})" style="fill:var(--panel2);stroke:var(--energy)" stroke-width="1.5"/>
+  <circle cx="${X(0)}" cy="${Y(0)}" r="6" style="fill:var(--fg)"/><circle cx="${X(C[0])}" cy="${Y(C[1])}" r="5" style="fill:var(--ok)"/>
+  <text x="${X(0) - 10}" y="${Y(0) + 18}" font-size="12" style="fill:var(--muted)">O</text>
+  <text x="${X(F[0]) - 22}" y="${Y(F[1]) - 18}" font-size="12" style="fill:var(--muted)">A (moteur + vis)</text>
+  <text x="${X(C[0]) + 8}" y="${Y(C[1]) + 16}" font-size="12" style="fill:var(--muted)">C</text>
+  <text x="${X(T[0]) + 8}" y="${Y(T[1]) + 4}" font-size="12" style="fill:var(--accent)">bras θ = ${fm(thDeg, 1)}°</text>
+  <text x="12" y="236" font-size="12" font-family="var(--font-mono)" style="fill:var(--muted)">x = AC = ${fm(x, 1)} mm</text></svg>`;
+}
+
+/* ================= Atelier 1 : le système ================= */
+function blk(x, y, w, hh, t, kind) {
+  const col = kind === 'e' ? 'var(--energy)' : 'var(--info)';
+  return `<rect x="${x}" y="${y}" width="${w}" height="${hh}" rx="7" style="fill:var(--panel2);stroke:${col}" stroke-width="2"/>` + t.split('|').map((l, i, a) => `<text x="${x + w / 2}" y="${y + hh / 2 + 4 + (i - (a.length - 1) / 2) * 14}" text-anchor="middle" font-size="12" style="fill:var(--fg)">${l}</text>`).join('');
+}
+function arrow(x1, y1, x2, y2, kind, lab) {
+  const col = kind === 'e' ? 'var(--energy)' : 'var(--info)';
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke:${col}" stroke-width="2"/><path d="M${x2} ${y2} l${x2 > x1 ? -7 : x2 < x1 ? 7 : -4} ${y2 > y1 ? -7 : y2 < y1 ? 7 : -4} m0 0" fill="none"/>` +
+    `<circle cx="${x2}" cy="${y2}" r="3" style="fill:${col}"/>` + (lab ? (x1 === x2 ? `<text x="${x1 + 8}" y="${(y1 + y2) / 2 + 4}" font-size="11" style="fill:var(--muted)">${lab}</text>` : `<text x="${(x1 + x2) / 2}" y="${Math.min(y1, y2) - 5}" text-anchor="middle" font-size="11" style="fill:var(--muted)">${lab}</text>`) : '');
+}
+const S1 = { th: 30, n: 0 };
+const PARAMS = [
+  ['Tension d’alimentation', '24 V', 'doc', 'TP Defauchy / mnsi'],
+  ['Saturation de commande Umax', '21,6 V (90 % de 24 V)', 'doc', 'TP mnsi'],
+  ['Codeur / potentiomètre', '12 bits, 0 à 4095 ; 44 pts/° (3960 pts pour 90°)', 'doc', 'TP Defauchy / mnsi'],
+  ['Pas de la vis', 'p = 4 mm/tr', 'doc', 'projet maxpid-asservissement'],
+  ['Géométrie bras (a ; b ; c)', '69,5 ; 82 ; 80 mm', 'doc', 'projet maxpid-asservissement'],
+  ['Inertie J ramenée au moteur', 'J = 5·10⁻⁵ kg·m² + 0,8·10⁻⁵ par masse', 'doc', 'énoncé eduscol Maxpid'],
+  ['Masse additionnelle', '0,65 kg à 26 cm ; structure 0,5 kg', 'doc', 'TP Defauchy'],
+  ['Gain d’adaptation Ka', '0,45·10⁻³ (Um = Ka·KP·ε, ε en points)', 'doc', 'TP mnsi'],
+  ['Résistance, inductance, constantes', 'R = 2,32 Ω ; L = 0,238 mH ; Kt = Ke = 23,4 mN·m/A', 'cat', 'maxon RE 25 20 W (réf. 118752) : à remplacer par l’annexe du moteur 118778'],
+  ['Rapport de réduction moteur → vis N', 'N = 7', 'cal', 'non publié : calé pour retrouver les comportements décrits par les TP'],
+  ['Frottement visqueux f / sec Cs', 'f = 2·10⁻⁶ N·m·s ; Cs = 2 mN·m', 'cal', 'ordre de grandeur, à identifier (Manip. 2 de l’énoncé eduscol)'],
+  ['Levier de la structure', 'l0 = 0,10 m', 'cal', 'estimé'],
+  ['Période d’échantillonnage Te', '2 ms', 'cal', 'supposée']
+];
+function mount1(root) {
+  root.append(h('h2', null, 'Le système MaxPID et son jumeau'),
+    h('p', null, 'Le MaxPID est un axe asservi en position issu d’un robot cueilleur de pommes : un moteur à courant continu entraîne une vis-écrou qui fait pivoter un bras. Un potentiomètre mesure l’angle du bras. Le jumeau numérique reproduit cette chaîne avec ses non-linéarités (saturation, loi entrée-sortie, frottement sec, pesanteur, quantification).'));
+  root.append(h('h3', null, 'Chaînes d’information et d’énergie'));
+  const svg = h('div', { class: 'pbox' }); svg.innerHTML = `<svg viewBox="0 0 760 250" role="img" aria-label="Schéma-blocs du MaxPID" style="width:100%;height:auto">
+  ${blk(40, 30, 140, 50, 'Écart ε|ε = 44·θc − mesure', 'i')}${blk(225, 30, 150, 50, 'Correcteur PID|discret (période Te)', 'i')}${blk(420, 30, 140, 50, 'Saturation|±21,6 V', 'i')}${blk(605, 30, 130, 50, 'Moteur CC|(maxon RE 25)', 'e')}
+  ${blk(605, 150, 130, 50, 'Réducteur|1/N', 'e')}${blk(420, 150, 140, 50, 'Vis-écrou|p = 4 mm/tr', 'e')}${blk(225, 150, 150, 50, 'Bras|θ = loi E/S de x', 'e')}${blk(40, 150, 140, 50, 'Potentiomètre|+ CAN 12 bits', 'i')}
+  ${arrow(8, 55, 40, 55, 'i', '')}<text x="6" y="45" font-size="12" style="fill:var(--muted)">θc</text>
+  ${arrow(180, 55, 225, 55, 'i')}${arrow(375, 55, 420, 55, 'i', '')}${arrow(560, 55, 605, 55, 'i', 'Um')}
+  ${arrow(670, 80, 670, 150, 'e', 'couple')}${arrow(605, 175, 560, 175, 'e')}${arrow(420, 175, 375, 175, 'e')}${arrow(225, 175, 180, 175, 'i', 'θ')}
+  ${arrow(110, 150, 110, 80, 'i', 'mesure')}
+  <text x="40" y="232" font-size="12" style="fill:var(--info)">■ chaîne d’information</text><text x="200" y="232" font-size="12" style="fill:var(--energy)">■ chaîne d’énergie</text>
+  <text x="400" y="232" font-size="11.5" style="fill:var(--muted)">Un point marque l’arrivée de chaque liaison.</text></svg>`;
+  root.append(svg);
+  root.append(h('h3', null, 'Cinématique du bras'), h('p', { class: 'small' }, 'Schéma reconstitué à partir de la loi entrée-sortie publiée x(θ) = √(a² + b² + c² + 2c(a·cos θ − b·sin θ)) : les noms des points peuvent différer de ceux du dossier technique du constructeur.'));
+  const arm = h('div', { class: 'pbox armbox' }), info = h('div');
+  const draw = () => {
+    arm.innerHTML = armSvg(S1.th, S1.n);
+    info.innerHTML = ''; info.append(stats([['Longueur de vis x', fm(xOf(S1.th * D2R), 1) + ' mm'], ['Tours de vis depuis θ = 0', fm(betaOf(S1.th), 2) + ' tr'], ['Gain cinématique G(θ)', fm(Gdeg(S1.th), 2) + ' °/tr'], ['Points du capteur', String(Math.round(P.pts * S1.th))]]));
+  };
+  root.append(h('div', { class: 'opts' }, sld('Angle du bras θ', 0, 90, 1, S1.th, v => fm(v, 0) + ' °', v => { S1.th = v; draw(); }), sld('Masses additionnelles', 0, 6, 1, S1.n, v => String(v), v => { S1.n = v; draw(); })), arm, info);
+  draw();
+  root.append(h('h3', null, 'Paramètres du jumeau et leur statut'),
+    h('p', { class: 'small' }, 'Étiquettes : documenté = relevé dans une source publique ; catalogue = valeur d’un moteur voisin ; calé = choisi par l’auteur de cette page. Les valeurs modifiables par vos mesures sont à recaler sur un vrai banc.'));
+  const rows = PARAMS.map(p => h('tr', null, h('td', null, p[0]), h('td', { class: 'm' }, p[1]), h('td', null, h('span', { class: 'tag ' + p[2] }, p[2] === 'doc' ? 'documenté' : p[2] === 'cat' ? 'catalogue' : 'calé')), h('td', { class: 'small' }, p[3])));
+  root.append(h('div', { class: 'dwrap' }, h('table', { class: 'dt' }, h('thead', null, h('tr', null, ['Grandeur', 'Valeur', 'Statut', 'Source'].map(x => h('th', null, x)))), h('tbody', null, rows))));
+}
+WORKSHOPS.push({ id: 's1', title: 'Le système', hint: 'Découvrez les deux chaînes du MaxPID, la géométrie du bras et l’origine de chaque paramètre du jumeau.', mount: mount1, reset: () => { Object.assign(S1, { th: 30, n: 0 }); } });
+
+/* ================= Atelier 2 : cinématique ================= */
+const S2 = { th0: 10, span: 10 };
+function mount2(root) {
+  root.append(h('h2', null, 'Loi entrée-sortie : de la vis à l’angle'),
+    h('p', null, 'Le moteur tourne, la vis avance de 4 mm par tour, la longueur x varie et le bras pivote. La relation entre tours de vis et angle n’est pas linéaire : le gain change avec la position, donc le comportement de l’asservissement aussi.'));
+  const box = h('div'), st = h('div'), msg = h('div', { class: 'verdict', id: 'm2' });
+  const draw = () => {
+    box.innerHTML = ''; st.innerHTML = '';
+    const ang = [], beta = []; for (let a = 0; a <= 90; a += 1) { ang.push(a); beta.push(betaOf(a)); }
+    const th0 = S2.th0, b0 = betaOf(th0), g0 = Gdeg(th0), lo = Math.max(0, th0 - S2.span), hi = Math.min(90, th0 + S2.span);
+    const tang = beta.map(b => th0 + g0 * (b - b0));
+    box.append(plot({ title: 'Angle du bras en fonction des tours de vis', xn: 'β', xl: 'tours de vis β', yl: 'θ (°)', yr: [0, 100], series: [{ x: beta, y: ang, c: 'var(--c1)', l: 'θ(β) réel' }, { x: beta, y: tang, c: 'var(--c2)', l: 'droite tangente en θ0', dash: '6 4' }] }));
+    const gx = [], gy = []; for (let a = 0; a <= 90; a += 1) { gx.push(a); gy.push(Gdeg(a)); }
+    box.append(plot({ title: 'Gain cinématique G(θ) = dθ/dβ', xn: 'θ', xl: 'θ (°)', yl: '°/tr de vis', yr: [0, 7], series: [{ x: gx, y: gy, c: 'var(--c3)', l: 'G(θ)' }] }));
+    let emax = 0; for (let a = lo; a <= hi; a += 0.5) emax = Math.max(emax, Math.abs(th0 + g0 * (betaOf(a) - b0) - a));
+    st.append(stats([['G(θ0)', fm(g0, 2) + ' °/tr'], ['G(θ0) en °/rad de vis', fm(g0 / (2 * Math.PI), 3)], ['G(10°) / G(70°)', fm(Gdeg(10), 2) + ' / ' + fm(Gdeg(70), 2)], ['Erreur max de la tangente sur θ0 ± ' + S2.span + '°', fm(emax, 2) + ' °']]));
+    const k = emax / (2 * S2.span);
+    setMsg('#m2', emax < 0.5 ? 'La linéarisation est correcte sur cette plage : l’erreur reste sous 0,5 °.' : 'Sur cette plage la linéarisation s’écarte de ' + fm(emax, 1) + ' ° : le gain n’est pas constant, le modèle linéaire n’est valable que pour de petits déplacements.', emax < 0.5 ? 'yes' : 'warn');
+  };
+  root.append(h('div', { class: 'opts' }, sld('Point de linéarisation θ0', 0, 90, 1, S2.th0, v => fm(v, 0) + ' °', v => { S2.th0 = v; later('d2', draw); }), sld('Demi-amplitude du déplacement', 2, 45, 1, S2.span, v => '± ' + v + ' °', v => { S2.span = v; later('d2', draw); })), box, st, msg);
+  draw();
+}
+WORKSHOPS.push({ id: 's2', title: 'Cinématique', hint: 'Tracez θ(β), lisez le gain G(θ) et mesurez l’erreur de linéarisation autour d’un point de fonctionnement.', mount: mount2, reset: () => { Object.assign(S2, { th0: 10, span: 10 }); } });
+
+/* ================= Atelier 3 : moteur ================= */
+const S3 = { U: 2, n: 0, f: 2, dry: true };
+function mount3(root) {
+  root.append(h('h2', null, 'Identifier le moteur : Km et T'),
+    h('p', null, 'On applique un échelon de tension en boucle ouverte et on observe la vitesse du moteur. Pour un modèle du premier ordre, Km est la vitesse finale divisée par la tension, et T est la durée pour atteindre 63 % de la vitesse finale.'));
+  const box = h('div'), st = h('div'), msg = h('div', { class: 'verdict', id: 'm3' });
+  const draw = () => {
+    const Q = Object.assign({}, P, { f: S3.f * 1e-6 }), lin = motorLin(Q, S3.n);
+    const r = simulate(Q, { th0: 10, thc: 0, open: true, uOpen: t => t > 0.05 ? S3.U : 0, tend: 1.2, n: S3.n, noDry: !S3.dry, noGrav: true, kp: 0 });
+    const t = r.t, w = r.w, wf = w.slice(-40).reduce((a, b) => a + b, 0) / 40;
+    const mod = t.map(tt => tt < 0.05 ? 0 : lin.Km * S3.U * (1 - Math.exp(-(tt - 0.05) / lin.T)));
+    let t63 = null; for (let k = 0; k < t.length; k++) if (t[k] > 0.05 && w[k] >= 0.632 * wf) { t63 = t[k] - 0.05; break; }
+    box.innerHTML = ''; st.innerHTML = '';
+    box.append(plot({ title: 'Vitesse du moteur après un échelon de ' + fm(S3.U, 1) + ' V', xl: 'temps (s)', yl: 'ωm (rad/s)', series: [{ x: t, y: w, c: 'var(--c1)', l: 'jumeau complet' }, { x: t, y: mod, c: 'var(--c3)', l: 'modèle Km/(1+T·p)', dash: '6 4' }] }));
+    const Kmid = wf / S3.U;
+    st.append(stats([['Km mesuré', fm(Kmid, 1) + ' rad/s/V'], ['T mesuré (63 %)', t63 == null ? '—' : fm(t63 * 1000, 0) + ' ms'], ['Km théorique Kt/(R·f + Kt·Ke)', fm(lin.Km, 1) + ' rad/s/V'], ['T = R·J/(R·f + Kt·Ke)', fm(lin.T * 1000, 0) + ' ms'], ['T2 = L/R', fm(lin.T2 * 1000, 2) + ' ms'], ['J total', fm(lin.J * 1e6, 0) + '·10⁻⁶ kg·m²']]));
+    const dev = Math.abs(Kmid - lin.Km) / lin.Km;
+    setMsg('#m3', 'T2 = ' + fm(lin.T2 * 1000, 2) + ' ms est ' + fm(lin.T / lin.T2, 0) + ' fois plus petit que T : on néglige l’inductance. ' + (S3.dry ? 'Avec le frottement sec, Km mesuré s’écarte de ' + fm(dev * 100, 0) + ' % de la valeur théorique : l’échelon doit être assez grand devant Cs·R/Kt.' : 'Sans frottement sec, la mesure rejoint la théorie.'), 'warn');
+  };
+  root.append(h('div', { class: 'opts' }, sld('Échelon de tension U', 0.5, 8, 0.5, S3.U, v => fm(v, 1) + ' V', v => { S3.U = v; later('d3', draw); }), sld('Masses additionnelles', 0, 6, 1, S3.n, v => String(v), v => { S3.n = v; later('d3', draw); }), sld('Frottement visqueux f', 0, 20, 1, S3.f, v => v + '·10⁻⁶ N·m·s', v => { S3.f = v; later('d3', draw); }), chk('Frottement sec (Cs = 2 mN·m)', S3.dry, v => { S3.dry = v; later('d3', draw); })), box, st, msg);
+  draw();
+}
+WORKSHOPS.push({ id: 's3', title: 'Moteur', hint: 'Identifiez Km et T par un échelon en boucle ouverte, puis faites varier l’inertie et les frottements.', mount: mount3, reset: () => { Object.assign(S3, { U: 2, n: 0, f: 2, dry: true }); } });
+
+/* ================= Atelier 4 : asservissement ================= */
+const S4 = { th0: 10, step: 20, kp: 20, ki: 0, kd: 0, n: 0, lin: true, sat: true, meas: '', rep: 1.2 };
+function parseMeas(txt) {
+  const x = [], y = []; txt.split(/\r?\n/).forEach(l => { l = l.trim(); if (!l) return; let p = /[;\t]/.test(l) ? l.replace(/,/g, '.').split(/[;\t]/) : l.split(','); const a = parseFloat(p[0]), b = parseFloat(p[1]); if (isFinite(a) && isFinite(b)) { x.push(a); y.push(b); } });
+  return x.length > 1 ? { x, y } : null;
+}
+function mount4(root) {
+  root.append(h('h2', null, 'Asservissement en position du bras'),
+    h('p', null, 'Le jumeau complet est comparé au modèle linéaire du cours. Montez KP : le modèle linéaire prévoit un dépassement qui croît, la saturation de la commande le limite. Ajoutez des masses : la pesanteur crée une erreur statique que le modèle linéaire ne voit pas.'));
+  const out = h('div'), st = h('div'), msg = h('div', { class: 'verdict', id: 'm4' }), armBox = h('div', { class: 'pbox armbox' });
+  let last = null;
+  const showArm = () => { if (!last) return; const t = S4.rep, k = Math.min(last.t.length - 1, Math.round(t / 0.002)); armBox.innerHTML = armSvg(last.th[k], S4.n); };
+  const draw = () => {
+    const base = { th0: S4.th0, thc: S4.th0 + S4.step, kp: S4.kp, ki: S4.ki, kd: S4.kd, n: S4.n, tend: 2.5, sat: S4.sat };
+    const full = simulate(P, base); last = full; const pf = perf(full, S4.th0, S4.th0 + S4.step);
+    out.innerHTML = ''; st.innerHTML = '';
+    const series = [{ x: full.t, y: full.thc, c: 'var(--c5)', l: 'consigne', dash: '2 4' }, { x: full.t, y: full.th, c: 'var(--c1)', l: 'jumeau complet' }];
+    let pl = null; if (S4.lin) { const lr = simulate(P, Object.assign({}, base, { lin: true, noGrav: true })); pl = perf(lr, S4.th0, S4.th0 + S4.step); series.push({ x: lr.t, y: lr.th, c: 'var(--c3)', l: 'modèle linéaire', dash: '6 4' }); }
+    const me = parseMeas(S4.meas); if (me) series.push({ x: me.x, y: me.y, c: 'var(--c2)', l: 'mesure importée' });
+    out.append(plot({ title: 'Angle du bras', xl: 'temps (s)', yl: 'θ (°)', series }));
+    out.append(plot({ title: 'Tension de commande', xl: 'temps (s)', yl: 'Um (V)', h: 170, series: [{ x: full.t, y: full.u, c: 'var(--c1)', l: 'Um' }], hl: [{ y: P.Umax, l: '+21,6 V' }, { y: -P.Umax, l: '−21,6 V' }] }));
+    const lk = loopK(P, S4.n, S4.th0, S4.kp), K = lk.K, T = lk.m.T, z = 1 / (2 * Math.sqrt(K * T)), w0 = Math.sqrt(K / T), Dp = z < 1 ? Math.exp(-Math.PI * z / Math.sqrt(1 - z * z)) * 100 : 0;
+    st.append(stats([['Temps de réponse à 5 %', trTxt(pf.tr, 2.5)], ['Dépassement', fm(pf.D, 1) + ' %'], ['Erreur statique finale', fm(pf.ess, 2) + ' °'], ['Commande saturée', fm(pf.satFrac * 100, 0) + ' % du temps'], ['K de boucle (P seul)', fm(K, 2) + ' s⁻¹'], ['ζ prévu = 1/(2√(K·T))', fm(z, 2)], ['ω0 prévu', fm(w0, 1) + ' rad/s'], ['Dépassement prévu (ζ)', fm(Dp, 1) + ' %']]));
+    let m = 'Modèle linéaire : dépassement ' + fm(pl ? pl.D : Dp, 0) + ' %, jumeau : ' + fm(pf.D, 0) + ' %.';
+    if (pf.satFrac > 0.02) m += ' La commande sature ' + fm(pf.satFrac * 100, 0) + ' % du temps : la réponse est plus lente et moins oscillante que le modèle linéaire.';
+    if (Math.abs(pf.ess) > 0.3) m += ' Erreur statique de ' + fm(pf.ess, 1) + ' ° : frottement sec et pesanteur, absents du modèle linéaire.';
+    setMsg('#m4', m, pf.D > 25 ? 'no' : Math.abs(pf.ess) > 0.3 ? 'warn' : 'yes');
+    showArm();
+  };
+  const chips = h('div', { class: 'chips' }, [['KP = 20', { kp: 20, ki: 0, kd: 0, n: 0, step: 20 }], ['KP = 250', { kp: 250, ki: 0, kd: 0, n: 0, step: 5 }], ['6 masses, KP = 20', { kp: 20, ki: 0, kd: 0, n: 6, step: 20 }], ['Échelon 0 → 80°', { th0: 0, kp: 60, ki: 0, kd: 0, n: 0, step: 80 }]].map(c => h('button', { class: 'chip', type: 'button', onclick: () => { Object.assign(S4, c[1]); root.innerHTML = ''; mount4(root); } }, c[0])));
+  const ta = h('textarea', { rows: 3, placeholder: 't;θ (une ligne par point)', 'aria-label': 'Mesure à importer' }); ta.value = S4.meas; ta.addEventListener('input', () => { S4.meas = ta.value; later('d4', draw); });
+  root.append(chips, h('div', { class: 'opts' },
+    sld('Angle initial θ0', 0, 80, 1, S4.th0, v => v + ' °', v => { S4.th0 = v; later('d4', draw); }),
+    sld('Échelon de consigne', -40, 80, 1, S4.step, v => (v > 0 ? '+' : '') + v + ' °', v => { S4.step = v; later('d4', draw); }),
+    sld('Gain KP', 1, 300, 1, S4.kp, v => String(v), v => { S4.kp = v; later('d4', draw); }),
+    sld('Masses additionnelles', 0, 6, 1, S4.n, v => String(v), v => { S4.n = v; later('d4', draw); }),
+    chk('Saturation ±21,6 V', S4.sat, v => { S4.sat = v; later('d4', draw); }),
+    chk('Modèle linéaire en superposition', S4.lin, v => { S4.lin = v; later('d4', draw); })), out, st, msg);
+  root.append(h('h3', null, 'Rejouer le mouvement'), h('div', { class: 'opts' }, sld('Instant du rejeu', 0, 2.5, 0.05, S4.rep, v => fm(v, 2) + ' s', v => { S4.rep = v; showArm(); })), armBox,
+    h('h3', null, 'Comparer avec une mesure réelle'), h('p', { class: 'small' }, 'Collez ici un relevé de votre banc (temps en s, angle en °, séparés par « ; » ou une tabulation) : la courbe s’ajoute au tracé. Le jumeau est ensuite recalé en modifiant N, f ou Cs dans le code ou le cours.'), h('label', { class: 'fld' }, h('span', null, 'Mesure importée'), ta));
+  draw();
+}
+WORKSHOPS.push({ id: 's4', title: 'Asservissement', hint: 'Comparez le jumeau complet au modèle linéaire : gain KP, masses, saturation, erreur statique.', mount: mount4, reset: () => { Object.assign(S4, { th0: 10, step: 20, kp: 20, ki: 0, kd: 0, n: 0, lin: true, sat: true, meas: '', rep: 1.2 }); } });
+
+/* ================= Atelier 5 : fréquentiel (PSI*) ================= */
+const S5 = { th0: 10, n: 0, kp: 20, ki: 0, kd: 0, delay: false, te: 20 };
+function margins(b) {
+  let wc = null, pm = null, w180 = null, gm = null, ph = [], prev = null, off = 0;
+  b.forEach(p => { let v = p.ph + off; if (prev != null && v - prev > 180) { off -= 360; v -= 360; } else if (prev != null && v - prev < -180) { off += 360; v += 360; } ph.push(v); prev = v; });
+  for (let k = 1; k < b.length; k++) {
+    if (wc == null && b[k - 1].mag >= 1 && b[k].mag < 1) { const f = (1 - b[k - 1].mag) / (b[k].mag - b[k - 1].mag); wc = b[k - 1].w * Math.pow(b[k].w / b[k - 1].w, f); pm = 180 + ph[k - 1] + f * (ph[k] - ph[k - 1]); }
+    if (w180 == null && ph[k - 1] > -180 && ph[k] <= -180) { const f = (ph[k - 1] + 180) / (ph[k - 1] - ph[k]); w180 = b[k - 1].w * Math.pow(b[k].w / b[k - 1].w, f); gm = -20 * Math.log10(b[k - 1].mag * Math.pow(b[k].mag / b[k - 1].mag, f)); }
   }
+  return { wc, pm, w180, gm, ph };
+}
+function mount5(root) {
+  root.append(h('h2', null, 'Analyse fréquentielle et marges de stabilité'),
+    h('p', null, 'La boucle ouverte est un intégrateur (le bras) suivi d’un premier ordre (le moteur). Le diagramme de Bode donne la pulsation de coupure ω_c, la marge de phase et la marge de gain. Un retard dû à l’échantillonnage, de l’ordre de Te/2, retire de la phase.'));
+  const box = h('div'), st = h('div'), msg = h('div', { class: 'verdict', id: 'm5' });
+  const draw = () => {
+    const ws = []; for (let k = -1; k <= 3; k += 0.02) ws.push(Math.pow(10, k));
+    const c = { kp: S5.kp, ki: S5.ki, kd: S5.kd }, dly = S5.delay ? S5.te / 2000 : 0;
+    const b = bodeBO(P, S5.n, S5.th0, c, ws, dly), mg = margins(b);
+    box.innerHTML = ''; st.innerHTML = '';
+    box.append(plot({ title: 'Gain de la boucle ouverte', xn: 'ω', logx: true, xr: [0.1, 1000], xl: 'pulsation ω (rad/s)', yl: 'dB', series: [{ x: ws, y: b.map(p => 20 * Math.log10(p.mag)), c: 'var(--c1)', l: '|FTBO| (dB)' }, { x: [0.1, 1000], y: [0, 0], c: 'var(--c5)', l: '0 dB', dash: '3 4' }] }));
+    box.append(plot({ title: 'Phase de la boucle ouverte', xn: 'ω', logx: true, xr: [0.1, 1000], xl: 'pulsation ω (rad/s)', yl: 'degrés', yr: [-270, 0], series: [{ x: ws, y: mg.ph, c: 'var(--c2)', l: 'phase (°)' }, { x: [0.1, 1000], y: [-180, -180], c: 'var(--bad)', l: '−180°', dash: '3 4' }] }));
+    const base = { th0: S5.th0, thc: S5.th0 + 5, kp: S5.kp, ki: S5.ki, kd: S5.kd, n: S5.n, tend: 3, lin: true, Te: S5.delay ? S5.te / 1000 : 0.002 };
+    const r = simulate(P, base), p = perf(r, S5.th0, S5.th0 + 5);
+    st.append(stats([['Pulsation de coupure ω_c', mg.wc ? fm(mg.wc, 1) + ' rad/s' : '—'], ['Marge de phase', mg.pm != null ? fm(mg.pm, 0) + ' °' : '—'], ['Marge de gain', mg.gm != null ? fm(mg.gm, 0) + ' dB' : '∞ (pas de croisement à −180°)'], ['Dépassement simulé (échelon 5°, linéaire)', fm(p.D, 0) + ' %']]));
+    const pm = mg.pm;
+    setMsg('#m5', pm == null ? 'La boucle ouverte ne coupe pas 0 dB sur cette plage.' : pm >= 45 ? 'Marge de phase ' + fm(pm, 0) + ' ° : le système est stable avec une marge confortable (cible usuelle : 45° ou plus).' : pm > 0 ? 'Marge de phase ' + fm(pm, 0) + ' ° : stable mais très oscillant, la marge est insuffisante.' : 'Marge de phase négative : le système est instable en boucle fermée.', pm >= 45 ? 'yes' : pm > 0 ? 'warn' : 'no');
+  };
+  const find45 = () => {
+    const ws = []; for (let k = -1; k <= 3; k += 0.02) ws.push(Math.pow(10, k));
+    let lo = 0.5, hi = 400; for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2, m = margins(bodeBO(P, S5.n, S5.th0, { kp: mid, ki: 0, kd: 0 }, ws, S5.delay ? S5.te / 2000 : 0)); if (m.pm != null && m.pm > 45) lo = mid; else hi = mid; }
+    S5.kp = Math.round(lo); S5.ki = 0; S5.kd = 0; root.innerHTML = ''; mount5(root); toast('KP = ' + S5.kp + ' donne environ 45° de marge de phase (P seul).');
+  };
+  root.append(h('div', { class: 'chips' }, h('button', { class: 'chip', type: 'button', onclick: find45 }, 'Régler KP pour 45° de marge')),
+    h('div', { class: 'opts' },
+      sld('Angle de fonctionnement θ0', 0, 80, 1, S5.th0, v => v + ' °', v => { S5.th0 = v; later('d5', draw); }),
+      sld('Masses additionnelles', 0, 6, 1, S5.n, v => String(v), v => { S5.n = v; later('d5', draw); }),
+      sld('KP', 1, 300, 1, S5.kp, v => String(v), v => { S5.kp = v; later('d5', draw); }),
+      sld('Ki', 0, 100, 1, S5.ki, v => String(v), v => { S5.ki = v; later('d5', draw); }),
+      sld('Kd', 0, 2, 0.05, S5.kd, v => fm(v, 2), v => { S5.kd = v; later('d5', draw); }),
+      chk('Retard d’échantillonnage Te/2', S5.delay, v => { S5.delay = v; later('d5', draw); }),
+      sld('Période Te', 1, 100, 1, S5.te, v => v + ' ms', v => { S5.te = v; later('d5', draw); })), box, st, msg);
+  draw();
+}
+WORKSHOPS.push({ id: 's5', title: 'Fréquentiel (PSI*)', hint: 'Lisez ω_c, la marge de phase et la marge de gain ; observez l’effet de l’intégrale, de la dérivée et du retard.', mount: mount5, reset: () => { Object.assign(S5, { th0: 10, n: 0, kp: 20, ki: 0, kd: 0, delay: false, te: 20 }); } });
 
-  function updateIndicators(res, cons, masse) {
-    const final = res.theta[res.N-1];
-    const err = cons - final;
-    
-    const box = qs('#j-indic');
-    if (box) {
-      box.innerHTML = '';
-      box.append(mk('div',{class:'gstats'},[
-        ['Erreur statique', err.toFixed(2)+' °'],
-        ['Inertie J<sub>eq</sub>', (getJeq(masse)*10000).toFixed(2)+' kg·cm²'],
-        ['Couple maintien', getCoupleMaintien(final).toFixed(3)+' N·m']
-      ].map(([lab,val])=>mk('div',{class:'stat'},mk('span',{html:lab}),mk('b',null,val)))));
-    }
+/* ================= Atelier 6 : correcteurs (PSI*) ================= */
+const S6 = { th0: 10, step: 20, n: 6, aw: false, te: 2, C: [{ nm: 'P', kp: 40, ki: 0, kd: 0 }, { nm: 'PI', kp: 40, ki: 40, kd: 0 }, { nm: 'PID', kp: 40, ki: 40, kd: 0.2 }] };
+function mount6(root) {
+  root.append(h('h2', null, 'Correcteurs P, PI, PID et perturbations'),
+    h('p', null, 'Trois correcteurs sont comparés sur le même scénario. Avec des masses, la pesanteur est un couple perturbateur constant : le P laisse une erreur statique, le PI l’annule. Sur un grand échelon la commande sature et l’intégrale s’accumule : c’est le phénomène de windup, que l’anti-windup corrige.'));
+  const out = h('div'), tab = h('div'), msg = h('div', { class: 'verdict', id: 'm6' });
+  const cols = ['var(--c1)', 'var(--c2)', 'var(--c4)'];
+  const draw = () => {
+    out.innerHTML = ''; tab.innerHTML = '';
+    const rs = S6.C.map(c => simulate(P, { th0: S6.th0, thc: S6.th0 + S6.step, kp: c.kp, ki: c.ki, kd: c.kd, n: S6.n, aw: S6.aw, Te: S6.te / 1000, tend: 3 }));
+    const ps = rs.map(r => perf(r, S6.th0, S6.th0 + S6.step));
+    out.append(plot({ title: 'Angle du bras', xl: 'temps (s)', yl: 'θ (°)', series: [{ x: rs[0].t, y: rs[0].thc, c: 'var(--c5)', l: 'consigne', dash: '2 4' }].concat(rs.map((r, i) => ({ x: r.t, y: r.th, c: cols[i], l: S6.C[i].nm })) ) }));
+    out.append(plot({ title: 'Tension de commande', xl: 'temps (s)', yl: 'Um (V)', h: 170, series: rs.map((r, i) => ({ x: r.t, y: r.u, c: cols[i], l: S6.C[i].nm })), hl: [{ y: P.Umax, l: '+21,6 V' }, { y: -P.Umax, l: '−21,6 V' }] }));
+    tab.append(h('div', { class: 'dwrap' }, h('table', { class: 'dt' }, h('thead', null, h('tr', null, ['Correcteur', 'KP', 'Ki', 'Kd', 'tr 5 %', 'Dépassement', 'Erreur finale', 'Saturé'].map(x => h('th', null, x)))),
+      h('tbody', null, S6.C.map((c, i) => h('tr', null,
+        h('td', null, h('b', { style: 'color:' + cols[i] }, c.nm)),
+        ...['kp', 'ki', 'kd'].map(k => { const inp = h('input', { type: 'number', min: 0, step: k === 'kd' ? 0.05 : 1, value: c[k], 'aria-label': c.nm + ' ' + k }); inp.addEventListener('change', () => { c[k] = Math.max(0, +inp.value || 0); later('d6', draw); }); return h('td', null, inp); }),
+        h('td', { class: 'm' }, trTxt(ps[i].tr, 3)), h('td', { class: 'm' }, fm(ps[i].D, 0) + ' %'), h('td', { class: 'm' }, fm(ps[i].ess, 2) + ' °'), h('td', { class: 'm' }, fm(ps[i].satFrac * 100, 0) + ' %')))))));
+    const e0 = Math.abs(ps[0].ess), e1 = Math.abs(ps[1].ess);
+    setMsg('#m6', 'Erreur finale : P ' + fm(ps[0].ess, 2) + ' °, PI ' + fm(ps[1].ess, 2) + ' °, PID ' + fm(ps[2].ess, 2) + ' °. ' + (e0 > 0.3 && e1 < e0 / 2 ? 'L’intégrale a réduit l’erreur statique du P.' : e0 <= 0.3 ? 'Avec ce scénario le P seul suffit déjà.' : 'L’intégrale n’a pas encore eu le temps d’annuler l’erreur : augmentez Ki ou la durée.') + (ps[1].D > 40 && !S6.aw ? ' Le dépassement du PI est très marqué : essayez l’anti-windup.' : ''), 'warn');
+  };
+  const chips = h('div', { class: 'chips' }, [['Rejet de la pesanteur', { th0: 10, step: 20, n: 6, aw: false, te: 2 }], ['Grand échelon (windup)', { th0: 0, step: 85, n: 0, aw: false, te: 2 }], ['Échantillonnage lent', { th0: 10, step: 20, n: 0, aw: false, te: 40 }]].map(c => h('button', { class: 'chip', type: 'button', onclick: () => { Object.assign(S6, c[1]); root.innerHTML = ''; mount6(root); } }, c[0])));
+  root.append(chips, h('div', { class: 'opts' },
+    sld('Angle initial θ0', 0, 80, 1, S6.th0, v => v + ' °', v => { S6.th0 = v; later('d6', draw); }),
+    sld('Échelon de consigne', 5, 90, 1, S6.step, v => '+' + v + ' °', v => { S6.step = Math.min(v, 90 - S6.th0); later('d6', draw); }),
+    sld('Masses additionnelles', 0, 6, 1, S6.n, v => String(v), v => { S6.n = v; later('d6', draw); }),
+    sld('Période Te', 1, 60, 1, S6.te, v => v + ' ms', v => { S6.te = v; later('d6', draw); }),
+    chk('Anti-windup (intégrale gelée en saturation)', S6.aw, v => { S6.aw = v; later('d6', draw); })), out, tab, msg);
+  draw();
+}
+WORKSHOPS.push({ id: 's6', title: 'Correcteurs (PSI*)', hint: 'Comparez P, PI et PID face à la pesanteur, à la saturation et à l’échantillonnage.', mount: mount6, reset: () => { Object.assign(S6, { th0: 10, step: 20, n: 6, aw: false, te: 2, C: [{ nm: 'P', kp: 40, ki: 0, kd: 0 }, { nm: 'PI', kp: 40, ki: 40, kd: 0 }, { nm: 'PID', kp: 40, ki: 40, kd: 0.2 }] }); } });
+/* ---------- activités ---------- */
+const ACT = {
+  s1: {
+    title: 'Découvrir le MaxPID', level: 'Niveau 1 · Découvrir', time: '25 min', course: 'presentation',
+    goal: 'Repérer les chaînes d’information et d’énergie du MaxPID, comprendre la mesure de position et distinguer les paramètres documentés des paramètres calés.',
+    steps: [
+      'Sur le schéma-blocs, suivez la chaîne d’énergie depuis le moteur jusqu’au bras. Quels blocs la composent ? Où la chaîne d’information la rejoint-elle ?',
+      'Faites varier l’angle du bras de 0 à 90°. Notez la longueur de vis x et le nombre de tours de vis correspondants. Quelle est la course de la vis ?',
+      'Placez le bras à 45° : combien de points délivre le capteur ? Combien de degrés représente un point ?',
+      'Dans le tableau, repérez les paramètres « calés ». Pourquoi faut-il les recaler sur un vrai banc avant de tirer des conclusions chiffrées ?',
+      'Ajoutez 6 masses. Quelles grandeurs du modèle sont modifiées (inertie, couple de pesanteur) ?'
+    ],
+    defi: { q: 'La saturation de commande vaut 21,6 V pour une alimentation de 24 V. Quel pourcentage cela représente-t-il ? Quelle est la résolution angulaire d’un point du capteur (44 points par degré) ?',
+      a: '21,6 / 24 = <b>90 %</b> de la tension d’alimentation. Un point correspond à 1/44 ≈ <b>0,023 °</b>.' },
+    qcm: [
+      { q: 'Quelle grandeur le potentiomètre associé au CAN mesure-t-il ?', o: ['L’angle du bras', 'La vitesse du moteur', 'Le courant dans le moteur', 'La longueur de la vis en mm'], a: 0, w: 'Le capteur potentiométrique mesure la position angulaire réelle du bras : c’est la grandeur de retour de l’asservissement.' },
+      { q: 'Pour passer de 0 à 90°, la longueur de vis passe de 170,5 mm à 69,5 mm. Avec un pas de 4 mm/tr, combien de tours de vis ?', o: ['Environ 4 tours', 'Environ 25 tours', 'Environ 100 tours', 'Environ 400 tours'], a: 1, w: 'Δx = 101 mm et chaque tour fait avancer de 4 mm : 101 / 4 ≈ 25 tours.' },
+      { q: 'Lequel de ces éléments appartient à la chaîne d’énergie ?', o: ['Le potentiomètre', 'Le CAN 12 bits', 'La vis-écrou', 'Le calcul de l’écart'], a: 2, w: 'La vis-écrou transmet de la puissance mécanique. Le capteur, le CAN et le calcul de l’écart traitent de l’information.' },
+      { q: 'Que signifie « calé » dans le tableau des paramètres ?', o: ['La valeur est relevée dans la documentation du constructeur', 'La valeur a été choisie pour retrouver le comportement décrit, faute de donnée publiée', 'La valeur est mesurée sur le banc', 'La valeur ne sert pas dans le modèle'], a: 1, w: 'Un paramètre calé est un ordre de grandeur ajusté, par exemple le rapport de réduction N. Il doit être remplacé par une valeur mesurée sur le système réel.' },
+      { q: 'Que représente l’inertie J = 5·10⁻⁵ kg·m² de l’énoncé ?', o: ['L’inertie du bras seul, sans le moteur', 'L’inertie ramenée à l’axe moteur, sans masse additionnelle', 'L’inertie d’une masse additionnelle', 'L’inertie de la vis seule'], a: 1, w: 'Dans l’équation J·dωm/dt = Cm − Cfrot, J est l’inertie équivalente ramenée sur l’axe du moteur. Chaque masse ajoutée l’augmente de 0,8·10⁻⁵ kg·m².' }
+    ]
+  },
+  s2: {
+    title: 'Loi entrée-sortie', level: 'Niveau 1 · Découvrir', time: '25 min', course: 'cinematique',
+    goal: 'Interpréter la loi entrée-sortie du bras, calculer son gain local et juger de la validité d’une linéarisation.',
+    steps: [
+      'Tracez θ(β) avec θ0 = 10° puis θ0 = 70°. Comment évolue la pente de la courbe ?',
+      'Relevez G(10°) et G(70°) en °/tr. Quel est leur rapport ?',
+      'Avec θ0 = 10°, augmentez la demi-amplitude de 2° à 45°. À partir de quelle amplitude l’erreur de la tangente dépasse-t-elle 0,5° ?',
+      'Choisissez θ0 = 80° : le résultat est-il meilleur ou moins bon qu’à 10° pour la même amplitude ?',
+      'Convertissez G(10°) en °/rad de vis puis en degré de bras par rad de moteur (N = 7).'
+    ],
+    defi: { q: 'Calculez à la main G(0) à partir de x(0) = 170,5 mm, b = 82 mm et c = 80 mm, sachant que dx/dθ = c(−a·sin θ − b·cos θ)/x.',
+      a: 'En θ = 0 : dx/dθ = −c·b/x(0) = −80 × 82 / 170,5 ≈ <b>−38,5 mm/rad</b>. Un tour de vis raccourcit x de 4 mm : Δθ = 4 / 38,5 ≈ 0,104 rad, soit <b>G(0) ≈ 5,95 °/tr</b>. Le jumeau affiche 5,96 °/tr.' },
+    qcm: [
+      { q: 'Pourquoi G(θ) diminue-t-il quand θ augmente ?', o: ['Le moteur ralentit', 'Une variation de x produit une rotation du bras de plus en plus faible : |dx/dθ| passe d’environ 38 à 80 mm/rad', 'La vis change de pas', 'Le capteur sature'], a: 1, w: 'G = p / |dx/dθ| : le dénominateur double environ entre 0 et 90°, donc G passe de 5,96 à 2,87 °/tr.' },
+      { q: 'À KP identique, où la boucle est-elle la plus rapide ?', o: ['À 70°, car G est plus grand', 'À 10°, car G est plus grand', 'Partout pareil', 'Cela dépend uniquement de la masse'], a: 1, w: 'Le gain de boucle K est proportionnel à G(θ0). Plus K est grand, plus la réponse est rapide (et plus ζ est petit).' },
+      { q: 'La droite tangente à θ(β) en θ0 a pour pente…', o: ['G(θ0) en °/tr', 'p en mm/tr', 'N', '1/G(θ0)'], a: 0, w: 'G(θ0) = dθ/dβ est par définition la pente de la tangente, exprimée en degrés de bras par tour de vis.' },
+      { q: 'L’erreur de linéarisation…', o: ['Diminue quand l’amplitude du mouvement augmente', 'Augmente avec l’amplitude du mouvement', 'Est indépendante de l’amplitude', 'Est nulle partout'], a: 1, w: 'La courbe s’écarte de sa tangente quand on s’éloigne de θ0 : le modèle linéaire n’est valable que pour de petits déplacements.' },
+      { q: 'Quelle valeur de G(10°) lit-on ?', o: ['Environ 1 °/tr', 'Environ 5 °/tr', 'Environ 25 °/tr', 'Environ 90 °/tr'], a: 1, w: 'G(10°) ≈ 5,04 °/tr et G(70°) ≈ 2,98 °/tr, d’après la loi x(θ) à 4 mm/tr.' }
+    ]
+  },
+  s3: {
+    title: 'Identifier le moteur', level: 'Niveau 2 · Comprendre', time: '30 min', course: 'moteur',
+    goal: 'Identifier Km et T d’un moteur à courant continu à partir d’un échelon de tension, puis relier ces valeurs aux paramètres physiques.',
+    steps: [
+      'Appliquez un échelon de 2 V sans masse. Relevez la vitesse finale et déduisez Km. Relevez le temps pour atteindre 63 % : c’est T.',
+      'Comparez avec Km et T théoriques affichés. Quel écart observez-vous ? Désactivez le frottement sec : que se passe-t-il ?',
+      'Ajoutez 6 masses. Comment évoluent Km et T ? Justifiez avec les formules.',
+      'Multipliez le frottement visqueux f par 10. Quels paramètres changent ?',
+      'Comparez T et T2 = L/R. Justifiez qu’on puisse négliger l’inductance.'
+    ],
+    defi: { q: 'Montrez que, pour f = 0 et L négligée, Ω(p)/U(p) = (1/Ke) / (1 + T·p) avec T = R·J/(Kt·Ke), puis calculez T pour J = 5·10⁻⁵ kg·m², R = 2,32 Ω et Kt = Ke = 23,4 mN·m/A.',
+      a: 'U = R·i + Ke·Ω et J·pΩ = Kt·i donnent J·pΩ = Kt(U − Ke·Ω)/R, d’où Ω/U = (1/Ke)/(1 + R·J/(Kt·Ke)·p). Numériquement T = 2,32 × 5·10⁻⁵ / (0,0234)² ≈ <b>0,21 s</b> et Km = 1/Ke ≈ 42,7 rad/s/V.' },
+    qcm: [
+      { q: 'Pour un système du premier ordre soumis à un échelon, T est la durée pour atteindre…', o: ['10 % de la valeur finale', '50 % de la valeur finale', '63 % de la valeur finale', '95 % de la valeur finale'], a: 2, w: 'y(T) = y∞(1 − e⁻¹) ≈ 0,63·y∞. Le temps de réponse à 5 % vaut environ 3T.' },
+      { q: 'Si l’on double l’inertie J, avec f petit…', o: ['Km double, T double', 'Km inchangé, T double environ', 'Km inchangé, T inchangé', 'Km divisé par 2, T inchangé'], a: 1, w: 'T = R·J/(R·f + Kt·Ke) est proportionnel à J alors que Km = Kt/(R·f + Kt·Ke) n’en dépend pas.' },
+      { q: 'Pourquoi néglige-t-on l’inductance ?', o: ['Parce que L = 0 exactement', 'Parce que T2 = L/R est de l’ordre de 0,1 ms, très petit devant T ≈ 0,2 s', 'Parce que le moteur est alimenté en continu', 'Parce que la vis filtre le signal'], a: 1, w: 'Les deux constantes de temps sont séparées de plus de trois ordres de grandeur : le terme (1 + T2·p) est sans effet visible.' },
+      { q: 'Avec 6 masses, J = 98·10⁻⁶ kg·m². Que devient T ?', o: ['Environ 0,1 s', 'Environ 0,2 s (inchangé)', 'Environ 0,4 s', 'Environ 2 s'], a: 2, w: 'T est proportionnel à J : 0,21 × 98/50 ≈ 0,41 s.' },
+      { q: 'Quel effet le frottement sec a-t-il sur un petit échelon ?', o: ['Il augmente Km', 'Il réduit la vitesse finale apparente, donc Km mesuré est trop faible', 'Il supprime T', 'Il n’a aucun effet'], a: 1, w: 'Une partie de la tension sert à vaincre le couple sec Cs : la vitesse finale est inférieure à celle du modèle linéaire, surtout pour un échelon faible.' }
+    ]
+  },
+  s4: {
+    title: 'Asservir en position', level: 'Niveau 2 · Comprendre', time: '40 min', course: 'asservissement',
+    goal: 'Prévoir ζ, ω0 et le dépassement d’un asservissement proportionnel, puis expliquer les écarts du jumeau complet : saturation, frottement, pesanteur.',
+    steps: [
+      'Choisissez « KP = 20 ». Relevez dépassement, temps de réponse à 5 % et erreur statique, dans le jumeau et dans le modèle linéaire.',
+      'Choisissez « KP = 250 ». Comparez le dépassement du modèle linéaire à celui du jumeau. Que fait la saturation ?',
+      'Revenez à KP = 20 et ajoutez 6 masses. Que devient l’erreur statique ? Que prévoit le modèle linéaire ?',
+      'Cherchez le KP qui donne ζ = 1 (dépassement nul). Comparez à la valeur du cours.',
+      'Déplacez θ0 de 10° à 70° à KP fixé. Comment changent K, ζ et le temps de réponse ?'
+    ],
+    defi: { q: 'Pour θ0 = 10° et sans masse, K = 1,92 s⁻¹ pour KP = 20 et T = 0,21 s. Quel KP donne ζ = 1 ?',
+      a: 'ζ = 1/(2√(K·T)) = 1 donne K·T = 1/4, soit K = 1,19 s⁻¹. K étant proportionnel à KP : KP = 20 × 1,19 / 1,92 ≈ <b>12</b>. Au-dessus, la réponse devient oscillante.' },
+    qcm: [
+      { q: 'Quelle est la classe de la FTBO K/(p·(1 + T·p)) et que vaut l’erreur statique à un échelon ?', o: ['Classe 0, erreur non nulle', 'Classe 1, erreur nulle', 'Classe 2, erreur nulle', 'Classe 1, erreur infinie'], a: 1, w: 'Un intégrateur dans la chaîne directe donne la classe 1 : l’erreur statique à un échelon est nulle pour le modèle linéaire.' },
+      { q: 'Quand KP augmente, que deviennent ζ et le dépassement ?', o: ['ζ augmente, le dépassement diminue', 'ζ diminue, le dépassement augmente', 'Rien ne change', 'ζ diminue, le dépassement diminue'], a: 1, w: 'ζ = 1/(2√(K·T)) décroît quand K croît (K proportionnel à KP), donc la réponse est plus oscillante.' },
+      { q: 'Pourquoi le jumeau montre-t-il une erreur statique avec 6 masses alors que le modèle est de classe 1 ?', o: ['Le capteur est faux', 'Le couple de pesanteur impose une tension non nulle, qu’un correcteur proportionnel ne fournit qu’avec un écart', 'Le modèle linéaire est faux', 'La vis a du jeu'], a: 1, w: 'La perturbation agit en amont de l’intégrateur : pour la compenser, la commande doit rester non nulle, donc ε ≠ 0 avec un P pur.' },
+      { q: 'À KP = 250, pourquoi le dépassement du jumeau est-il plus faible que celui du modèle linéaire ?', o: ['Le jumeau a plus de frottement visqueux', 'La tension est saturée à ±21,6 V : l’action du correcteur est limitée', 'Le jumeau est échantillonné', 'La pesanteur freine toujours'], a: 1, w: 'Le modèle linéaire demande une tension de près de 100 V ; la saturation limite le couple, donc la vitesse et le dépassement.' },
+      { q: 'Si ζ = 0,8 environ, la réponse indicielle est…', o: ['Instable', 'Fortement oscillante', 'Faiblement dépassante, proche de la réponse la plus rapide sans oscillation', 'Divergente'], a: 2, w: 'Pour ζ = 0,8, le dépassement vaut environ 1,5 % : c’est un réglage proche de l’optimum rapidité/précision.' }
+    ]
+  },
+  s5: {
+    title: 'Marges de stabilité', level: 'Niveau 3 · Approfondir (PSI*)', time: '40 min', course: 'bode',
+    goal: 'Lire un diagramme de Bode, déterminer ω_c et les marges, et relier marge de phase, correcteur et retard à la qualité de la réponse.',
+    steps: [
+      'Avec θ0 = 10° et KP = 20, relevez ω_c et la marge de phase. Passez à KP = 60 puis 250 : que deviennent ω_c et la marge ?',
+      'Utilisez « Régler KP pour 45° de marge ». Vérifiez le dépassement simulé.',
+      'Ajoutez Ki = 10 à KP = 20. De combien la marge de phase change-t-elle ? Pourquoi ?',
+      'Activez le retard Te/2 avec Te = 100 ms : quelle perte de marge observez-vous ? Comparez à ω_c·Te/2.',
+      'Revenez à θ0 = 70° : le gain de la boucle ouverte et la marge changent-ils ? Pourquoi ?'
+    ],
+    defi: { q: 'Une boucle coupe 0 dB à ω_c = 10 rad/s et le calculateur échantillonne à Te = 100 ms. Quelle marge de phase le retard moyen Te/2 fait-il perdre ?',
+      a: 'Le retard moyen Te/2 = 0,05 s introduit un déphasage −ω_c·Te/2 = −10 × 0,05 = −0,5 rad, soit <b>environ 29°</b> de marge de phase perdue.' },
+    qcm: [
+      { q: 'Comment définit-on la marge de phase ?', o: ['180° + phase de la FTBO à ω_c', 'La phase de la FTBO à ω = 0', '90° − phase à ω_c', 'Le gain à −180° de phase'], a: 0, w: 'ω_c est la pulsation où |FTBO| = 1 (0 dB) ; la marge de phase vaut 180° + arg FTBO(jω_c).' },
+      { q: 'Quand KP augmente (modèle du MaxPID), la marge de phase…', o: ['Augmente', 'Diminue', 'Reste constante', 'Devient infinie'], a: 1, w: 'La courbe de gain monte et ω_c augmente ; la phase s’approche de −180° quand le premier ordre du moteur commence à agir : la marge passe d’environ 69° (KP = 20) à 24° (KP = 250).' },
+      { q: 'Quel est l’effet d’une action intégrale sur la marge de phase ?', o: ['Elle l’augmente toujours', 'Elle la diminue en retirant de la phase aux basses fréquences', 'Aucun effet', 'Elle la rend infinie'], a: 1, w: 'L’intégrale ajoute −90° aux basses fréquences : à ω_c, la phase est dégradée, d’autant plus que Ki est grand devant KP·ω_c.' },
+      { q: 'Une marge de phase de 45° correspond approximativement à un dépassement de…', o: ['0 %', 'Environ 20 %', 'Environ 80 %', '100 %'], a: 1, w: 'Avec la règle ζ ≈ MΦ/100, ζ ≈ 0,45 et le dépassement vaut exp(−πζ/√(1−ζ²)) ≈ 20 %. C’est un ordre de grandeur pour un système proche du second ordre.' },
+      { q: 'Quel est l’effet d’un retard pur τ sur la FTBO ?', o: ['Il change le gain', 'Il retire ω·τ radians de phase sans changer le gain', 'Il ajoute de la phase', 'Il ne change rien'], a: 1, w: 'Le retard e^(−τp) a pour module 1 et pour argument −ω·τ : il dégrade la marge de phase sans toucher à ω_c.' }
+    ]
+  },
+  s6: {
+    title: 'Corriger et rejeter', level: 'Niveau 3 · Approfondir (PSI*)', time: '45 min', course: 'pid',
+    goal: 'Régler un correcteur PID face à une perturbation constante, une saturation de la commande et un échantillonnage lent, et justifier chaque terme.',
+    steps: [
+      'Choisissez « Rejet de la pesanteur ». Comparez les erreurs finales du P, du PI et du PID. Que fait l’intégrale ?',
+      'Doublez Ki du PI. L’erreur diminue-t-elle plus vite ? Que devient le dépassement ?',
+      'Choisissez « Grand échelon (windup) ». Observez la commande et le dépassement du PI. Activez l’anti-windup et comparez.',
+      'Augmentez Kd du PID jusqu’à 1. Comment évolue la tension de commande ? Pourquoi la dérivée amplifie-t-elle le bruit de quantification ?',
+      'Choisissez « Échantillonnage lent » : à partir de quelle période Te la réponse se dégrade-t-elle ?'
+    ],
+    defi: { q: 'Un correcteur PI reçoit un grand échelon et la commande reste saturée pendant 0,5 s avec une erreur moyenne de 30°. Que fait l’intégrale pendant ce temps et pourquoi cela pose-t-il problème à la sortie de la saturation ?',
+      a: 'L’intégrale continue de s’accumuler (≈ 0,5 s × 30° d’erreur) alors que la commande réelle est bloquée à ±21,6 V. À la sortie de la saturation, cette valeur doit être « déchargée » par une erreur de signe opposé : le bras dépasse la consigne et revient lentement. C’est le <b>windup</b>. On l’évite en gelant l’intégrale quand la commande sature et que l’erreur la maintient saturée.' },
+    qcm: [
+      { q: 'Pourquoi un PI annule-t-il l’erreur due à un couple de pesanteur constant ?', o: ['Il augmente KP', 'L’intégrale continue de varier tant que l’erreur n’est pas nulle, ce qui fournit la tension de compensation', 'Il filtre le capteur', 'Il supprime la saturation'], a: 1, w: 'En régime permanent, la sortie du correcteur doit valoir R·Cr/Kt ≠ 0 : seule l’intégrale peut la maintenir avec une entrée nulle.' },
+      { q: 'Qu’est-ce que le windup ?', o: ['Un bruit du capteur', 'L’accumulation de l’intégrale pendant que la commande est saturée', 'Un défaut de la vis', 'Un excès de dérivée'], a: 1, w: 'L’intégrale grossit alors que l’actionneur ne peut pas suivre : la sortie de la saturation provoque un dépassement important.' },
+      { q: 'Quel est l’inconvénient principal d’une action dérivée sur ce système ?', o: ['Elle supprime la marge de phase', 'Elle amplifie le bruit, notamment la quantification du capteur', 'Elle annule l’erreur statique', 'Elle augmente la saturation'], a: 1, w: 'Le capteur 12 bits donne des marches de 0,023° : leur dérivée est un pic de forte amplitude. On filtre l’action dérivée.' },
+      { q: 'Pour limiter l’effet du retard d’échantillonnage, que faut-il faire ?', o: ['Augmenter la période Te', 'Diminuer Te devant la constante de temps de la boucle fermée', 'Supprimer l’intégrale', 'Passer en boucle ouverte'], a: 1, w: 'Le retard moyen Te/2 coûte ω_c·Te/2 radian de marge de phase : plus Te est petit, moins on perd.' },
+      { q: 'Quel terme du PID améliore surtout l’amortissement ?', o: ['Le P seul', 'L’intégrale', 'La dérivée', 'Aucun'], a: 2, w: 'La dérivée ajoute de la phase avance autour de ω_c : elle augmente la marge de phase et réduit le dépassement.' }
+    ]
   }
+};
 
-  /* ==================================================================
-     ATELIERS SECONDAIRES (Cinématique, Statique, etc.)
-     ================================================================== */
-  function mountCinematique(root) {
-    root.innerHTML = `
-      <h2>Cinématique</h2>
-      <div class="formula">x(t) = (p / 2π) · α<sub>m</sub>(t)</div>
-      <div class="opts">
-        <label class="fld"><span>Rotation vis α<sub>m</sub> (°)</span><input type="range" id="c-alpha" min="-360" max="360" step="5" value="0"><b id="c-alpha-out">0</b></label>
-      </div>
-      <div class="canvas-wrap"><canvas id="c-canvas" width="600" height="200"></canvas></div>
-      <div id="c-out" class="gstats"></div>
-    `;
-    qs('#c-alpha').addEventListener('input', () => {
-      const a = parseFloat(qs('#c-alpha').value);
-      qs('#c-alpha-out').textContent = a;
-      const x = (MAXPID.pas_vis * 1000 / (2 * Math.PI)) * (a * Math.PI / 180); // mm
-      const theta = Math.atan2(x, 100) * 180 / Math.PI;
-      
-      const canvas = qs('#c-canvas'); const ctx = canvas.getContext('2d');
-      ctx.clearRect(0,0,600,200);
-      ctx.fillStyle = '#ccc'; ctx.fillRect(0, 150, 600, 50);
-      
-      ctx.fillStyle = '#2e6da4'; ctx.fillRect(50, 140, 100, 10); // Moteur
-      ctx.strokeStyle = '#999'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(150, 145); ctx.lineTo(450, 145); ctx.stroke(); // Vis
-      
-      const ex = 300 + x * 2; // Ecrou
-      ctx.fillStyle = '#c8b942'; ctx.beginPath(); ctx.arc(ex, 145, 15, 0, 2*Math.PI); ctx.fill();
-      
-      const th = theta * Math.PI / 180;
-      ctx.strokeStyle = '#333'; ctx.lineWidth = 6;
-      ctx.beginPath(); ctx.moveTo(300, 145); ctx.lineTo(300 + 100*Math.sin(th), 145 - 100*Math.cos(th)); ctx.stroke();
-      
-      const box = qs('#c-out'); box.innerHTML = '';
-      box.append(mk('div',{class:'gstats'},[
-        ['Translation x', x.toFixed(2)+' mm'],
-        ['Angle θ', theta.toFixed(2)+' °']
-      ].map(([l,v])=>mk('div',{class:'stat'},mk('span',null,l),mk('b',null,v)))));
+/* ---------- cours ---------- */
+const COURSE = [];
+COURSE.push({ id: 'presentation', t: 'Le MaxPID', h: `
+<p>Le <b>MaxPID</b> est un axe asservi en position issu d’un robot cueilleur de pommes. Après détection d’un fruit, il place un organe de cueillette au contact du fruit. Le cahier des charges demande un positionnement <b>précis</b> (ne pas faire tomber le fruit) et <b>rapide</b> (grand nombre de fruits).</p>
+<h3>Constituants</h3>
+<table class="ctable"><tr><th>Élément</th><th>Rôle</th></tr>
+<tr><td>Carte de commande</td><td>calcule l’écart consigne − position, applique le correcteur, délivre la tension moteur saturée entre −Umax et +Umax</td></tr>
+<tr><td>Moteur à courant continu</td><td>convertit l’énergie électrique en énergie mécanique de rotation</td></tr>
+<tr><td>Chaîne cinématique</td><td>réducteur puis vis-écrou : transforme la rotation du moteur en rotation du bras</td></tr>
+<tr><td>Bras</td><td>charge mécanique, inertie variable selon les masses ajoutées</td></tr>
+<tr><td>Potentiomètre + CAN</td><td>mesure l’angle du bras : 12 bits, 0 à 4095, soit 44 points par degré</td></tr></table>
+<h3>Deux chaînes</h3>
+<p>La <b>chaîne d’énergie</b> (alimentation, moteur, réducteur, vis, bras) transmet la puissance. La <b>chaîne d’information</b> (capteur, CAN, comparateur, correcteur) acquiert, traite et commande.</p>
+<div class="retain"><b>À retenir.</b> Le MaxPID est un système asservi : on mesure la sortie θ, on la compare à la consigne θc et on corrige la tension du moteur pour annuler l’écart.</div>` });
+
+COURSE.push({ id: 'moteur', t: 'Moteur à courant continu', h: `
+<h3>Équations</h3>
+<div class="formula">u(t) = Rm·i(t) + Lm·di/dt + Ke·ωm(t)<br>Cm(t) = Kt·i(t)<br>J·dωm/dt + f·ωm = Cm − Cr</div>
+<p>Rm est la résistance, Lm l’inductance, Ke la constante de force contre-électromotrice, Kt la constante de couple, J l’inertie ramenée à l’axe moteur, f le frottement visqueux et Cr le couple résistant (frottement sec, pesanteur).</p>
+<h3>Fonction de transfert</h3>
+<p>Avec Cr = 0 et dans le domaine de Laplace :</p>
+<div class="formula">Ωm(p)/U(p) = Kt / [(Lm·p + Rm)(J·p + f) + Kt·Ke]</div>
+<p>Sous forme canonique : Km / ((1 + T1·p)(1 + T2·p)) avec T2 = Lm/Rm très petit. On néglige T2 : on obtient un premier ordre.</p>
+<div class="formula">Km = Kt / (Rm·f + Kt·Ke)     T = Rm·J / (Rm·f + Kt·Ke)</div>
+<p>Pour f = 0 : Km = 1/Ke et T = Rm·J/(Kt·Ke). Avec les valeurs du jumeau (Rm = 2,32 Ω, Kt = Ke = 23,4 mN·m/A, J = 5·10⁻⁵ kg·m²) : Km ≈ 42 rad/s/V et T ≈ 0,21 s.</p>
+<h3>Identification</h3>
+<p>Un échelon de tension U0 donne une vitesse finale Km·U0 ; T est la durée pour atteindre 63 % de cette valeur. un frottement sec Cs réduit la vitesse finale d’environ Cs·Rm/(Kt·Ke) (en rad/s) : l’échelon doit être assez grand pour que cette perte reste faible.</p>
+<div class="retain"><b>À retenir.</b> T augmente avec l’inertie (donc avec les masses), Km n’en dépend pas. L’inductance est négligeable ici.</div>` });
+
+COURSE.push({ id: 'cinematique', t: 'Loi entrée-sortie', h: `
+<p>La vis fait varier la longueur x d’un côté d’un triangle. D’après la loi publiée pour le MaxPID :</p>
+<div class="formula">x(θ) = √( a² + b² + c² + 2c(a·cos θ − b·sin θ) )<br>β(θ) = ( x(0) − x(θ) ) / p</div>
+<p>avec a = 69,5 mm, b = 82 mm, c = 80 mm, p = 4 mm/tr et β le nombre de tours de vis. On obtient x(0) = 170,5 mm et x(90°) = 69,5 mm : environ 25 tours de vis pour parcourir 90°.</p>
+<h3>Gain local</h3>
+<div class="formula">G(θ) = dθ/dβ = p / |dx/dθ|   (en rad/tr, ×180/π pour des °/tr)</div>
+<p>G vaut environ 5,96 °/tr en θ = 0, 5,04 °/tr à 10°, 2,98 °/tr à 70° et 2,87 °/tr à 90°. La loi n’est donc <b>pas linéaire</b> : on la linéarise autour d’un point θ0 par θ ≈ θ0 + G(θ0)(β − β0), valable pour de petits déplacements.</p>
+<div class="retain"><b>À retenir.</b> Le gain du bras dépend de la position, donc la rapidité et l’amortissement de l’asservissement aussi.</div>` });
+
+COURSE.push({ id: 'asservissement', t: 'Asservissement proportionnel', h: `
+<h3>Schéma-blocs linéarisé</h3>
+<p>Autour de θ0 : écart ε = 44·(θc − θ) en points, commande Um = Ka·KP·ε avec Ka = 0,45·10⁻³ V par point, moteur Km/(1 + T·p), puis le bras : θ̇ = G(θ0)/(2π·N) · ωm, d’où un intégrateur.</p>
+<div class="formula">FTBO(p) = K / ( p·(1 + T·p) )   avec   K = Ka·44·KP·Km·G(θ0) / (2π·N)</div>
+<p>La FTBO est de <b>classe 1</b> : l’erreur statique à un échelon est nulle dans le modèle linéaire.</p>
+<h3>Forme canonique</h3>
+<div class="formula">FTBF(p) = 1 / ( 1 + p/K + (T/K)·p² )<br>ω0 = √(K/T)     ζ = 1/(2·√(K·T))</div>
+<p>Quand KP augmente, K augmente, ζ diminue et le système devient oscillant. Le dépassement vaut D = exp(−π·ζ/√(1 − ζ²)) pour ζ < 1. Le cas critique ζ = 1 correspond à K·T = 1/4.</p>
+<div class="retain"><b>À retenir.</b> Rapidité et dépassement sont en conflit avec un correcteur proportionnel : un KP plus grand accélère mais fait osciller.</div>` });
+
+COURSE.push({ id: 'limites', t: 'Non-linéarités du jumeau', h: `
+<p>Le jumeau complet ajoute au modèle linéaire :</p>
+<ul>
+<li><b>Saturation</b> de la tension à ±21,6 V : la commande ne peut pas suivre un correcteur trop fort.</li>
+<li><b>Loi entrée-sortie non linéaire</b> : G varie de 5,96 à 2,87 °/tr.</li>
+<li><b>Frottement sec</b> Cs : une zone où le bras ne bouge pas tant que la tension est trop faible.</li>
+<li><b>Pesanteur</b> : couple dû à la structure et aux masses additionnelles, ramené sur l’axe moteur par le principe des puissances virtuelles.</li>
+<li><b>Quantification</b> du capteur (12 bits) et <b>échantillonnage</b> du correcteur.</li>
+</ul>
+<p>Ces effets expliquent les écarts entre une simulation linéaire et un essai réel : erreur statique, temps de réponse plus long, dépassement plus faible à fort KP.</p>
+<h3>Statut des données</h3>
+<p>Les valeurs publiques (alimentation, saturation, capteur, pas de vis, géométrie, inertie et masses, gain d’adaptation) viennent des énoncés et TP du MaxPID. Les constantes électriques viennent du catalogue d’un moteur voisin (maxon RE 25 20 W) en attendant l’annexe du moteur 118778. Le rapport de réduction N, les frottements et le levier de la structure sont <b>calés</b>. Pour un travail quantitatif, recalez N, f et Cs en comparant le jumeau à une réponse mesurée (atelier Asservissement, zone « mesure »).</p>
+<div class="retain"><b>À retenir.</b> Un jumeau n’est utile que recalé : confronter systématiquement simulation et mesure.</div>` });
+
+COURSE.push({ id: 'bode', t: 'Bode et marges (PSI*)', h: `
+<p>Pour un correcteur C(p), la FTBO du MaxPID vaut C(p) · K0 / ( p·(1 + T·p)·(1 + T2·p) ). On trace gain (dB) et phase en fonction de ω.</p>
+<h3>Marges</h3>
+<ul>
+<li><b>ω_c</b> : pulsation de coupure à 0 dB.</li>
+<li><b>Marge de phase</b> MΦ = 180° + arg FTBO(jω_c). Valeur usuelle visée : 45° ou plus.</li>
+<li><b>Marge de gain</b> MG = −|FTBO(jω_π)| en dB, où ω_π est la pulsation de phase −180°.</li>
+</ul>
+<p>Règle pratique pour un système proche du second ordre : ζ ≈ MΦ/100 (MΦ en degrés, MΦ < 70°).</p>
+<h3>Effet du correcteur et du retard</h3>
+<ul>
+<li>Augmenter KP : ω_c augmente, MΦ diminue.</li>
+<li>Action intégrale : ajoute −90° vers les basses fréquences, MΦ diminue.</li>
+<li>Action dérivée : ajoute de la phase avance autour de ω_c.</li>
+<li>Retard d’échantillonnage Te/2 : −ω_c·Te/2 radian sans changer le gain.</li>
+</ul>
+<div class="retain"><b>À retenir.</b> Le réglage du correcteur est un compromis entre rapidité (ω_c grand) et marge de phase.</div>` });
+
+COURSE.push({ id: 'pid', t: 'PID, windup, échantillonnage (PSI*)', h: `
+<h3>Loi de commande de la carte</h3>
+<p>D’après les TP du MaxPID, la commande est calculée sur l’écart ε en points : une action proportionnelle, une action intégrale pondérée par 1/4 et une action dérivée pondérée par 16 :</p>
+<div class="formula">Um = Ka · [ KP·ε + (Ki/4)·∫ε dt + 16·Kd·dε/dt ]</div>
+<p>Le jumeau applique cette loi à la période Te, avec un filtre d’ordre 1 (20 ms) sur la dérivée, puis la saturation à ±21,6 V.</p>
+<h3>Rôle des termes</h3>
+<ul>
+<li><b>P</b> : rapidité, mais erreur statique en présence d’un couple perturbateur constant.</li>
+<li><b>I</b> : annule l’erreur statique face à une perturbation constante, mais dégrade la marge de phase.</li>
+<li><b>D</b> : amortit, mais amplifie le bruit, ici la quantification du capteur.</li>
+</ul>
+<h3>Windup et anti-windup</h3>
+<p>Si la commande sature, l’intégrale continue de croître. À la désaturation, la commande reste trop grande : fort dépassement. Parade simple : <b>geler l’intégrale</b> quand la commande est saturée et que l’erreur tend à la maintenir saturée.</p>
+<h3>Échantillonnage</h3>
+<p>Un correcteur numérique de période Te se comporte comme un correcteur continu retardé de Te/2. Il faut Te petit devant la constante de temps de la boucle fermée.</p>
+<div class="retain"><b>À retenir.</b> PI pour la précision face aux perturbations, D pour l’amortissement, anti-windup dès qu’une saturation est possible.</div>` });
+
+COURSE.push({ id: 'glossaire', t: 'Glossaire et sources', h: `
+<dl class="gloss">
+<dt>Km</dt><dd>gain statique du moteur (rad/s par volt)</dd>
+<dt>T</dt><dd>constante de temps mécanique du moteur</dd>
+<dt>G(θ)</dt><dd>gain cinématique du bras, en degrés de bras par tour de vis</dd>
+<dt>K</dt><dd>gain de boucle ouverte, FTBO = K / (p(1 + T·p))</dd>
+<dt>ζ, ω0</dt><dd>amortissement et pulsation propre de la FTBF du second ordre</dd>
+<dt>MΦ, MG</dt><dd>marge de phase et marge de gain</dd>
+<dt>Windup</dt><dd>accumulation de l’intégrale pendant la saturation</dd>
+</dl>
+<h3>Sources consultées</h3>
+<ul>
+<li>Énoncé « Modélisation d’un axe asservi d’un robot cueilleur de pommes » (Eduscol STI) : équations du moteur, inertie, masses, démarche.</li>
+<li>TP3 MaxPID (mnsi.fr) : saturation 21,6 V, codeur 12 bits, gain 0,45·10⁻³, essais KP = 20 et KP = 250.</li>
+<li>TP « Performances des SLCI, robot Maxpid » (Defauchy) : loi du PID, 44 points par degré, masse de 0,65 kg à 26 cm.</li>
+<li>Projet « maxpid-asservissement » (GitHub) : loi entrée-sortie, géométrie du bras, pas de vis de 4 mm.</li>
+<li>Fiche catalogue maxon RE 25 : constantes électriques du moteur voisin.</li>
+</ul>
+<p>Ces sources ne donnent pas toutes les mêmes valeurs moteur : le jumeau retient une valeur unique et la signale comme telle dans l’atelier « Le système ».</p>` });
+/* ---------- interface ---------- */
+const UI = { cur: 's1' };
+const AS = { key: 's1', tab: 'steps', open: false, st: lsGet(KEYS.act, {}), arm: null };
+const CS = { open: false, id: 'presentation' };
+function actSave() { lsSet(KEYS.act, AS.st); }
+function actState() { return AS.st[AS.key] || (AS.st[AS.key] = { a: {}, checked: false, shown: false }); }
+function actScore(a) { const s = actState(); return a.qcm.filter((q, i) => s.a[i] === q.a).length; }
+function wsById(id) { return WORKSHOPS.find(w => w.id === id) || WORKSHOPS[0]; }
+function renderSeg() {
+  const seg = $('#wsSeg'); seg.innerHTML = '';
+  WORKSHOPS.forEach((w, i) => seg.append(h('button', { type: 'button', role: 'tab', 'aria-pressed': w.id === UI.cur ? 'true' : 'false', 'aria-selected': w.id === UI.cur ? 'true' : 'false', onclick: () => gotoWs(w.id) }, (i + 1) + '. ' + w.title)));
+}
+function mountWs() {
+  const w = wsById(UI.cur), root = $('#ws');
+  $('#hint').textContent = w.hint; root.innerHTML = '';
+  w.mount(root);
+  const sc = $('#scroller'); if (sc) sc.scrollTop = 0;
+}
+function gotoWs(id) {
+  if (CS.open) { CS.open = false; renderCourse(); }
+  UI.cur = id; AS.key = id; AS.tab = 'steps';
+  renderSeg(); mountWs(); renderAct();
+}
+function renderAct() {
+  const box = $('#act'), btn = $('#bAct');
+  btn.setAttribute('aria-pressed', AS.open ? 'true' : 'false'); btn.classList.toggle('pri', AS.open);
+  box.hidden = !AS.open;
+  if (!AS.open) { box.innerHTML = ''; return; }
+  const oldB = box.querySelector('.pbody'), tag = AS.key + '|' + AS.tab, keep = oldB && box.dataset.k === tag ? oldB.scrollTop : 0;
+  box.dataset.k = tag;
+  box.innerHTML = '';
+  const a = ACT[AS.key];
+  const close = h('button', { class: 'btn sm', type: 'button', onclick: () => { AS.open = false; renderAct(); } }, 'Fermer');
+  box.append(h('div', { class: 'phead' }, h('b', null, 'Activité'), h('span', { class: 'sub' }, a.title), close));
+  const nq = a.qcm.length;
+  box.append(h('div', { class: 'tabs', role: 'tablist' },
+    h('button', { type: 'button', role: 'tab', 'aria-selected': AS.tab === 'steps' ? 'true' : 'false', onclick: () => { AS.tab = 'steps'; renderAct(); } }, 'Consignes'),
+    h('button', { type: 'button', role: 'tab', 'aria-selected': AS.tab === 'qcm' ? 'true' : 'false', onclick: () => { AS.tab = 'qcm'; renderAct(); } }, 'Questions (' + nq + ')')));
+  const body = h('div', { class: 'pbody' });
+  if (AS.tab === 'steps') {
+    body.append(h('p', { class: 'small' }, a.level + ' · environ ' + a.time), h('div', { class: 'goal' }, h('b', null, 'Objectif. '), a.goal));
+    body.append(h('ol', { class: 'steps' }, a.steps.map(s => h('li', { html: s }))));
+    body.append(h('div', { class: 'defi' }, h('b', null, 'Défi'), h('p', { html: a.defi.q }), h('details', null, h('summary', null, 'Voir la réponse'), h('p', { html: a.defi.a }))));
+    if (a.course) body.append(h('p', null, h('button', { class: 'btn', type: 'button', onclick: () => openCourse(a.course) }, 'Voir le cours : ' + courseSection(a.course).t)));
+    body.append(h('p', null, h('button', { class: 'btn', type: 'button', onclick: ev => {
+      const b = ev.currentTarget;
+      if (!AS.arm) { b.textContent = 'Confirmer ? Votre travail sera effacé'; AS.arm = setTimeout(() => { b.textContent = 'Recommencer l’atelier'; AS.arm = null; }, 3500); return; }
+      clearTimeout(AS.arm); AS.arm = null; wsById(UI.cur).reset(); mountWs(); renderAct(); } }, 'Recommencer l’atelier')));
+    body.append(h('p', null, h('button', { class: 'btn pri', type: 'button', onclick: () => { AS.tab = 'qcm'; renderAct(); } }, 'Passer aux questions')));
+  } else {
+    const s = actState(), show = s.checked || s.shown;
+    a.qcm.forEach((q, i) => {
+      const fs = h('fieldset', { class: 'q' }, h('legend', null, (i + 1) + '. ' + q.q));
+      q.o.forEach((o, j) => {
+        const good = show && j === q.a, bad = s.checked && !s.shown && s.a[i] === j && j !== q.a;
+        const inp = h('input', { type: 'radio', name: 'q' + i, checked: show && s.shown ? j === q.a : s.a[i] === j, disabled: show });
+        inp.addEventListener('change', () => { s.a[i] = j; actSave(); renderAct(); });
+        fs.append(h('label', { class: 'opt' + (good ? ' good' : '') + (bad ? ' bad' : '') }, inp, h('span', null, o + (good ? '  ✓' : '') + (bad ? '  ✗' : ''))));
+      });
+      if (show) { const miss = s.a[i] == null && !s.shown; fs.append(h('p', { class: 'why' }, (miss ? 'Sans réponse. ' : '') + q.w)); }
+      body.append(fs);
     });
-    qs('#c-alpha').dispatchEvent(new Event('input'));
+    const done = Object.keys(s.a).length;
+    body.append(h('p', { class: 'small' }, s.shown ? 'Réponses affichées.' : s.checked ? '' : done + ' réponse(s) sur ' + nq + '.'));
+    if (s.checked && !s.shown) body.append(h('p', { class: 'score' }, 'Score : ' + actScore(a) + ' / ' + nq));
+    const row = h('div', { class: 'files' });
+    if (!show) row.append(h('button', { class: 'btn pri', type: 'button', onclick: () => { s.checked = true; actSave(); renderAct(); } }, 'Corriger'));
+    row.append(h('button', { class: 'btn', type: 'button', onclick: () => { s.shown = true; actSave(); renderAct(); } }, 'Afficher les réponses'));
+    if (show) row.append(h('button', { class: 'btn', type: 'button', onclick: () => { AS.st[AS.key] = { a: {}, checked: false, shown: false }; actSave(); renderAct(); } }, 'Recommencer'));
+    body.append(row);
   }
+  box.append(body); body.scrollTop = keep;
+}
+function actToggle() { if (CS.open) { CS.open = false; renderCourse(); } AS.open = !AS.open; renderAct(); }
+$('#bAct').addEventListener('click', actToggle);
 
-  function mountStatique(root) {
-    root.innerHTML = `
-      <h2>Statique : Couple de maintien</h2>
-      <div class="formula">C(θ) = m · g · L · cos(θ)</div>
-      <div class="opts">
-        <label class="fld"><span>Angle θ (°)</span><input type="range" id="s-theta" min="0" max="90" step="5" value="45"><b id="s-theta-out">45</b></label>
-      </div>
-      <div id="s-out" class="gstats"></div>
-    `;
-    qs('#s-theta').addEventListener('input', () => {
-      const t = parseFloat(qs('#s-theta').value);
-      qs('#s-theta-out').textContent = t;
-      const C = getCoupleMaintien(t);
-      const box = qs('#s-out'); box.innerHTML = '';
-      box.append(mk('div',{class:'gstats'},[
-        ['Couple de maintien', C.toFixed(3)+' N·m']
-      ].map(([l,v])=>mk('div',{class:'stat'},mk('span',null,l),mk('b',null,v)))));
-    });
-    qs('#s-theta').dispatchEvent(new Event('input'));
-  }
+function courseSection(id) { return COURSE.find(s => s.id === id) || COURSE[0]; }
+function renderCourse() {
+  const box = $('#course'), btn = $('#bCourse'), work = $('#work');
+  btn.setAttribute('aria-pressed', CS.open ? 'true' : 'false'); btn.classList.toggle('pri', CS.open);
+  box.hidden = !CS.open; work.hidden = CS.open; $('#modes').hidden = CS.open;
+  if (!CS.open) { box.innerHTML = ''; return; }
+  box.innerHTML = '';
+  const cur = courseSection(CS.id), idx = COURSE.indexOf(cur);
+  const go = id => { CS.id = id; renderCourse(); };
+  const nav = h('nav', { class: 'ctoc', 'aria-label': 'Sommaire du cours' }, COURSE.map((s, i) => h('button', { type: 'button', class: s.id === cur.id ? 'on' : '', 'aria-current': s.id === cur.id ? 'true' : 'false', onclick: () => go(s.id) }, (i + 1) + '. ' + s.t)));
+  const sel = h('select', { class: 'ctoc-sel', 'aria-label': 'Choisir une section', onchange: e => go(e.target.value) }, COURSE.map((s, i) => h('option', { value: s.id, selected: s.id === cur.id }, (i + 1) + '. ' + s.t)));
+  const art = h('article', { class: 'cbody' });
+  art.append(h('p', { class: 'ckick' }, 'Cours · section ' + (idx + 1) + ' sur ' + COURSE.length), h('h2', null, cur.t), h('div', { html: cur.h }));
+  art.append(h('div', { class: 'cpn' },
+    idx > 0 ? h('button', { class: 'btn', type: 'button', onclick: () => go(COURSE[idx - 1].id) }, '← ' + COURSE[idx - 1].t) : h('span'),
+    idx < COURSE.length - 1 ? h('button', { class: 'btn pri', type: 'button', onclick: () => go(COURSE[idx + 1].id) }, COURSE[idx + 1].t + ' →') : h('span')));
+  const top = h('div', { class: 'ctop' }, h('b', null, 'Cours : le MaxPID et son asservissement'), h('button', { class: 'btn pri sm', type: 'button', onclick: () => { CS.open = false; renderCourse(); } }, 'Retour à l’atelier'));
+  box.append(top, sel, h('div', { class: 'cwrap' }, nav, art));
+  const sc = box.querySelector('.cwrap'); if (sc) sc.scrollTop = 0; box.scrollTop = 0;
+}
+function openCourse(id) { if (id) CS.id = id; CS.open = true; renderCourse(); }
+$('#bCourse').addEventListener('click', () => { CS.open = !CS.open; renderCourse(); });
 
-  // Déclaration des ateliers
-  const WORKSHOPS = [
-    { id:'jumeau', title:'Jumeau numérique', hint:'Lancez un essai en temps réel.', mount: mountJumeau },
-    { id:'cinematique', title:'Cinématique', hint:'Loi entrée-sortie vis-écrou.', mount: mountCinematique },
-    { id:'statique', title:'Statique', hint:'Couple de maintien.', mount: mountStatique }
-  ];
-
-  /* ==================================================================
-     INTERFACE UTILISATEUR
-     ================================================================== */
-  const UI = { cur: 'jumeau' };
-  const AS = { key: 'jumeau', open: !isSmall() };
-
-  function renderSeg(){
-    const seg = qs('#wsSeg'); seg.innerHTML = '';
-    WORKSHOPS.forEach((w,i)=>{
-      seg.append(mk('button',{
-        type:'button', role:'tab',
-        'aria-pressed': w.id===UI.cur?'true':'false',
-        onclick:()=>gotoWs(w.id)
-      }, (i+1)+'. '+w.title));
-    });
-  }
-
-  function mountWs(){
-    const w = WORKSHOPS.find(w=>w.id===UI.cur) || WORKSHOPS[0];
-    qs('#hint').textContent = w.hint;
-    qs('#ws').innerHTML = '';
-    w.mount(qs('#ws'));
-    qs('#scroller').scrollTop = 0;
-  }
-
-  function gotoWs(id){
-    UI.cur = id;
-    renderSeg();
-    mountWs();
-  }
-
-  function renderAct(){
-    const box = qs('#act'), btn = qs('#bAct');
-    btn.setAttribute('aria-pressed', AS.open?'true':'false');
-    box.hidden = !AS.open;
-    if (!AS.open) return;
-    
-    box.innerHTML = `
-      <div class="phead"><b>Activité</b><span class="sub">Jumeau MaxPID</span><button class="btn sm" id="close-act">Fermer</button></div>
-      <div class="pbody">
-        <div class="goal"><b>Objectif.</b> Comprendre l'influence des paramètres du correcteur PID sur le comportement du bras.</div>
-        <ol class="steps">
-          <li>Lancez l'essai avec Kp = 5, Ki = 0, Kd = 0. L'erreur statique est-elle nulle ?</li>
-          <li>Augmentez Ki à 2. Que se passe-t-il ? L'erreur disparaît-elle ?</li>
-          <li>Ajoutez du dérivé (Kd = 0.5) pour amortir les oscillations.</li>
-          <li>Changez la masse et observez la modification de l'inertie équivalente.</li>
-        </ol>
-        <div class="defi">
-          <b>Défi</b>
-          <p>Réglez le PID pour que le bras atteigne 30° en moins de 1.5s, sans dépassement.</p>
-        </div>
-      </div>
-    `;
-    qs('#close-act').addEventListener('click', ()=>{ AS.open = false; renderAct(); });
-  }
-
-  qs('#bAct').addEventListener('click', ()=>{ AS.open = !AS.open; renderAct(); });
-  qs('#bCourse').addEventListener('click', ()=>{ alert("Le cours est en cours de rédaction pour cette version."); });
-  qs('#bHelp').addEventListener('click', ()=>{ alert("Cliquez sur 'Lancer l'essai' pour voir l'animation en temps réel (Real-Time Pacer)."); });
-
-  // Initialisation
-  renderSeg();
-  mountWs();
-  renderAct();
-
-})();
+function closeDlg() { $('#dlg').hidden = true; $('#dlg').innerHTML = ''; }
+function openDlg(title, body) {
+  const d = $('#dlg'); d.innerHTML = ''; d.hidden = false;
+  d.append(h('div', { class: 'dlgbox', role: 'dialog', 'aria-label': title }, h('header', null, h('b', null, title), h('button', { class: 'btn sm', type: 'button', onclick: closeDlg }, 'Fermer')), h('div', { class: 'dbody' }, body)));
+  d.onclick = ev => { if (ev.target === d) closeDlg(); };
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#dlg').hidden) closeDlg(); });
+$('#bHelp').addEventListener('click', () => {
+  openDlg('Aide', h('div', { html: '<p>Six ateliers autour du MaxPID : présentation du système, cinématique du bras, identification du moteur, asservissement en position, analyse fréquentielle et correcteurs PID. Les deux derniers visent le niveau PSI*.</p>' +
+    '<h3>Utilisation</h3><ul><li>Choisissez un atelier dans la barre du haut et déplacez les curseurs : les tracés se recalculent immédiatement.</li><li>Survolez un tracé pour lire les valeurs.</li><li>Le bouton <b>Activité</b> affiche les consignes, un défi et un QCM avec correction.</li><li>Le bouton <b>Cours</b> reprend les notions et les sources.</li></ul>' +
+    '<h3>Limites du jumeau</h3><p>Les constantes du moteur, le rapport de réduction et les frottements ne sont pas tous publiés : certains sont calés. Le tableau de l’atelier 1 indique le statut de chaque paramètre.</p>' +
+    '<h3>Vos données</h3><p>Les réponses au QCM sont mémorisées dans ce navigateur uniquement.</p>' }));
+});
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  const b = $('#bTheme'); b.setAttribute('aria-pressed', dark ? 'true' : 'false'); b.textContent = dark ? 'Mode clair' : 'Mode sombre';
+}
+$('#bTheme').addEventListener('click', () => { const d = document.documentElement.getAttribute('data-theme') !== 'dark'; applyTheme(d); lsSet('maxpid-theme', d ? 'dark' : 'light'); mountWs(); });
+(function init() { applyTheme(lsGet('maxpid-theme', 'light') === 'dark'); AS.open = !isSmall(); renderSeg(); mountWs(); renderAct(); renderCourse(); })();
 </script>
-</body>
-</html>
+
+</body></html>
