@@ -1,0 +1,862 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta charset="utf-8">
+<title>Jumeau numérique trieuse de pièces</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Mise en page : barre d'outils, onglets d'ateliers, zone de travail, panneau Activité à droite (feuille basse sur téléphone), vue Cours avec sommaire. Même structure que l'Atelier Algorithmes de tri. */
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+:root{
+  --font-ui:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  --bg:#ffffff;--bar:#eeeeee;--panel:#ffffff;--panel2:#f1f3f6;--field:#ffffff;--line:#b9bfc7;--grid:#e3e6ea;
+  --fg:#111111;--muted:#5a6068;--accent:#2e6da4;--accent-fg:#ffffff;--accent-soft:#dcebf8;--accent-ink:#1b4a76;
+  --ok:#1e7a2e;--warn:#9a5b00;--bad:#c0281f;--violet:#7b4fc2;
+  --c1:#2e6da4;--c2:#c9741a;--c3:#1e7a2e;--c4:#7b4fc2;--c5:#6b7480;
+  --energy:#c9741a;--info:#2e6da4;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#000000;--bar:#111111;--panel:#0a0a0a;--panel2:#1a1a1a;--field:#000000;--line:#3a3a3a;--grid:#222222;
+  --fg:#eeeeee;--muted:#a3a3a3;--accent:#5b9bd5;--accent-fg:#000000;--accent-soft:#1c1c1c;--accent-ink:#a9cdee;
+  --ok:#52b564;--warn:#e0a64a;--bad:#ef6a60;--violet:#a98bea;
+  --c1:#5b9bd5;--c2:#e8a33a;--c3:#52b564;--c4:#a98bea;--c5:#9a9a9a;--energy:#e8a33a;--info:#5b9bd5;
+  color-scheme:dark}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 var(--font-ui)}
+button,input,select,textarea{font:inherit;color:inherit}
+.inner{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#app{height:100%;display:flex;flex-direction:column;min-height:0}
+.band{background:var(--bar);border-bottom:1px solid var(--line);flex:none}
+.row{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding-block:7px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:16px;letter-spacing:.01em}
+.brand small{font-weight:400;color:var(--muted);font-size:13px}
+.files{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.btn{font-weight:500;font-size:13px;padding:6px 11px;border:1px solid var(--line);background:var(--panel);border-radius:7px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.pri{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.sm{padding:3px 8px;font-size:12px}
+:is(button,input,select,textarea,summary):focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;background:var(--panel);max-width:100%;overflow-x:auto}
+.seg button{border:0;background:transparent;padding:7px 14px;font-weight:500;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.work{flex:1;min-height:0;display:flex;gap:10px;padding-block:10px}
+#stage{flex:1;min-width:0;position:relative;border:1px solid var(--line);border-radius:10px;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+#hint{flex:none;padding:6px 12px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--line);background:var(--bar)}
+#scroller{flex:1;min-height:0;overflow:auto}
+.phead{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);flex:none}
+.phead b{font-size:15px}
+.phead .sub{color:var(--muted);font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tabs{display:flex;gap:2px;padding:6px 8px 0;border-bottom:1px solid var(--line);overflow-x:auto;flex:none}
+.tabs button{border:0;border-bottom:2px solid transparent;background:transparent;padding:6px 10px;font-weight:500;font-size:13px;cursor:pointer;white-space:nowrap;color:var(--muted)}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.pbody{overflow:auto;padding:12px;flex:1;min-height:0}
+.fld{display:flex;flex-direction:column;gap:3px;margin-bottom:9px;font-size:12.5px;color:var(--muted)}
+input[type=text],input[type=number],textarea,select{width:100%;background:var(--field);border:1px solid var(--line);border-radius:6px;padding:5px 8px;color:var(--fg)}
+input[type=range]{width:100%;padding:0;accent-color:var(--accent)}
+input[type=checkbox]{accent-color:var(--accent)}
+.mono{font-family:var(--font-mono);font-size:12.5px}
+.small{font-size:12px;color:var(--muted);margin:0 0 9px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;z-index:60;max-width:90vw}
+#dlg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.dlgbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:min(640px,100%);max-height:88%;display:flex;flex-direction:column}
+.dlgbox header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.dlgbox header b{font-size:16px}
+.dlgbox .dbody{padding:14px 16px;overflow:auto}
+.dlgbox h3{margin:14px 0 4px;font-size:14px}.dlgbox p,.dlgbox li{margin:4px 0;font-size:13.5px}
+#act{flex:none;width:clamp(280px,24vw,340px);display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--panel);min-height:0;max-height:100%}
+#act .pbody{font-size:13.5px}
+.goal{background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:8px 10px;margin:0 0 10px}
+.steps{margin:0 0 10px;padding-left:20px}.steps li{margin-bottom:9px}
+.defi{border:1px dashed var(--accent);border-radius:8px;padding:8px 10px;margin:0 0 12px}.defi p{margin:6px 0}
+.defi summary{cursor:pointer;font-weight:500;color:var(--accent-ink)}
+fieldset.q{border:1px solid var(--line);border-radius:8px;padding:8px 10px 6px;margin:0 0 10px;min-width:0}
+fieldset.q legend{font-weight:600;padding:0 4px;max-width:100%}
+.opt{display:flex;gap:8px;align-items:flex-start;padding:4px 6px;border-radius:6px;cursor:pointer}
+.opt input{margin-top:3px;width:auto;flex:none}
+.opt.good{background:rgba(30,122,46,.18)}.opt.bad{background:rgba(192,40,31,.18)}
+.why{font-size:12.5px;color:var(--muted);margin:6px 4px 2px}
+.score{font-weight:600;font-size:15px;margin:4px 0 8px}
+/* cours */
+#course{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg)}
+.ctop,.cwrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.ctop{flex:none;display:flex;justify-content:space-between;align-items:center;gap:10px;padding-block:8px;border-bottom:1px solid var(--line);background:var(--bar)}
+.cwrap{flex:1;min-height:0;display:flex;gap:28px;padding-block:14px}
+.ctoc{flex:none;width:250px;overflow:auto;display:flex;flex-direction:column;gap:1px}
+.ctoc button{display:block;width:100%;text-align:left;padding:6px 10px;border:0;border-left:3px solid transparent;background:transparent;cursor:pointer;font-size:13.5px}
+.ctoc button:hover{background:var(--panel2)}
+.ctoc button.on{border-left-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.ctoc-sel{display:none;margin:8px max(16px,env(safe-area-inset-left,0px)) 0;width:auto}
+.cbody{flex:1;min-width:0;overflow:auto;max-width:860px;padding-right:6px}
+.ckick{color:var(--muted);font-size:12.5px;margin:0}
+.cbody h2{font-size:26px;margin:2px 0 12px;text-wrap:balance}
+.cbody h3{font-size:16.5px;margin:22px 0 6px}
+.cbody p,.cbody li{font-size:14.5px;line-height:1.6}
+.cbody ul,.cbody ol{padding-left:22px}.cbody li{margin-bottom:4px}
+.cbody table{display:block;overflow-x:auto;max-width:100%}
+.ctable{border-collapse:collapse;font-size:13.5px;margin:8px 0 12px}
+.ctable th,.ctable td{border:1px solid var(--line);padding:5px 9px;text-align:left;vertical-align:top}
+.ctable th{background:var(--panel2);font-weight:600}
+.retain{background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:9px 12px;margin:16px 0 6px;font-size:14px}
+.formula{background:var(--panel2);border-left:3px solid var(--accent);padding:8px 12px;margin:8px 0;font-size:15px;overflow-x:auto;font-family:var(--font-mono)}
+pre.code{font:12.5px/1.55 var(--font-mono);margin:8px 0;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-x:auto;white-space:pre}
+.gloss{display:grid;grid-template-columns:max-content 1fr;gap:5px 18px;font-size:14px}.gloss dt{font-weight:600}.gloss dd{margin:0}
+.cpn{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:24px 0 32px}
+/* ateliers */
+#ws{padding:16px max(16px,env(safe-area-inset-left,0px)) 30px;max-width:980px}
+#ws h2{font-size:24px;margin:0 0 8px;text-wrap:balance}
+#ws h3{font-size:16.5px;margin:24px 0 6px}
+#ws p,#ws li{font-size:14.5px;line-height:1.55}
+#ws .small{font-size:12.5px}
+.opts{display:flex;gap:10px 18px;flex-wrap:wrap;align-items:flex-end;margin:6px 0 10px}.opts .fld{margin:0}
+.opts input[type=range]{width:190px;max-width:100%}
+.opts textarea{font-family:var(--font-mono);min-width:240px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:4px 11px;font-size:13px;cursor:pointer}
+.chip:hover{border-color:var(--accent)}.chip.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.gstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0}
+.stat{border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--panel);display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat span{font-size:12px;color:var(--muted)}.stat b{font-size:14px;font-family:var(--font-mono);overflow-wrap:anywhere}
+.verdict{border-radius:8px;padding:9px 12px;margin:10px 0;font-size:14px;background:var(--panel2);border:1px solid var(--line)}
+.verdict.yes{background:rgba(30,122,46,.16);border-color:var(--ok)}.verdict.no{background:rgba(192,40,31,.14);border-color:var(--bad)}.verdict.warn{background:rgba(154,91,0,.15);border-color:var(--warn)}
+.dwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:8px 0}
+.dt{border-collapse:collapse;width:100%;font-size:13.5px}
+.dt th,.dt td{padding:5px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.dt thead th{background:var(--panel2);font-weight:600}
+.dt td.m{font-family:var(--font-mono);font-size:12.5px}
+.dt tr:last-child td{border-bottom:0}
+.dt input[type=number]{width:84px;font-family:var(--font-mono)}
+.tag{display:inline-block;font-size:11.5px;border-radius:10px;padding:1px 8px;border:1px solid var(--line);white-space:nowrap}
+.tag.doc{border-color:var(--ok);color:var(--ok)}.tag.cat{border-color:var(--info);color:var(--info)}.tag.cal{border-color:var(--warn);color:var(--warn)}
+/* tracés */
+.pbox{border:1px solid var(--line);border-radius:10px;padding:8px 10px 6px;background:var(--panel);margin:8px 0}
+.pbox svg{display:block;width:100%;height:auto;touch-action:pan-y}
+.pbox .pt{font-size:12.5px;font-weight:600;margin:0 0 2px}
+.leg{display:flex;gap:4px 14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:2px 0 4px}
+.leg i{display:inline-block;width:14px;height:0;border-top:3px solid;vertical-align:3px;margin-right:5px}
+.leg i.d{border-top-style:dashed}
+.ro{font:12px var(--font-mono);color:var(--muted);min-height:17px;margin-top:2px}
+.twocol{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.armbox svg{width:100%;max-width:520px;height:auto;display:block}
+@media (max-width:820px){
+  .ctoc{display:none}.ctoc-sel{display:block}.cwrap{padding-top:8px}.cbody{padding-right:0}.gloss{grid-template-columns:1fr}.gloss dd{margin-bottom:6px}
+  #act{position:fixed;left:0;right:0;bottom:0;width:auto;height:70%;max-height:none;border-radius:14px 14px 0 0;z-index:35;box-shadow:0 -8px 30px rgba(0,0,0,.28);padding-bottom:env(safe-area-inset-bottom,0px)}
+  .work{flex-direction:column;gap:8px}
+  .twocol{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:no-preference){.btn{transition:border-color .12s,background .12s}}
+</style>
+<div id="app">
+  <header class="band"><div class="inner row">
+    <div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><ellipse cx="11" cy="14" rx="9" ry="7" fill="none" stroke="var(--accent)" stroke-width="2.5"/><circle cx="11" cy="14" r="2" fill="var(--muted)"/><circle cx="21" cy="5" r="3" fill="var(--energy)"/></svg><span>Jumeau numérique trieuse de pièces <small>SII · PCSI / PSI*</small></span></div>
+    <div class="files">
+      <button class="btn" id="bAct" type="button" aria-pressed="false">Activité</button>
+      <button class="btn" id="bCourse" type="button" aria-pressed="false">Cours</button>
+      <button class="btn" id="bHelp" type="button">Aide</button>
+      <button class="btn" id="bTheme" type="button" aria-pressed="false">Mode sombre</button>
+    </div>
+  </div></header>
+  <div class="band" id="modes"><div class="inner row"><div class="seg" id="wsSeg" role="tablist" aria-label="Ateliers"></div></div></div>
+  <main class="inner work" id="work">
+    <section id="stage"><div id="hint"></div><div id="scroller"><div id="ws"></div></div></section>
+    <aside id="act" hidden aria-label="Activité"></aside>
+  </main>
+  <section id="course" hidden aria-label="Cours"></section>
+</div>
+<div id="dlg" hidden></div>
+<div id="toast" hidden></div>
+<script>
+'use strict';
+const $ = (s, r) => (r || document).querySelector(s);
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v === false || v == null) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'html') el.innerHTML = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (v === true) el.setAttribute(k, '');
+    else el.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) el.append(k.nodeType ? k : document.createTextNode(k));
+  return el;
+}
+function isSmall() { try { return window.matchMedia('(max-width:820px)').matches; } catch (e) { return false; } }
+const KEYS = { act: 'trieuse-twin-v1' };
+function lsGet(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* stockage indisponible */ } }
+let toastT = null;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3500); }
+const WORKSHOPS = [];
+
+/*LOGIC-START*/
+const TWO_PI = 2 * Math.PI, RPM = TWO_PI / 60, G0 = 9.81;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const TEETH_G = [12, 56, 18, 46, 17, 65];
+const ratioG = (56 / 12) * (46 / 18) * (65 / 17);          /* 45,6 : trois étages */
+/* deux axes : gabarit (plateau) en vitesse, trappe en position. Valeurs ramenées à l'axe moteur. */
+const Q0 = {
+  g: { R: 8.9, L: 1e-3, kc: 0.044, ke: 0.044, J: 5.8e-6, f: 8e-5, Cr: 0.041, N: ratioG, Umax: 22, qc: 400, encOut: true, Ts: 0.05, M: 4, Kp: 1, Ki: 8, holes: 22 },
+  t: { R: 15, L: 1e-3, kc: 0.012, ke: 0.01203, J: 5e-7, f: 3.8e-6, Cr: 1e-4, N: 30, Umax: 18, qc: 400, encOut: false, Ts: 0.005, M: 1, Kp: 5, Ki: 0, Kd: 0, open: 90 }
+};
+const pwmStep = A => A.Umax / 1024;                      /* commande MLI : 11 bits signés, ±1024 */
+const kV = A => A.kc / (A.R * A.f + A.kc * A.ke);         /* gain statique tension -> vitesse moteur, rad/s/V */
+const tauM = A => A.R * A.J / (A.R * A.f + A.kc * A.ke);  /* constante de temps mécanique (L négligée) */
+const u0 = A => A.R * A.Cr / A.kc;                        /* seuil de tension dû au frottement sec */
+/* modèle continu : moteur + charge, sortie = vitesse moteur, rad/s par V */
+function plantW(A, w) {
+  const s = [0, w], mul = (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
+  const el = [A.R, A.L * w], me = [A.f, A.J * w], D = mul(el, me); D[0] += A.kc * A.ke;
+  const den = D[0] ** 2 + D[1] ** 2; return [A.kc * D[0] / den, -A.kc * D[1] / den];
+}
+/* simulation : mode 'speed' (ref(t) vitesse de l'axe, rad/s) ou 'pos' (ref(t) angle de l'axe, rad) ou 'volt' (ref(t) tension) */
+function sim(A, o) {
+  const dt = 2e-4, nsub = Math.max(1, Math.round(A.Ts / dt)), mode = o.mode, step = pwmStep(A), N = A.N;
+  let phi = 0, w = 0, i = 0, u = 0, I = 0, ePrev = 0, dF = 0, k = 0, meas = 0, wmeas = 0; const hist = [0], M = Math.max(1, A.M || 1);
+  const out = { t: [], y: [], ref: [], u: [], i: [], meas: [] }, dec = Math.max(1, Math.round(0.002 / dt));
+  const enc = () => Math.floor((A.encOut ? phi / N : phi) / TWO_PI * A.qc + 1e-9);
+  for (let t = 0; t <= o.tend + 1e-12; t += dt, k++) {
+    const r = o.ref(t);
+    if (mode === 'volt') u = clamp(r, -A.Umax, A.Umax);
+    else if (k % nsub === 0) {
+      const c = enc(); hist.push(c); const c0 = hist[Math.max(0, hist.length - 1 - M)]; wmeas = (c - c0) * TWO_PI / A.qc / (Math.min(M, hist.length - 1) * A.Ts || A.Ts);
+      const posm = c * TWO_PI / A.qc / (A.encOut ? 1 : N);        /* angle de l'axe mesuré */
+      meas = mode === 'speed' ? wmeas : posm;
+      const e = r - meas; let raw;
+      if (mode === 'speed') { raw = A.Kp * e + A.Ki * I; }
+      else { dF += A.Ts / (0.02 + A.Ts) * ((e - ePrev) / A.Ts - dF); raw = A.Kp * e + A.Ki * I + (A.Kd || 0) * dF; }
+      ePrev = e; const us = clamp(raw, -A.Umax, A.Umax);
+      if (us === raw || Math.sign(e) !== Math.sign(raw)) I += e * A.Ts;
+      u = Math.round(us / step) * step;
+    }
+    i = (i + dt / A.L * (u - A.ke * w)) / (1 + dt * A.R / A.L);
+    const Cl = o.Cl ? o.Cl(t) : 0;
+    w += dt * (A.kc * i - A.f * w - A.Cr * Math.tanh(w / 0.05) - Cl) / A.J;
+    phi += w * dt;
+    if (k % dec === 0) { out.t.push(t); out.y.push(mode === 'pos' ? phi / N : w / N); out.ref.push(r); out.u.push(u); out.i.push(i); out.meas.push(meas); }
+  }
+  return out;
+}
+function stepStats(out, final, t0) {
+  const n = out.t.length; let os = 0, tr = null, tp = null, ss = 0, cnt = 0;
+  const tol = 0.05 * Math.abs(final);
+  for (let k = 0; k < n; k++) if (out.t[k] >= t0) os = Math.max(os, (out.y[k] - final) * Math.sign(final));
+  for (let k = n - 1; k >= 0; k--) { if (Math.abs(out.y[k] - final) > tol) { tr = out.t[Math.min(n - 1, k + 1)] - t0; break; } if (k === 0) tr = 0; }
+  for (let k = Math.floor(n * 0.85); k < n; k++) { ss += out.y[k]; cnt++; }
+  return { os: Math.max(0, os) / Math.abs(final), tr, yss: ss / cnt, ess: final - ss / cnt, Imax: Math.max(...out.i.map(Math.abs)), Umax: Math.max(...out.u.map(Math.abs)) };
+}
+function bodeLoop(A, ws, o) {
+  /* o.kind 'speed' : C = Kp + Ki/s sur la vitesse de l'axe ; 'pos' : C = Kp + Ki/s + Kd s sur la position ; retard = Ts/2 + o.extra */
+  const mul = (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]], dv = (a, b) => { const d = b[0] ** 2 + b[1] ** 2; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; };
+  let prev = null, off = 0;
+  return ws.map(w => {
+    const s = [0, w]; let C = [A.Kp, 0]; if (A.Ki) { const q = dv([A.Ki, 0], s); C = [C[0] + q[0], C[1] + q[1]]; } if (o.kind === 'pos' && A.Kd) C = [C[0], C[1] + A.Kd * w];
+    let H = mul(C, plantW(A, w)); H = o.kind === 'pos' ? dv(H, mul(s, [A.N, 0])) : dv(H, [A.N, 0]);
+    const d = (o.delay == null ? (A.M || 1) * A.Ts / 2 : o.delay), a = -w * d; H = mul(H, [Math.cos(a), Math.sin(a)]);
+    let ph = Math.atan2(H[1], H[0]) / Math.PI * 180 + off; if (prev != null) { while (ph - prev > 180) { ph -= 360; off -= 360; } while (ph - prev < -180) { ph += 360; off += 360; } } prev = ph;
+    return { w, mag: Math.hypot(H[0], H[1]), ph };
+  });
+}
+/*LOGIC-END*/
+if (typeof module !== 'undefined') module.exports = { Q0, ratioG, kV, tauM, u0, sim, stepStats, bodeLoop, plantW, pwmStep, RPM };
+
+/* ---------- aides d'interface ---------- */
+const trTxt = (tr, te) => tr >= te - 0.02 ? '> ' + fm(te, 1) + ' s' : fm(tr, 2) + ' s';
+const fm = (v, d) => (v == null || !isFinite(v)) ? '—' : v.toFixed(d == null ? 1 : d).replace('.', ',');
+function stats(list) { return h('div', { class: 'gstats' }, list.map(k => h('div', { class: 'stat' }, h('span', null, k[0]), h('b', null, k[1])))); }
+function setMsg(sel, text, kind) { const m = $(sel); if (!m) return; m.textContent = text; m.className = 'verdict' + (kind ? ' ' + kind : ''); }
+function sld(label, min, max, step, val, fmt, cb) {
+  const out = h('b', { class: 'mono' }, fmt(val));
+  const inp = h('input', { type: 'range', min, max, step, value: val, 'aria-label': label });
+  inp.addEventListener('input', () => { const v = +inp.value; out.textContent = fmt(v); cb(v); });
+  return h('label', { class: 'fld' }, h('span', null, label + ' : ', out), inp);
+}
+function chk(label, val, cb) { const i = h('input', { type: 'checkbox', checked: !!val }); i.addEventListener('change', () => cb(i.checked)); return h('label', { class: 'fld', style: 'flex-direction:row;align-items:center;gap:6px' }, i, h('span', null, label)); }
+let raf = {}; function later(key, fn) { cancelAnimationFrame(raf[key]); raf[key] = requestAnimationFrame(fn); }
+const P = JSON.parse(JSON.stringify(Q0));
+
+/* ---------- tracés SVG ---------- */
+function niceTicks(a, b, n) {
+  const raw = (b - a) / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag, s = (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag, t = [];
+  for (let v = Math.ceil(a / s - 1e-9) * s; v <= b + 1e-9; v += s) t.push(+v.toFixed(10));
+  return t;
+}
+let plotId = 0;
+/* o : {title, series:[{x,y,c,l,dash,w}], xr, yr, xl, yl, logx, hl:[{y,l}], h} */
+function plot(o) {
+  const W = 720, H = o.h || 230, m = { l: 48, r: 12, t: 8, b: 34 }, id = 'pc' + (++plotId);
+  let xr = o.xr, yr = o.yr;
+  if (!xr) { let a = Infinity, b = -Infinity; o.series.forEach(s => { a = Math.min(a, s.x[0]); b = Math.max(b, s.x[s.x.length - 1]); }); xr = [a, b]; }
+  if (!yr) { let a = Infinity, b = -Infinity; o.series.forEach(s => s.y.forEach(v => { if (isFinite(v)) { a = Math.min(a, v); b = Math.max(b, v); } })); const p = (b - a) * 0.08 || 1; yr = [a - p, b + p]; }
+  const lx = a => o.logx ? Math.log10(a) : a;
+  const sx = v => m.l + (lx(v) - lx(xr[0])) / (lx(xr[1]) - lx(xr[0])) * (W - m.l - m.r);
+  const sy = v => H - m.b - (v - yr[0]) / (yr[1] - yr[0]) * (H - m.t - m.b);
+  const xt = o.logx ? (() => { const t = []; for (let e = Math.ceil(Math.log10(xr[0])); e <= Math.floor(Math.log10(xr[1])); e++) t.push(Math.pow(10, e)); return t; })() : niceTicks(xr[0], xr[1], 6);
+  const yt = niceTicks(yr[0], yr[1], 5);
+  let g = '';
+  yt.forEach(v => { g += `<line x1="${m.l}" x2="${W - m.r}" y1="${sy(v)}" y2="${sy(v)}" style="stroke:var(--grid)" stroke-width="1"/><text x="${m.l - 6}" y="${sy(v) + 4}" text-anchor="end" font-size="11" font-family="var(--font-mono)" style="fill:var(--muted)">${String(v).replace('.', ',')}</text>`; });
+  xt.forEach(v => { g += `<line x1="${sx(v)}" x2="${sx(v)}" y1="${m.t}" y2="${H - m.b}" style="stroke:var(--grid)" stroke-width="1"/><text x="${sx(v)}" y="${H - m.b + 15}" text-anchor="middle" font-size="11" font-family="var(--font-mono)" style="fill:var(--muted)">${String(v).replace('.', ',')}</text>`; });
+  g += `<line x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}" style="stroke:var(--line)"/><line x1="${m.l}" x2="${m.l}" y1="${m.t}" y2="${H - m.b}" style="stroke:var(--line)"/>`;
+  if (o.xl) g += `<text x="${(m.l + W - m.r) / 2}" y="${H - 4}" text-anchor="middle" font-size="11.5" style="fill:var(--muted)">${o.xl}</text>`;
+  if (o.yl) g += `<text x="12" y="${(m.t + H - m.b) / 2}" text-anchor="middle" font-size="11.5" transform="rotate(-90 12 ${(m.t + H - m.b) / 2})" style="fill:var(--muted)">${o.yl}</text>`;
+  (o.hl || []).forEach(l => { if (l.y >= yr[0] && l.y <= yr[1]) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${sy(l.y)}" y2="${sy(l.y)}" style="stroke:var(--bad)" stroke-dasharray="2 4" stroke-width="1.2"/><text x="${W - m.r - 3}" y="${sy(l.y) - 4}" text-anchor="end" font-size="11" style="fill:var(--bad)">${l.l}</text>`; });
+  let paths = '';
+  o.series.forEach(s => {
+    const n = s.x.length, st = Math.max(1, Math.floor(n / 700)); let d = '';
+    for (let k = 0; k < n; k += st) { const yv = clamp(s.y[k], yr[0] - (yr[1] - yr[0]), yr[1] + (yr[1] - yr[0])); d += (d ? 'L' : 'M') + sx(s.x[k]).toFixed(1) + ' ' + sy(yv).toFixed(1); }
+    paths += `<path d="${d}" fill="none" style="stroke:${s.c}" stroke-width="${s.w || 2}" stroke-linejoin="round"${s.dash ? ` stroke-dasharray="${s.dash}"` : ''}/>`;
+  });
+  const wrap = h('div', { class: 'pbox' });
+  if (o.title) wrap.append(h('p', { class: 'pt' }, o.title));
+  wrap.append(h('div', { class: 'leg', html: o.series.filter(s => s.l).map(s => `<span><i class="${s.dash ? 'd' : ''}" style="border-color:${s.c}"></i>${s.l}</span>`).join('') }));
+  const holder = h('div'); holder.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.title || 'Tracé'}"><defs><clipPath id="${id}"><rect x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}"/></clipPath></defs>${g}<g clip-path="url(#${id})">${paths}</g><line class="cur" x1="0" x2="0" y1="${m.t}" y2="${H - m.b}" style="stroke:var(--fg)" stroke-width="1" opacity="0"/></svg>`;
+  const svg = holder.firstChild, cur = svg.querySelector('.cur'), ro = h('div', { class: 'ro' }, 'Survolez le tracé pour lire les valeurs.');
+  const move = ev => {
+    const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * W;
+    if (px < m.l || px > W - m.r) return;
+    const f = (px - m.l) / (W - m.l - m.r); const xv = o.logx ? Math.pow(10, lx(xr[0]) + f * (lx(xr[1]) - lx(xr[0]))) : xr[0] + f * (xr[1] - xr[0]);
+    cur.setAttribute('x1', px); cur.setAttribute('x2', px); cur.setAttribute('opacity', '.5');
+    const parts = [(o.xn || 't') + ' = ' + fm(xv, o.logx ? 2 : 3)];
+    o.series.forEach(s => { if (!s.l) return; let lo = 0, hi = s.x.length - 1; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (s.x[mid] < xv) lo = mid; else hi = mid; } const k = Math.abs(s.x[lo] - xv) < Math.abs(s.x[hi] - xv) ? lo : hi; parts.push(s.l.replace(/ \(.*\)/, '') + ' = ' + fm(s.y[k], 2)); });
+    ro.textContent = parts.join(' · ');
+  };
+  svg.addEventListener('pointermove', move); svg.addEventListener('pointerleave', () => cur.setAttribute('opacity', '0'));
+  wrap.append(holder.firstChild, ro); return wrap;
+}
+
+
+function blk(x, y, w, hh, t, kind) {
+  const col = kind === 'e' ? 'var(--energy)' : 'var(--info)';
+  return `<rect x="${x}" y="${y}" width="${w}" height="${hh}" rx="7" style="fill:var(--panel2);stroke:${col}" stroke-width="2"/>` + t.split('|').map((l, i, a) => `<text x="${x + w / 2}" y="${y + hh / 2 + 4 + (i - (a.length - 1) / 2) * 14}" text-anchor="middle" font-size="12" style="fill:var(--fg)">${l}</text>`).join('');
+}
+function arrow(x1, y1, x2, y2, kind, lab) {
+  const col = kind === 'e' ? 'var(--energy)' : 'var(--info)';
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke:${col}" stroke-width="2"/><path d="M${x2} ${y2} l${x2 > x1 ? -7 : x2 < x1 ? 7 : -4} ${y2 > y1 ? -7 : y2 < y1 ? 7 : -4} m0 0" fill="none"/>` +
+    `<circle cx="${x2}" cy="${y2}" r="3" style="fill:${col}"/>` + (lab ? (x1 === x2 ? `<text x="${x1 + 8}" y="${(y1 + y2) / 2 + 4}" font-size="11" style="fill:var(--muted)">${lab}</text>` : `<text x="${(x1 + x2) / 2}" y="${Math.min(y1, y2) - 5}" text-anchor="middle" font-size="11" style="fill:var(--muted)">${lab}</text>`) : '');
+}
+
+/* ---------- schéma plateau + trappe ---------- */
+function sorterSvg(psiDeg, trapDeg, rpm) {
+  const cx = 190, cy = 160, R = 120, ky = Math.cos(40 * D2R_), n = Q0.g.holes, pts = [];
+  let holes = '';
+  for (let k = 0; k < n; k++) { const a = (psiDeg + k * 360 / n) * D2R_; holes += `<circle cx="${cx + 0.8 * R * Math.cos(a)}" cy="${cy + 0.8 * R * ky * Math.sin(a)}" r="${k === 0 ? 7 : 5.5}" style="fill:${k === 0 ? 'var(--warn)' : 'var(--bg)'};stroke:var(--muted)"/>`; }
+  const ta = trapDeg * D2R_, px = 395, py = 70, L = 48;
+  return `<svg viewBox="0 0 520 320" role="img" aria-label="Schéma du plateau incliné de la trieuse et de la trappe, plateau à ${fm(rpm, 1)} tr/min, trappe ouverte à ${fm(trapDeg, 0)} degrés">
+  <ellipse cx="${cx}" cy="${cy}" rx="${R}" ry="${R * ky}" style="fill:var(--panel2);stroke:var(--accent)" stroke-width="3"/>
+  ${holes}
+  <circle cx="${cx}" cy="${cy}" r="6" style="fill:var(--fg)"/>
+  <path d="M${cx - R * 0.45} ${cy + R * ky + 12} A${R * 0.9} ${R * ky * 0.9} 0 0 0 ${cx + R * 0.45} ${cy + R * ky + 12}" fill="none" style="stroke:var(--energy)" stroke-width="2"/>
+  <text x="${cx}" y="${cy + R * ky + 32}" text-anchor="middle" font-size="12" style="fill:var(--energy)">${fm(rpm, 1)} tr/min · ${n} trous</text>
+  <text x="${cx}" y="${cy - R * ky - 8}" text-anchor="middle" font-size="12" style="fill:var(--muted)">plateau (gabarit de tri), incliné de 40°</text>
+  <rect x="${px - 34}" y="${py - 44}" width="68" height="30" rx="4" style="fill:var(--panel2);stroke:var(--muted)"/><text x="${px}" y="${py - 25}" text-anchor="middle" font-size="12" style="fill:var(--muted)">trémie</text>
+  <line x1="${px}" y1="${py - 14}" x2="${px}" y2="${py}" style="stroke:var(--muted)" stroke-width="2"/>
+  <line x1="${px}" y1="${py}" x2="${px + L * Math.cos(ta)}" y2="${py + L * Math.sin(ta)}" style="stroke:var(--energy)" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="${px}" cy="${py}" r="6" style="fill:var(--fg)"/>
+  <text x="${px - 30}" y="${py + 82}" font-size="12" style="fill:var(--energy)">trappe : ${fm(trapDeg, 0)}°</text>
+  <path d="M${px + 24} ${py + 6} A24 24 0 0 1 ${px + 24 * Math.cos(ta)} ${py + 24 * Math.sin(ta)}" fill="none" style="stroke:var(--energy)"/>
+  <circle cx="${px + 6}" cy="${py + 2 * L + 10}" r="9" style="fill:var(--warn)"/><text x="${px + 20}" y="${py + 2 * L + 14}" font-size="11.5" style="fill:var(--muted)">pièce vers le plateau</text></svg>`;
+}
+const D2R_ = Math.PI / 180;
+const S1 = { rpm: 12, trap: 40 };
+const PARAMS = [
+  ['Rôle du système', 'trier et compter des pièces en euros (système SAFESCAN didactisé)', 'doc', 'dossier DMS Formation'],
+  ['Cadence annoncée', '220 pièces/min, plateau à 12 tr/min, inclinaison 40°', 'doc', 'dossier DMS Formation'],
+  ['Plateau (gabarit)', '22 trous identiques', 'doc', 'dossier technique (cpge-grasshopper)'],
+  ['Moteur du gabarit', 'RS-555 : R = 8,9 Ω, Kc = Ke = 0,044 SI', 'doc', 'description des actionneurs (lycée Turgot)'],
+  ['Moteur de la trappe', 'R = 15 Ω, L = 1 mH, Kc = 0,012 N·m/A, Ke = 1,26 V/(1000 tr/min)', 'doc', 'description des actionneurs (lycée Turgot)'],
+  ['Inductance du moteur du gabarit', '1 mH', 'cal', 'non donnée (terme négligé dans le sujet)'],
+  ['Réducteur du gabarit', 'trois étages, 12-56, 18-46, 17-65 dents : rapport 45,6', 'doc', 'dossier technique (nombres de dents) ; rapport calculé'],
+  ['Réducteur de la trappe', 'rapport 30', 'cal', 'six engrenages décrits, rapport non lu : valeur choisie'],
+  ['Course d’ouverture de la trappe', '90°', 'cal', 'non donnée'],
+  ['Inertie ramenée au moteur', 'gabarit 5,8·10⁻⁶ ; trappe 5·10⁻⁷ kg·m²', 'doc', 'caractéristiques de la charge (lycée Turgot)'],
+  ['Frottement visqueux', 'gabarit 8·10⁻⁵ ; trappe 3,8·10⁻⁶ N·m·s/rad', 'doc', 'caractéristiques de la charge'],
+  ['Frottement sec', 'gabarit 0,041 ; trappe 10⁻⁴ N·m', 'doc', 'caractéristiques de la charge'],
+  ['Hacheurs', 'module L298, MLI sur 11 bits (±1024), ±22 V gabarit, ±18 V trappe', 'doc', 'description des préactionneurs'],
+  ['Codeurs', 'incrémentaux à effet Hall, 400 points/tour ; trappe côté moteur, gabarit en sortie de réducteur', 'doc', 'description des codeurs'],
+  ['Période de commande', 'gabarit 50 ms (moyenne sur 4 périodes) ; trappe 5 ms', 'cal', 'non donnée : valeurs choisies'],
+  ['Programmation', 'microcontrôleur, asservissements numériques P, PI, avance de phase', 'doc', 'dossier DMS Formation']
+];
+const EDIT = [
+  ['Gabarit : frottement sec Cr (N·m)', () => P.g.Cr, v => { P.g.Cr = v; }],
+  ['Gabarit : inertie ramenée J (kg·m²)', () => P.g.J, v => { P.g.J = v; }],
+  ['Gabarit : frottement visqueux f (N·m·s/rad)', () => P.g.f, v => { P.g.f = v; }],
+  ['Gabarit : résistance R (Ω)', () => P.g.R, v => { P.g.R = v; }],
+  ['Gabarit : constante Kc = Ke (V·s/rad)', () => P.g.kc, v => { P.g.kc = v; P.g.ke = v; }],
+  ['Gabarit : rapport du réducteur', () => P.g.N, v => { P.g.N = v; }],
+  ['Trappe : rapport du réducteur', () => P.t.N, v => { P.t.N = v; }],
+  ['Trappe : inertie ramenée J (kg·m²)', () => P.t.J, v => { P.t.J = v; }],
+  ['Trappe : course d’ouverture (°)', () => P.t.open, v => { P.t.open = v; }]
+];
+function mount1(root) {
+  root.append(h('h2', null, 'La trieuse de pièces et son jumeau'),
+    h('p', null, 'Un plateau incliné, percé de 22 trous, tourne lentement. Une trappe, sous la trémie, laisse tomber quelques pièces dessus. Les pièces sont remontées par la rotation, puis tombent dans un trou rectangulaire dont la taille correspond à leur diamètre : elles sont triées, puis comptées par un détecteur optique. Deux moteurs à courant continu agissent : un pour le plateau (en vitesse), un pour la trappe (en position).'));
+  root.append(h('h3', null, 'Chaînes d’information et d’énergie'));
+  const dg = h('div', { class: 'pbox' }); dg.innerHTML = `<svg viewBox="0 0 880 250" role="img" aria-label="Schéma-blocs de la trieuse" style="width:100%;height:auto">
+  ${blk(10, 30, 150, 50, 'Consigne|(tr/min ou angle)', 'i')}${blk(185, 30, 150, 50, 'Microcontrôleur|P, PI, avance de phase', 'i')}${blk(360, 30, 150, 50, 'Hacheur L298|MLI 11 bits', 'i')}
+  ${blk(535, 30, 150, 50, 'Moteur à courant|continu (×2)', 'e')}${blk(710, 30, 150, 50, 'Réducteurs|45,6 et 30', 'e')}
+  ${blk(710, 150, 150, 50, 'Plateau ou trappe|(charge)', 'e')}${blk(535, 150, 150, 50, 'Codeur 400 pts/tr|position et vitesse', 'i')}${blk(185, 150, 150, 50, 'Détecteur optique|comptage des pièces', 'i')}
+  ${arrow(160, 55, 185, 55, 'i')}${arrow(335, 55, 360, 55, 'i')}${arrow(510, 55, 535, 55, 'e')}${arrow(685, 55, 710, 55, 'e')}
+  ${arrow(785, 80, 785, 150, 'e', 'couple')}${arrow(710, 175, 685, 175, 'i', 'mesure')}${arrow(535, 175, 260, 175, 'i')}${arrow(260, 150, 260, 80, 'i', 'retour')}
+  <text x="10" y="232" font-size="12" style="fill:var(--info)">■ chaîne d’information</text><text x="190" y="232" font-size="12" style="fill:var(--energy)">■ chaîne d’énergie</text></svg>`;
+  root.append(dg);
+  root.append(h('h3', null, 'Mouvements et cadence'), h('p', { class: 'small' }, 'Réglez la vitesse du plateau et l’ouverture de la trappe. La cadence maximale théorique est le nombre de trous multiplié par la vitesse de rotation ; la cadence réelle annoncée est plus faible, car tous les trous ne reçoivent pas une pièce.'));
+  const arm = h('div', { class: 'pbox armbox' }), info = h('div'); let psi = 0, raf = null;
+  const draw = () => {
+    arm.innerHTML = sorterSvg(psi, S1.trap, S1.rpm); info.innerHTML = '';
+    const g = P.g, wp = S1.rpm * RPM, wm = wp * g.N, I = (g.Cr + g.f * wm) / g.kc, U = g.R * I + g.ke * wm;
+    info.append(stats([['Vitesse du moteur', fm(wm / RPM, 0) + ' tr/min'], ['Tension à appliquer', wm > 0 ? fm(U, 1) + ' V sur ' + g.Umax + ' V' : '0 V'], ['Courant', fm(I, 2) + ' A'], ['Cadence théorique max.', fm(g.holes * S1.rpm, 0) + ' trous/min'], ['Rendement de remplissage annoncé', fm(220 / (g.holes * 12) * 100, 0) + ' %'], ['Temps entre deux trous', S1.rpm > 0 ? fm(60 / (g.holes * S1.rpm) * 1000, 0) + ' ms' : '—']]));
+  };
+  const tick = () => { psi += S1.rpm * 6 / 60 * 0.5; if (psi > 360) psi -= 360; draw(); };
+  root.append(h('div', { class: 'opts' }, sld('Vitesse du plateau', 0, 40, 0.5, S1.rpm, v => fm(v, 1) + ' tr/min', v => { S1.rpm = v; draw(); }), sld('Ouverture de la trappe', 0, P.t.open, 1, S1.trap, v => v + ' °', v => { S1.trap = v; draw(); })), arm, info, h('div', { class: 'opts' }, h('button', { class: 'btn sm', type: 'button', onclick: () => { psi = (psi + 360 / P.g.holes) % 360; draw(); } }, 'Avancer d’un trou')));
+  draw();
+  root.append(h('h3', null, 'Paramètres du jumeau et leur statut'), h('p', { class: 'small' }, 'documenté = relevé dans une source publique ; calé = valeur choisie faute de donnée. Les ateliers suivants utilisent ces valeurs.'));
+  const rows = PARAMS.map(p => h('tr', null, h('td', null, p[0]), h('td', null, p[1]), h('td', null, h('span', { class: 'tag ' + p[2] }, p[2] === 'doc' ? 'documenté' : 'calé')), h('td', { class: 'small' }, p[3])));
+  root.append(h('div', { class: 'dwrap' }, h('table', { class: 'dt' }, h('thead', null, h('tr', null, ['Grandeur', 'Valeur', 'Statut', 'Source'].map(x => h('th', null, x)))), h('tbody', null, rows))));
+  root.append(h('h3', null, 'Recaler le jumeau avec vos valeurs'));
+  root.append(h('div', { class: 'dwrap' }, h('table', { class: 'dt' }, h('tbody', null, EDIT.map(e => { const inp = h('input', { type: 'number', step: 'any', value: +e[1]().toPrecision(4), 'aria-label': e[0] }); inp.addEventListener('change', () => { const v = parseFloat(inp.value); if (isFinite(v) && v > 0) { e[2](v); toast('Valeur enregistrée : ' + e[0]); draw(); } }); return h('tr', null, h('td', null, e[0]), h('td', null, inp)); })))));
+}
+WORKSHOPS.push({ id: 's1', title: 'Le système', hint: 'Découvrez les deux axes, la cadence de tri et l’origine de chaque paramètre du jumeau.', mount: mount1, reset: () => { Object.assign(S1, { rpm: 12, trap: 40 }); } });
+
+/* ================= Atelier 2 : transmission, tension et seuil ================= */
+const S2 = { rpm: 12, Cl: 0 };
+function mount2(root) {
+  root.append(h('h2', null, 'Transmission, tension et seuil'),
+    h('p', null, 'Le plateau tourne à quelques tours par minute, le moteur à plusieurs centaines. Le frottement sec est élevé : il faut appliquer une tension minimale avant que le plateau ne démarre. Cherchez cette tension et la vitesse maximale que permet l’alimentation.'));
+  const box = h('div'), st = h('div'), msg = h('div', { class: 'verdict', id: 'm2' });
+  const draw = () => {
+    const g = P.g, rr = [], U = [], I = [], cad = [];
+    for (let r = 0; r <= 40.01; r += 0.5) { const wm = r * RPM * g.N, Ii = r > 0 ? (g.Cr + g.f * wm + S2.Cl / 1000) / g.kc : 0; rr.push(r); I.push(Ii); U.push(r > 0 ? g.R * Ii + g.ke * wm : 0); cad.push(g.holes * r); }
+    box.innerHTML = ''; st.innerHTML = '';
+    box.append(plot({ title: 'Tension nécessaire en régime permanent', xn: 'ω', xl: 'vitesse du plateau (tr/min)', yl: 'V', series: [{ x: rr, y: U, c: 'var(--c1)', l: 'U' }], hl: [{ y: g.Umax, l: 'tension maximale' }] }));
+    box.append(plot({ title: 'Courant moteur', xn: 'ω', xl: 'vitesse du plateau (tr/min)', yl: 'A', h: 190, series: [{ x: rr, y: I, c: 'var(--c3)', l: 'i' }] }));
+    const wm = S2.rpm * RPM * g.N, Ii = S2.rpm > 0 ? (g.Cr + g.f * wm + S2.Cl / 1000) / g.kc : 0, Un = S2.rpm > 0 ? g.R * Ii + g.ke * wm : 0, vmax = (g.Umax - g.R * (g.Cr + S2.Cl / 1000) / g.kc) / (g.ke + g.R * g.f / g.kc) / g.N / RPM;
+    st.append(stats([['Seuil de démarrage', fm(u0(g) + g.R * S2.Cl / 1000 / g.kc, 1) + ' V'], ['Vitesse du moteur', fm(wm / RPM, 0) + ' tr/min'], ['Tension nécessaire', fm(Un, 1) + ' V'], ['Commande MLI', fm(Un / g.Umax * 1024, 0) + ' / 1024'], ['Pas de tension du hacheur', fm(pwmStep(g) * 1000, 1) + ' mV'], ['Vitesse maximale du plateau', fm(vmax, 0) + ' tr/min'], ['Puissance mécanique', fm((g.Cr + g.f * wm + S2.Cl / 1000) * wm, 2) + ' W'], ['Rapport du réducteur', fm(g.N, 1)]]));
+    setMsg('#m2', 'À ' + fm(S2.rpm, 1) + ' tr/min, le moteur tourne à ' + fm(wm / RPM, 0) + ' tr/min et demande ' + fm(Un, 1) + ' V : ' + fm(Un / g.Umax * 100, 0) + ' % de l’alimentation. Le seuil de ' + fm(u0(g), 1) + ' V vient du frottement sec : dessous, le plateau ne tourne pas.', 'ok');
+  };
+  root.append(h('div', { class: 'opts' }, sld('Vitesse du plateau', 0, 40, 0.5, S2.rpm, v => fm(v, 1) + ' tr/min', v => { S2.rpm = v; later('d2', draw); }), sld('Couple résistant des pièces, côté moteur', 0, 60, 1, S2.Cl, v => v + ' mN·m', v => { S2.Cl = v; later('d2', draw); })), box, st, msg);
+  draw();
+}
+WORKSHOPS.push({ id: 's2', title: 'Transmission et seuil', hint: 'Reliez vitesse du plateau, vitesse du moteur, courant et tension, et repérez le seuil dû au frottement sec.', mount: mount2, reset: () => { Object.assign(S2, { rpm: 12, Cl: 0 }); } });
+
+/* ================= Atelier 3 : identification temporelle ================= */
+const S3 = { ax: 'g', U: 15, txt: '' };
+function parseMeas(txt) { const x = [], y = []; txt.split(/\n/).forEach(l => { const p = l.trim().split(/[;\t]+/).map(s => parseFloat(s.replace(',', '.'))); if (p.length >= 2 && isFinite(p[0]) && isFinite(p[1])) { x.push(p[0]); y.push(p[1]); } }); return x.length > 3 ? { x, y } : null; }
+function mount3(root) {
+  root.append(h('h2', null, 'Identification temporelle'),
+    h('p', null, 'Appliquez un échelon de tension et observez la vitesse. Pour un moteur à courant continu, la réponse est celle d’un premier ordre de gain K et de constante de temps τ. Le frottement sec la décale : la vitesse finale correspond à la tension moins le seuil.'));
+  const box = h('div'), st = h('div'), msg = h('div', { class: 'verdict', id: 'm3' });
+  const ta = h('textarea', { rows: 3, placeholder: 't (s) ; vitesse (tr/min de l’axe), une ligne par point', 'aria-label': 'Mesure à importer' }); ta.value = S3.txt;
+  const draw = () => {
+    const A = P[S3.ax], t0 = 0.05, o = sim(A, { mode: 'volt', ref: t => t < t0 ? 0 : S3.U, tend: S3.ax === 'g' ? 0.4 : 0.5 });
+    const y = o.y.map(v => v / RPM), tt = o.t.map(v => v - t0), yf = y[y.length - 1];
+    const ser = [{ x: tt, y, c: 'var(--c1)', l: 'jumeau' }]; const me = parseMeas(S3.txt); if (me) ser.push({ x: me.x, y: me.y, c: 'var(--c2)', l: 'mesure importée' });
+    const yfit = tt.map(v => v < 0 ? 0 : yf * (1 - Math.exp(-v / tauM(A))));
+    ser.push({ x: tt, y: yfit, c: 'var(--c5)', l: 'premier ordre', dash: '2 4' });
+    box.innerHTML = ''; st.innerHTML = '';
+    box.append(plot({ title: 'Vitesse de l’axe pour un échelon de ' + S3.U + ' V', xl: 'temps (s)', yl: 'tr/min', series: ser }));
+    let t63 = null; for (let k = 0; k < y.length; k++) if (tt[k] >= 0 && y[k] >= 0.632 * yf && yf > 0) { t63 = tt[k]; break; }
+    const Ueff = S3.U - u0(A), Kth = kV(A) / A.N / RPM;
+    st.append(stats([['Vitesse finale', fm(yf, 2) + ' tr/min'], ['Temps à 63 %', yf > 0.01 ? fm((t63 || 0) * 1000, 0) + ' ms' : '—'], ['τ théorique', fm(tauM(A) * 1000, 1) + ' ms'], ['Gain K théorique', fm(Kth, 2) + ' tr/min par V'], ['Seuil de tension', fm(u0(A), 2) + ' V'], ['Gain apparent K = ω / U', fm(yf / S3.U, 2) + ' tr/min par V']]));
+    setMsg('#m3', yf < 0.01 ? 'L’échelon est sous le seuil de ' + fm(u0(A), 2) + ' V : le frottement sec bloque le moteur.' : 'La vitesse finale vaut K·(U − seuil) = ' + fm(Kth, 2) + ' × ' + fm(Ueff, 1) + ' ≈ ' + fm(Kth * Ueff, 2) + ' tr/min ; la constante de temps est ' + fm(tauM(A) * 1000, 1) + ' ms. Le gain apparent ω/U dépend de U à cause du seuil.', yf < 0.01 ? 'bad' : 'ok');
+  };
+  ta.addEventListener('input', () => { S3.txt = ta.value; later('d3', draw); });
+  const set = o => () => { Object.assign(S3, o); mountWs(); };
+  root.append(h('div', { class: 'chips' }, [['Plateau, 15 V', { ax: 'g', U: 15 }], ['Plateau, 6 V (sous le seuil)', { ax: 'g', U: 6 }], ['Trappe, 6 V', { ax: 't', U: 6 }]].map(c => h('button', { class: 'btn sm', type: 'button', onclick: set(c[1]) }, c[0]))),
+    h('div', { class: 'opts' }, sld('Tension de l’échelon', 1, 22, 0.5, S3.U, v => fm(v, 1) + ' V', v => { S3.U = Math.min(v, P[S3.ax].Umax); later('d3', draw); })), box, st, msg,
+    h('h3', null, 'Comparer avec une mesure réelle'), h('p', { class: 'small' }, 'Collez un relevé de votre trieuse : temps depuis l’échelon (s), vitesse de l’axe (tr/min). La courbe s’ajoute au tracé.'), h('label', { class: 'fld' }, h('span', null, 'Mesure'), ta));
+  draw();
+}
+WORKSHOPS.push({ id: 's3', title: 'Identification', hint: 'Appliquez un échelon de tension, lisez gain et constante de temps, et repérez l’effet du seuil.', mount: mount3, reset: () => { Object.assign(S3, { ax: 'g', U: 15, txt: '' }); } });
+
+/* ================= Atelier 4 : asservissement en vitesse du plateau ================= */
+const S4 = { rpm: 12, Kp: 1, Ki: 8, Ts: 50, M: 4, pert: false };
+function mount4(root) {
+  root.append(h('h2', null, 'Asservissement en vitesse du plateau'),
+    h('p', null, 'La vitesse est calculée à partir des impulsions du codeur : sa résolution dépend de la période de commande et de la fenêtre de mesure. Un correcteur proportionnel seul ne suffit pas à vaincre le frottement sec ; l’action intégrale le permet.'));
+  const out = h('div'), st = h('div'), msg = h('div', { class: 'verdict', id: 'm4' });
+  const draw = () => {
+    const A = Object.assign({}, P.g, { Kp: S4.Kp, Ki: S4.Ki, Ts: S4.Ts / 1000, M: S4.M }), wr = S4.rpm * RPM, t0 = 0.5;
+    const o = sim(A, { mode: 'speed', ref: t => t < t0 ? 0 : wr, tend: 10, Cl: t => (S4.pert && t > 6 ? 0.03 : 0) }), s = stepStats(o, wr, t0);
+    out.innerHTML = ''; st.innerHTML = '';
+    out.append(plot({ title: 'Vitesse du plateau', xl: 'temps (s)', yl: 'tr/min', series: [{ x: o.t, y: o.ref.map(v => v / RPM), c: 'var(--c5)', l: 'consigne', dash: '2 4' }, { x: o.t, y: o.y.map(v => v / RPM), c: 'var(--c1)', l: 'plateau' }, { x: o.t, y: o.meas.map(v => v / RPM), c: 'var(--c2)', l: 'mesure codeur' }] }));
+    out.append(plot({ title: 'Tension du moteur', xl: 'temps (s)', yl: 'V', h: 170, series: [{ x: o.t, y: o.u, c: 'var(--c4)', l: 'u' }], hl: [{ y: A.Umax, l: '+Umax' }, { y: -A.Umax, l: '−Umax' }] }));
+    out.append(plot({ title: 'Courant moteur', xl: 'temps (s)', yl: 'A', h: 160, series: [{ x: o.t, y: o.i, c: 'var(--c3)', l: 'i' }] }));
+    const q = TWO_PI / A.qc / (A.M * A.Ts) / RPM;
+    st.append(stats([['Erreur statique', fm(Math.abs(s.ess) / RPM, 2) + ' tr/min'], ['Dépassement', fm(s.os * 100, 0) + ' %'], ['Temps de réponse à 5 %', s.tr >= 9.4 ? '> 9,5 s' : fm(s.tr, 2) + ' s'], ['Tension max', fm(s.Umax, 1) + ' V'], ['Courant max', fm(s.Imax, 2) + ' A'], ['Résolution de la vitesse mesurée', fm(q, 2) + ' tr/min par impulsion']]));
+    const stuck = Math.abs(s.ess) / RPM > 0.5 * S4.rpm;
+    setMsg('#m4', stuck ? 'Le plateau ne démarre pas : à l’erreur de ' + fm(S4.rpm, 0) + ' tr/min, le correcteur proportionnel donne ' + fm(S4.Kp * wr, 1) + ' V, sous le seuil de ' + fm(u0(A), 1) + ' V. Il faut une action intégrale, ou un gain plus fort.' : 'Erreur statique de ' + fm(Math.abs(s.ess) / RPM, 2) + ' tr/min et dépassement de ' + fm(s.os * 100, 0) + ' %. ' + (s.os > 0.2 ? 'La réponse oscille : réduisez Ki ou Kp, ou raccourcissez la période de commande.' : ''), stuck || s.os > 0.2 ? 'bad' : 'ok');
+  };
+  const set = o => () => { Object.assign(S4, o); mountWs(); };
+  root.append(h('div', { class: 'chips' }, [['P seul', { Kp: 1, Ki: 0 }], ['PI conseillé', { Kp: 1, Ki: 8, Ts: 50, M: 4 }], ['Ki trop fort', { Kp: 1, Ki: 20 }], ['Période de 200 ms', { Ts: 200, M: 1 }], ['Avec pièces (perturbation)', { pert: true }]].map(c => h('button', { class: 'btn sm', type: 'button', onclick: set(c[1]) }, c[0]))),
+    h('div', { class: 'opts' },
+      sld('Consigne de vitesse', 2, 30, 1, S4.rpm, v => v + ' tr/min', v => { S4.rpm = v; later('d4', draw); }),
+      sld('Gain Kp', 0, 10, 0.1, S4.Kp, v => fm(+v, 1) + ' V/(rad/s)', v => { S4.Kp = v; later('d4', draw); }),
+      sld('Gain Ki', 0, 30, 0.5, S4.Ki, v => fm(+v, 1) + ' V/rad', v => { S4.Ki = v; later('d4', draw); }),
+      sld('Période de commande', 10, 200, 10, S4.Ts, v => v + ' ms', v => { S4.Ts = v; later('d4', draw); }),
+      sld('Fenêtre de mesure de vitesse', 1, 10, 1, S4.M, v => v + ' période(s)', v => { S4.M = v; later('d4', draw); }),
+      chk('Pièces sur le plateau à t = 6 s (couple +30 mN·m)', S4.pert, v => { S4.pert = v; later('d4', draw); })), out, st, msg);
+  draw();
+}
+WORKSHOPS.push({ id: 's4', title: 'Vitesse du plateau', hint: 'Réglez P puis PI, observez le seuil, la quantification de la mesure et le rejet d’une perturbation.', mount: mount4, reset: () => { Object.assign(S4, { rpm: 12, Kp: 1, Ki: 8, Ts: 50, M: 4, pert: false }); } });
+
+/* ================= Atelier 5 : asservissement en position de la trappe ================= */
+const S5 = { ang: 90, Kp: 5, Ki: 0, Kd: 0, Ts: 5 };
+function mount5(root) {
+  root.append(h('h2', null, 'Asservissement en position de la trappe'),
+    h('p', null, 'La trappe doit s’ouvrir puis se refermer rapidement. Le moteur est rapide et peu chargé : la boucle de position se comporte comme un intégrateur suivi d’un premier ordre. Un gain trop fort provoque des dépassements, accentués par la saturation de la tension.'));
+  const out = h('div'), st = h('div'), msg = h('div', { class: 'verdict', id: 'm5' });
+  const draw = () => {
+    const A = Object.assign({}, P.t, { Kp: S5.Kp, Ki: S5.Ki, Kd: S5.Kd, Ts: S5.Ts / 1000 }), th = S5.ang * D2R_, t0 = 0.1;
+    const o = sim(A, { mode: 'pos', ref: t => t < t0 ? 0 : th, tend: 1.5 }), s = stepStats(o, th, t0);
+    out.innerHTML = ''; st.innerHTML = '';
+    out.append(plot({ title: 'Angle de la trappe', xl: 'temps (s)', yl: 'degrés', series: [{ x: o.t, y: o.ref.map(v => v / D2R_), c: 'var(--c5)', l: 'consigne', dash: '2 4' }, { x: o.t, y: o.y.map(v => v / D2R_), c: 'var(--c1)', l: 'trappe' }] }));
+    out.append(plot({ title: 'Tension du moteur', xl: 'temps (s)', yl: 'V', h: 170, series: [{ x: o.t, y: o.u, c: 'var(--c4)', l: 'u' }], hl: [{ y: A.Umax, l: '+Umax' }, { y: -A.Umax, l: '−Umax' }] }));
+    out.append(plot({ title: 'Courant moteur', xl: 'temps (s)', yl: 'A', h: 160, series: [{ x: o.t, y: o.i, c: 'var(--c3)', l: 'i' }] }));
+    st.append(stats([['Dépassement', fm(s.os * 100, 1) + ' %'], ['Temps de réponse à 5 %', fm(s.tr, 3) + ' s'], ['Erreur statique', fm(Math.abs(s.ess) / D2R_, 3) + ' °'], ['Tension max', fm(s.Umax, 1) + ' V'], ['Courant max', fm(s.Imax, 2) + ' A'], ['Résolution de la position', fm(360 / A.qc / A.N, 3) + ' °']]));
+    setMsg('#m5', 'Dépassement de ' + fm(s.os * 100, 1) + ' % et temps de réponse de ' + fm(s.tr, 3) + ' s. ' + (s.Umax >= A.Umax - 0.05 ? 'La tension sature : la réponse est plus lente et plus oscillante que ne le prévoit le modèle linéaire.' : 'La tension reste sous la saturation.'), s.os > 0.2 ? 'bad' : 'ok');
+  };
+  const set = o => () => { Object.assign(S5, o); mountWs(); };
+  root.append(h('div', { class: 'chips' }, [['Gain faible', { Kp: 5, Kd: 0 }], ['Gain fort', { Kp: 50, Kd: 0 }], ['Avance de phase (PD)', { Kp: 20, Kd: 0.2 }], ['Période de 20 ms', { Ts: 20 }]].map(c => h('button', { class: 'btn sm', type: 'button', onclick: set(c[1]) }, c[0]))),
+    h('div', { class: 'opts' },
+      sld('Ouverture demandée', 10, P.t.open, 1, Math.min(S5.ang, P.t.open), v => v + ' °', v => { S5.ang = v; later('d5', draw); }),
+      sld('Gain Kp', 0.5, 200, 0.5, S5.Kp, v => fm(+v, 1) + ' V/rad', v => { S5.Kp = v; later('d5', draw); }),
+      sld('Gain Ki', 0, 100, 1, S5.Ki, v => v + ' V/(rad·s)', v => { S5.Ki = v; later('d5', draw); }),
+      sld('Gain Kd', 0, 2, 0.02, S5.Kd, v => fm(+v, 2) + ' V·s/rad', v => { S5.Kd = v; later('d5', draw); }),
+      sld('Période de commande', 1, 20, 1, S5.Ts, v => v + ' ms', v => { S5.Ts = v; later('d5', draw); })), out, st, msg);
+  draw();
+}
+WORKSHOPS.push({ id: 's5', title: 'Position de la trappe', hint: 'Réglez P puis PD (avance de phase), observez dépassement, saturation et précision.', mount: mount5, reset: () => { Object.assign(S5, { ang: 90, Kp: 5, Ki: 0, Kd: 0, Ts: 5 }); } });
+
+/* ================= Atelier 6 : fréquentiel ================= */
+const S6 = { ax: 't', Kp: 20, Ki: 0, Kd: 0, Ts: 5, M: 1, delay: true };
+function margins(b) {
+  let wc = null, pm = null, wp = null, gm = null;
+  for (let k = 1; k < b.length; k++) {
+    if (wc == null && b[k - 1].mag >= 1 && b[k].mag < 1) { wc = b[k].w; pm = 180 + b[k].ph; }
+    if (wp == null && b[k - 1].ph > -180 && b[k].ph <= -180) { wp = b[k].w; gm = -20 * Math.log10(b[k].mag); }
+  }
+  return { wc, pm, wp, gm };
+}
+function mount6(root) {
+  root.append(h('h2', null, 'Analyse fréquentielle des boucles'),
+    h('p', null, 'Choisissez la boucle à étudier. La boucle de position de la trappe est un intégrateur suivi du moteur, celle de vitesse du plateau est un premier ordre précédé d’un correcteur PI. Le calcul tient compte du retard d’échantillonnage et de la fenêtre de mesure.'));
+  const box = h('div'), st = h('div'), msg = h('div', { class: 'verdict', id: 'm6' });
+  const draw = () => {
+    const base = S6.ax === 't' ? P.t : P.g, A = Object.assign({}, base, { Kp: S6.Kp, Ki: S6.Ki, Kd: S6.Kd, Ts: S6.Ts / 1000, M: S6.M }), ws = []; for (let k = -1; k <= 3.5; k += 0.02) ws.push(Math.pow(10, k));
+    const b = bodeLoop(A, ws, { kind: S6.ax === 't' ? 'pos' : 'speed', delay: S6.delay ? S6.M * A.Ts / 2 : 0 }), mg = margins(b);
+    box.innerHTML = ''; st.innerHTML = '';
+    box.append(plot({ title: 'Gain de la boucle ouverte', xn: 'ω', logx: true, xl: 'pulsation (rad/s)', yl: 'dB', h: 200, series: [{ x: ws, y: b.map(p => 20 * Math.log10(p.mag)), c: 'var(--c1)', l: 'gain' }], hl: [{ y: 0, l: '0 dB' }] }));
+    box.append(plot({ title: 'Phase de la boucle ouverte', xn: 'ω', logx: true, xl: 'pulsation (rad/s)', yl: 'degrés', h: 200, series: [{ x: ws, y: b.map(p => p.ph), c: 'var(--c2)', l: 'phase' }], hl: [{ y: -180, l: '−180°' }] }));
+    const pm = mg.pm != null ? mg.pm : null;
+    st.append(stats([['Pulsation de coupure', mg.wc ? fm(mg.wc, 1) + ' rad/s' : 'pas de coupure'], ['Marge de phase', pm != null ? fm(pm, 0) + ' °' : '—'], ['Marge de gain', mg.gm != null ? fm(mg.gm, 1) + ' dB' : 'infinie'], ['Constante de temps du moteur', fm(tauM(A) * 1000, 1) + ' ms'], ['Retard pris en compte', S6.delay ? fm(S6.M * A.Ts / 2 * 1000, 1) + ' ms' : 'aucun']]));
+    setMsg('#m6', pm == null ? 'La boucle ne coupe pas 0 dB dans la bande étudiée.' : pm < 0 ? 'Marge de phase négative : la boucle est instable.' : pm < 30 ? 'La marge de phase est faible : la réponse oscille.' : pm < 45 ? 'La marge de phase est correcte mais juste.' : 'La marge de phase est confortable.', pm == null ? '' : pm < 30 ? 'bad' : 'ok');
+  };
+  const set = o => () => { Object.assign(S6, o); mountWs(); };
+  root.append(h('div', { class: 'chips' }, [['Position de la trappe', { ax: 't', Kp: 20, Ki: 0, Kd: 0, Ts: 5, M: 1 }], ['Vitesse du plateau', { ax: 'g', Kp: 1, Ki: 8, Kd: 0, Ts: 50, M: 4 }]].map(c => h('button', { class: 'btn sm', type: 'button', onclick: set(c[1]) }, c[0]))),
+    h('div', { class: 'opts' },
+      sld('Gain Kp', 0.1, 200, 0.1, S6.Kp, v => fm(+v, 1), v => { S6.Kp = v; later('d6', draw); }),
+      sld('Gain Ki', 0, 60, 0.5, S6.Ki, v => fm(+v, 1), v => { S6.Ki = v; later('d6', draw); }),
+      sld('Gain Kd (position)', 0, 2, 0.02, S6.Kd, v => fm(+v, 2), v => { S6.Kd = v; later('d6', draw); }),
+      sld('Période de commande', 1, 200, 1, S6.Ts, v => v + ' ms', v => { S6.Ts = v; later('d6', draw); }),
+      sld('Fenêtre de mesure', 1, 10, 1, S6.M, v => v + ' période(s)', v => { S6.M = v; later('d6', draw); }),
+      chk('Prendre en compte le retard d’échantillonnage', S6.delay, v => { S6.delay = v; later('d6', draw); })), box, st, msg);
+  draw();
+}
+WORKSHOPS.push({ id: 's6', title: 'Fréquentiel (PSI*)', hint: 'Lisez ω_c et les marges des deux boucles, avec le retard de l’échantillonnage.', mount: mount6, reset: () => { Object.assign(S6, { ax: 't', Kp: 20, Ki: 0, Kd: 0, Ts: 5, M: 1, delay: true }); } });
+
+/* ---------- activités ---------- */
+const ACT = {
+  s1: {
+    title: 'Découvrir la trieuse', level: 'Niveau 1 · Découvrir', time: '25 min', course: 'presentation',
+    goal: 'Repérer les deux axes motorisés, calculer la cadence de tri et distinguer les paramètres documentés des paramètres calés.',
+    steps: [
+      'Sur le schéma-blocs, suivez la chaîne d’énergie jusqu’à la charge. Quelles informations reviennent vers le microcontrôleur ?',
+      'Réglez le plateau à 12 tr/min : quelle est la cadence théorique en trous par minute ? Comparez-la aux 220 pièces/min annoncées.',
+      'Relevez la vitesse du moteur et la tension nécessaire à 12 tr/min. Quelle fraction de l’alimentation de 22 V est utilisée ?',
+      'Dans le tableau, repérez les paramètres calés. Lesquels influencent le plus l’asservissement de la trappe ?',
+      'Modifiez le rapport du réducteur de la trappe : quelles grandeurs du jumeau changent ?'
+    ],
+    defi: { q: 'Le plateau compte 22 trous et tourne à 12 tr/min. Quelle cadence maximale en trous par minute ? Quel taux de remplissage correspond à 220 pièces/min ?', a: '22 × 12 = <b>264 trous/min</b>, soit un trou toutes les 227 ms. 220 / 264 ≈ <b>83 %</b> : environ un trou sur six reste vide.' },
+    qcm: [
+      { q: 'Quelle grandeur règle-t-on en vitesse ?', o: ['La trappe', 'Le plateau (gabarit)', 'Les deux axes', 'Aucune'], a: 1, w: 'Le plateau est asservi en vitesse ; la trappe est asservie en position (ouverte ou fermée).' },
+      { q: 'Quel est le rapport du réducteur du plateau ?', o: ['Environ 4,6', 'Environ 45,6', 'Environ 456', 'Environ 12'], a: 1, w: '(56/12) × (46/18) × (65/17) ≈ 4,67 × 2,56 × 3,82 ≈ 45,6.' },
+      { q: 'À 12 tr/min, quelle est environ la vitesse du moteur du plateau ?', o: ['55 tr/min', '547 tr/min', '5 470 tr/min', '12 tr/min'], a: 1, w: '12 × 45,6 ≈ 547 tr/min, soit 57 rad/s.' },
+      { q: 'Quelle valeur est calée dans le jumeau ?', o: ['Le frottement sec du plateau', 'La résistance du moteur de la trappe', 'Le rapport du réducteur de la trappe', 'Le nombre de trous'], a: 2, w: 'Les six engrenages de la trappe sont décrits, mais leur rapport n’est pas publié : le jumeau retient 30.' },
+      { q: 'Que mesurent les codeurs Hall ?', o: ['Une tension', 'Une position angulaire par comptage d’impulsions', 'Un courant', 'Une force'], a: 1, w: '400 points par tour ; la vitesse est ensuite calculée par différence de comptage.' }
+    ]
+  },
+  s2: {
+    title: 'Transmission et seuil', level: 'Niveau 1 · Découvrir', time: '30 min', course: 'transmission',
+    goal: 'Calculer vitesse du moteur, courant et tension en régime permanent et expliquer l’origine du seuil de démarrage.',
+    steps: [
+      'À 12 tr/min, relevez le courant, la tension et la puissance mécanique. Quelle part de la tension compense la force contre-électromotrice ?',
+      'Repérez le seuil de démarrage. Quelle grandeur physique le fixe ? Vérifiez avec Cr·R/Kc.',
+      'Ajoutez un couple résistant dû aux pièces (30 mN·m) : comment évoluent le seuil et la tension ?',
+      'Quelle est la vitesse maximale du plateau avec 22 V ? Est-ce compatible avec le réglage de 12 tr/min ?',
+      'Quel est le pas de tension du hacheur ? Que provoque-t-il sur la commande ?'
+    ],
+    defi: { q: 'Calculez la tension nécessaire à 12 tr/min (ω<sub>m</sub> = 57,3 rad/s) avec R = 8,9 Ω, K = 0,044, Cr = 0,041 N·m, f = 8·10⁻⁵.', a: 'I = (0,041 + 8·10⁻⁵ × 57,3) / 0,044 ≈ <b>1,04 A</b>. U = 8,9 × 1,04 + 0,044 × 57,3 ≈ 9,2 + 2,5 ≈ <b>11,7 V</b>, soit environ 53 % de 22 V.' },
+    qcm: [
+      { q: 'Quelle est l’origine du seuil de démarrage ?', o: ['L’inertie', 'Le frottement sec', 'La résolution du codeur', 'L’inductance'], a: 1, w: 'Il faut un courant Cr/Kc ≈ 0,93 A avant de vaincre le frottement sec, donc U = R·Cr/Kc ≈ 8,3 V.' },
+      { q: 'Quelle part du courant sert à vaincre le frottement sec à 12 tr/min ?', o: ['Environ 10 %', 'Environ 50 %', 'Environ 90 %', '100 %'], a: 2, w: '0,041 sur 0,0456 N·m : le frottement visqueux ne pèse que 10 %.' },
+      { q: 'Si l’on ajoute un couple résistant, le seuil…', o: ['baisse', 'augmente', 'ne change pas', 'devient nul'], a: 1, w: 'Le couple total à vaincre augmente, donc le courant et la tension de seuil aussi.' },
+      { q: 'Quel est le pas de tension du hacheur (22 V, 11 bits signés) ?', o: ['2 mV', '21,5 mV', '215 mV', '2,2 V'], a: 1, w: '22 V / 1024 ≈ 21,5 mV.' },
+      { q: 'Quelle est la vitesse maximale du plateau à 22 V (frottement compris) ?', o: ['Environ 12 tr/min', 'Environ 48 tr/min', 'Environ 200 tr/min', 'Environ 500 tr/min'], a: 1, w: 'ω<sub>m</sub> = (22 − 8,3) × 16,6 ≈ 228 rad/s, soit 5 rad/s ou 48 tr/min au plateau.' }
+    ]
+  },
+  s3: {
+    title: 'Identifier le moteur', level: 'Niveau 2 · Modéliser', time: '35 min', course: 'identification',
+    goal: 'Relever gain et constante de temps d’une réponse indicielle, repérer l’effet du seuil et comparer à une mesure.',
+    steps: [
+      'Plateau, échelon de 15 V : relevez la vitesse finale et le temps à 63 %. Comparez à K·(U − seuil) et à τ.',
+      'Passez à 6 V : que se passe-t-il ? Expliquez.',
+      'Tracez mentalement le gain apparent ω/U pour 12 V, 15 V, 20 V : est-il constant ? Pourquoi ?',
+      'Sur la trappe (6 V), comparez la constante de temps à celle du plateau. Quel axe est le plus rapide ?',
+      'Collez une mesure de votre trieuse : la constante de temps et la vitesse finale sont-elles cohérentes avec le jumeau ?'
+    ],
+    defi: { q: 'Gain statique du moteur du plateau : K = Kc / (R·f + Kc·Ke) et constante de temps τ = R·J / (R·f + Kc·Ke). Calculez-les.', a: 'R·f + Kc·Ke = 8,9 × 8·10⁻⁵ + 0,044² ≈ 7,1·10⁻⁴ + 1,94·10⁻³ = 2,65·10⁻³. K ≈ <b>16,6 rad/s/V</b> et τ = 8,9 × 5,8·10⁻⁶ / 2,65·10⁻³ ≈ <b>19,5 ms</b>.' },
+    qcm: [
+      { q: 'Pour un échelon de 15 V sur le plateau, quelle est environ la vitesse finale ?', o: ['3 tr/min', '23 tr/min', '60 tr/min', '150 tr/min'], a: 1, w: '(15 − 8,3) × 16,6 / 45,6 ≈ 2,4 rad/s ≈ 23 tr/min.' },
+      { q: 'Quelle est la constante de temps du moteur du plateau ?', o: ['2 ms', '20 ms', '200 ms', '2 s'], a: 1, w: 'τ = R·J/(R·f + Kc·Ke) ≈ 19,5 ms.' },
+      { q: 'Pourquoi le gain apparent ω/U varie-t-il avec U ?', o: ['Le moteur est non linéaire en R', 'Le seuil retranche une tension fixe', 'Le codeur sature', 'Le hacheur filtre'], a: 1, w: 'ω = K(U − seuil) : le rapport ω/U tend vers K seulement pour U grand.' },
+      { q: 'L’inductance du moteur du plateau (1 mH, calée) influence-t-elle τ ?', o: ['Beaucoup', 'Très peu : τ<sub>e</sub> = L/R ≈ 0,1 ms', 'Pas du tout, c’est exactement 0', 'Elle double τ'], a: 1, w: 'La constante électrique est environ 0,11 ms, bien inférieure à 19,5 ms.' },
+      { q: 'Quel axe est le plus lent (constante de temps) ?', o: ['Le plateau (19,5 ms)', 'La trappe (37 ms)', 'Les deux pareil', 'Impossible à dire'], a: 1, w: 'Le moteur de la trappe a un rotor plus petit mais un couple moins fort (Kc = 0,012) : τ ≈ 37 ms.' }
+    ]
+  },
+  s4: {
+    title: 'Asservir la vitesse du plateau', level: 'Niveau 3 · Concevoir', time: '45 min', course: 'vitesse',
+    goal: 'Régler un correcteur PI, expliquer l’échec d’un correcteur P à cause du seuil et évaluer l’effet de la quantification.',
+    steps: [
+      'Choisissez « P seul » avec Kp = 1 : que fait le plateau ? Calculez la tension fournie par le correcteur à l’erreur de 12 tr/min.',
+      'Passez à « PI conseillé » : relevez erreur statique, dépassement, temps de réponse et tension maximale.',
+      'Augmentez Ki jusqu’à 20 : décrivez l’effet sur le dépassement.',
+      'Passez la période de commande à 200 ms : que devient la réponse ?',
+      'Activez les pièces à t = 6 s : le correcteur rejette-t-il cette perturbation ? Quel élément l’assure ?'
+    ],
+    defi: { q: 'Avec Kp = 1 V/(rad/s), quelle erreur de vitesse (en tr/min) faut-il pour dépasser le seuil de 8,3 V ? Est-elle atteignable avec une consigne de 12 tr/min ?', a: 'Le seuil est franchi si Kp × e ≥ 8,3 V, soit e ≥ 8,3 rad/s ≈ <b>79 tr/min</b> au plateau. La consigne n’est que de 12 tr/min : le plateau reste bloqué. L’action intégrale accumule l’erreur et finit par franchir le seuil.' },
+    qcm: [
+      { q: 'Pourquoi un correcteur P seul bloque-t-il le plateau ?', o: ['Il est instable', 'La tension P reste sous le seuil de 8,3 V', 'La mesure est bruitée', 'Le hacheur sature'], a: 1, w: 'Avec Kp = 1 et 1,26 rad/s d’erreur, la tension vaut 1,3 V.' },
+      { q: 'Quel est le rôle de l’action intégrale ici ?', o: ['Accélérer la mesure', 'Franchir le seuil et annuler l’erreur statique', 'Filtrer le bruit', 'Limiter le courant'], a: 1, w: 'L’intégrale accumule jusqu’à fournir les 11,7 V nécessaires.' },
+      { q: 'Avec Kp = 1, Ki = 8, quel dépassement observe-t-on ?', o: ['0 %', 'Environ 3 %', 'Environ 35 %', 'Environ 100 %'], a: 1, w: 'Le réglage conseillé donne 3 %, un temps de réponse d’environ 1,85 s, 11,8 V et 1,05 A au maximum.' },
+      { q: 'Quel est l’effet d’un Ki trop élevé (20) ?', o: ['Moins de dépassement', 'Plus de dépassement (environ 35 %)', 'Rien', 'Erreur statique non nulle'], a: 1, w: 'La pulsation de coupure monte à 7,9 rad/s et la marge de phase tombe à 57°.' },
+      { q: 'Quel est le problème d’une période de commande de 200 ms ?', o: ['Le retard dégrade la marge de phase', 'La consigne est filtrée', 'Le courant est trop faible', 'Aucun'], a: 0, w: 'La marge de phase tombe à environ 36° et le dépassement atteint 73 %.' }
+    ]
+  },
+  s5: {
+    title: 'Asservir la position de la trappe', level: 'Niveau 3 · Concevoir', time: '40 min', course: 'position',
+    goal: 'Régler un correcteur P puis PD, repérer la saturation de tension et relier dépassement et marge de phase.',
+    steps: [
+      'Avec Kp = 5, relevez dépassement, temps de réponse et erreur statique pour 90°.',
+      'Passez à Kp = 50 : décrivez la réponse et la tension du moteur.',
+      'Choisissez « avance de phase » (Kp = 20, Kd = 0,2) : comparez à Kp = 20 seul.',
+      'Doublez la période de commande : quel effet ?',
+      'Ajoutez un peu d’action intégrale : améliore-t-elle l’erreur statique ? À quel prix ?'
+    ],
+    defi: { q: 'Avec Kp = 20 V/rad, quelle tension sature à ±18 V pour quelle erreur angulaire ?', a: 'Saturation pour Kp·e ≥ 18 V, soit e ≥ 0,9 rad ≈ <b>52°</b>. Pour une ouverture de 90°, la tension sature donc au début du mouvement.' },
+    qcm: [
+      { q: 'Avec Kp = 5, quel dépassement ?', o: ['0 %', 'Environ 24 %', 'Environ 70 %', 'Instable'], a: 0, w: 'Réponse sans dépassement, temps de réponse environ 0,22 s, marge de phase 69°.' },
+      { q: 'Avec Kp = 20 seul, quel dépassement ?', o: ['0 %', 'Environ 24 %', 'Environ 100 %', 'Instable'], a: 1, w: 'La marge de phase tombe à 39°.' },
+      { q: 'Quel est l’effet du terme dérivé Kd = 0,2 ?', o: ['Il réduit le dépassement à 12 % et accélère la réponse', 'Il supprime l’erreur statique', 'Il augmente la tension', 'Aucun effet'], a: 0, w: 'Le terme dérivé ajoute de l’avance de phase : le temps de réponse passe à environ 0,15 s.' },
+      { q: 'Pourquoi la réponse est-elle plus lente que prévu pour Kp ≥ 20 ?', o: ['Le codeur', 'La saturation de la tension à ±18 V', 'L’inductance', 'Le frottement visqueux'], a: 1, w: 'Le modèle linéaire suppose une tension non bornée.' },
+      { q: 'Quelle est la résolution angulaire de la trappe ?', o: ['0,03°', '0,9°', '3°', '0,003°'], a: 0, w: '360 / (400 × 30) = 0,03°, avec le rapport calé de 30.' }
+    ]
+  },
+  s6: {
+    title: 'Analyse fréquentielle', level: 'Niveau 4 · Approfondir (PSI*)', time: '45 min', course: 'frequentiel',
+    goal: 'Lire pulsation de coupure et marges, prévoir le dépassement et mesurer l’effet du retard d’échantillonnage.',
+    steps: [
+      'Position de la trappe, Kp = 20 : relevez ω<sub>c</sub> et la marge de phase. Comparez au dépassement de l’atelier 5.',
+      'Augmentez Kp à 50 puis 100 : comment évoluent ω<sub>c</sub>, la marge de phase et la marge de gain ?',
+      'Ajoutez Kd = 0,2 : quel effet sur la phase ?',
+      'Décochez le retard : quelle part de la perte de phase vient de l’échantillonnage ?',
+      'Vitesse du plateau (Kp = 1, Ki = 8) : justifiez la marge de phase d’environ 90°. Passez Ts à 200 ms.'
+    ],
+    defi: { q: 'Pour la boucle de position de la trappe, justifiez qualitativement pourquoi la marge de phase diminue quand Kp augmente.', a: 'La boucle est un intégrateur suivi d’un premier ordre (τ ≈ 37 ms) et d’un petit retard. Quand Kp augmente, ω<sub>c</sub> monte vers 1/τ et au-delà : la phase du premier ordre tend vers −90° (total −180°) et le retard s’ajoute. Résultat : PM ≈ 69° (Kp = 5), 39° (20), 21° (50), 10° (100).' },
+    qcm: [
+      { q: 'Quelle marge de phase correspond à Kp = 20 (trappe) ?', o: ['Environ 10°', 'Environ 39°', 'Environ 69°', 'Environ 90°'], a: 1, w: 'Elle est liée au dépassement de 24 % observé.' },
+      { q: 'Que fait augmenter Kp à la marge de phase ?', o: ['La réduit', 'L’augmente', 'Ne change rien', 'La rend infinie'], a: 0, w: 'ω<sub>c</sub> monte et la phase se rapproche de −180°.' },
+      { q: 'Pourquoi la boucle de vitesse du plateau a-t-elle environ 90° de marge ?', o: ['L’intégrateur du PI domine à la coupure (3 rad/s) devant la constante du moteur', 'Pas de retard', 'La charge est nulle', 'Parce que Kp = 1'], a: 0, w: 'À ω<sub>c</sub> ≈ 3,2 rad/s ≪ 1/τ, le moteur est un gain pur et l’intégrateur donne −90°.' },
+      { q: 'Le retard d’échantillonnage vaut approximativement…', o: ['M·Ts/2', '2·Ts', 'Ts²', '0'], a: 0, w: 'Le bloqueur d’ordre zéro apporte Ts/2 ; la fenêtre de M périodes ajoute M·Ts/2 pour la vitesse.' },
+      { q: 'Avec Kp = 100 et Kd = 0,5 (trappe), la marge de phase est…', o: ['Négative', 'Environ 29°', 'Environ 90°', 'Impossible à lire'], a: 1, w: 'Le terme dérivé redresse la phase (29° au lieu de 10°) avec une marge de gain de 25 dB.' }
+    ]
+  }
+};
+
+/* ---------- cours ---------- */
+const COURSE = [];
+COURSE.push({ id: 'presentation', t: 'La trieuse de pièces', h: `
+<p>La trieuse trie et compte des pièces en euros. Un <b>plateau incliné</b> à 40°, percé de 22 trous, tourne à 12 tr/min environ : une <b>trappe</b> laisse tomber des pièces de la trémie sur le plateau, qui les remonte puis les laisse tomber dans des fentes calibrées. Un détecteur optique compte les pièces. La cadence annoncée est de 220 pièces/min.</p>
+<h3>Architecture</h3>
+<table class="dt"><tbody>
+<tr><td>Plateau (gabarit)</td><td>moteur RS-555, réducteur 12-56, 18-46, 17-65 (rapport 45,6), codeur 400 pts/tr en sortie de réducteur</td></tr>
+<tr><td>Trappe</td><td>moteur 15 Ω, 1 mH, Kc = 0,012 ; codeur 400 pts/tr sur le moteur</td></tr>
+<tr><td>Préactionneurs</td><td>hacheurs L298, MLI 11 bits ; ±22 V (plateau), ±18 V (trappe)</td></tr>
+<tr><td>Commande</td><td>microcontrôleur : asservissements numériques P, PI, avance de phase</td></tr></tbody></table>
+<div class="retain"><b>À retenir.</b> Le jumeau reprend les valeurs publiées (moteurs, inerties, frottements, hacheurs, codeurs). Le rapport du réducteur de la trappe (30), sa course (90°), les périodes de commande et l’inductance du plateau (1 mH) sont calés.</div>
+<h3>Cadence</h3>
+<div class="formula">22 trous × 12 tr/min = 264 trous/min     220 / 264 ≈ 83 %</div>
+<h3>Sources</h3>
+<p class="small">Dossier DMS Formation « Trieur de pièces » ; dossier technique de cpge-grasshopper.fr ; scénari du lycée Turgot (Limoges), TP1 « trieuse asservissements ».</p>` });
+COURSE.push({ id: 'transmission', t: 'Transmission et seuil', h: `
+<p>Pour une vitesse ω du plateau, le moteur tourne à ω<sub>m</sub> = N·ω avec N = (56/12)(46/18)(65/17) = 45,6.</p>
+<div class="formula">I = (Cr + f·ω<sub>m</sub> + C<sub>l</sub>) / Kc     U = R·I + Ke·ω<sub>m</sub></div>
+<p>À 12 tr/min (ω<sub>m</sub> = 57,3 rad/s) : I ≈ 1,04 A et U ≈ 11,7 V.</p>
+<h3>Seuil de démarrage</h3>
+<p>Le frottement sec ne dépend pas de la vitesse : il faut I = Cr/Kc ≈ 0,93 A, donc U<sub>0</sub> = R·Cr/Kc ≈ 8,3 V avant que le plateau ne tourne. Le hacheur a un pas de 22/1024 ≈ 21,5 mV.</p>
+<div class="retain"><b>À retenir.</b> Environ 70 % de la tension à 12 tr/min sert à vaincre le frottement sec : un correcteur doit pouvoir fournir ce seuil.</div>` });
+COURSE.push({ id: 'identification', t: 'Identification temporelle', h: `
+<p>Sans frottement sec, le moteur est un premier ordre :</p>
+<div class="formula">Ω<sub>m</sub>(p) / U(p) = K / (1 + τ·p)     K = Kc / (R·f + Kc·Ke)     τ = R·J / (R·f + Kc·Ke)</div>
+<p>Plateau : K ≈ 16,6 rad/s/V et τ ≈ 19,5 ms. Trappe : K ≈ 59,6 rad/s/V et τ ≈ 37 ms.</p>
+<p>Avec le frottement sec, la vitesse finale vaut K·(U − U<sub>0</sub>) tant que U &gt; U<sub>0</sub>, sinon le moteur reste à l’arrêt. À 15 V, le plateau atteint environ 23 tr/min.</p>
+<div class="retain"><b>À retenir.</b> Pour identifier, on utilise un échelon nettement au-dessus du seuil, puis on lit τ à 63 % de la valeur finale.</div>` });
+COURSE.push({ id: 'vitesse', t: 'Asservissement de vitesse', h: `
+<p>La vitesse est mesurée par différence de comptage sur M périodes Ts : résolution 2π / (400·M·Ts) = 0,078 rad/s (0,75 tr/min) pour Ts = 50 ms et M = 4.</p>
+<div class="formula">u = Kp·ε + Ki·∫ε dt</div>
+<h3>Pourquoi un PI ?</h3>
+<p>Un P seul fournit Kp·ε : avec Kp = 1 et ε = 1,26 rad/s, 1,3 V ≪ 8,3 V, le plateau ne démarre pas. L’intégrale accumule et franchit le seuil, puis annule l’erreur.</p>
+<table class="dt"><thead><tr><th>Réglage</th><th>Dépassement</th><th>ω<sub>c</sub></th><th>Marge de phase</th></tr></thead><tbody>
+<tr><td>Kp = 1, Ki = 8</td><td>3 %</td><td>3,2 rad/s</td><td>90°</td></tr>
+<tr><td>Kp = 1, Ki = 20</td><td>35 %</td><td>7,9 rad/s</td><td>57°</td></tr>
+<tr><td>Kp = 3, Ki = 8</td><td>—</td><td>24 rad/s</td><td>11°</td></tr></tbody></table>
+<div class="retain"><b>À retenir.</b> La quantification et le retard d’échantillonnage limitent les gains utilisables ; une période de 200 ms réduit la marge de phase à environ 36°.</div>` });
+COURSE.push({ id: 'position', t: 'Asservissement de position', h: `
+<p>La trappe, de rapport calé N = 30, a une résolution de 360/(400·30) = 0,03°. La boucle de position est un intégrateur suivi d’un premier ordre.</p>
+<div class="formula">u = Kp·(θ<sub>c</sub> − θ) − Kd·dθ/dt     saturation à ±18 V</div>
+<table class="dt"><thead><tr><th>Réglage</th><th>Dépassement</th><th>Marge de phase</th></tr></thead><tbody>
+<tr><td>Kp = 5</td><td>0 %</td><td>69°</td></tr><tr><td>Kp = 20</td><td>24 %</td><td>39°</td></tr>
+<tr><td>Kp = 20, Kd = 0,2</td><td>12 %</td><td>—</td></tr><tr><td>Kp = 50</td><td>—</td><td>21°</td></tr></tbody></table>
+<div class="retain"><b>À retenir.</b> Au-delà de Kp = 20 la tension sature ; le terme dérivé améliore la marge de phase sans changer l’erreur statique.</div>` });
+COURSE.push({ id: 'frequentiel', t: 'Analyse fréquentielle', h: `
+<p>On étudie la boucle ouverte T(jω). La pulsation de coupure ω<sub>c</sub> vérifie |T| = 1 ; la marge de phase vaut 180° + arg T(jω<sub>c</sub>) ; la marge de gain est −20·log|T| à la pulsation où la phase vaut −180°.</p>
+<div class="formula">retard : e<sup>−jω·M·Ts/2</sup> → phase supplémentaire −ω·M·Ts/2 (rad)</div>
+<ul><li>Marge de phase ≥ 45° : réponse peu oscillante.</li><li>Marge de phase ≈ 30° : dépassement de l’ordre de 25 à 35 %.</li><li>Un retard retire une phase proportionnelle à ω : il limite ω<sub>c</sub>.</li></ul>
+<div class="retain"><b>À retenir.</b> Pour la trappe, Kp = 100 sans terme dérivé donne 10° de marge ; avec Kd = 0,5, 29° et 25 dB de marge de gain.</div>` });
+
+/* ---------- interface ---------- */
+const UI = { cur: 's1' };
+const AS = { key: 's1', tab: 'steps', open: false, st: lsGet(KEYS.act, {}), arm: null };
+const CS = { open: false, id: 'presentation' };
+function actSave() { lsSet(KEYS.act, AS.st); }
+function actState() { return AS.st[AS.key] || (AS.st[AS.key] = { a: {}, checked: false, shown: false }); }
+function actScore(a) { const s = actState(); return a.qcm.filter((q, i) => s.a[i] === q.a).length; }
+function wsById(id) { return WORKSHOPS.find(w => w.id === id) || WORKSHOPS[0]; }
+function renderSeg() {
+  const seg = $('#wsSeg'); seg.innerHTML = '';
+  WORKSHOPS.forEach((w, i) => seg.append(h('button', { type: 'button', role: 'tab', 'aria-pressed': w.id === UI.cur ? 'true' : 'false', 'aria-selected': w.id === UI.cur ? 'true' : 'false', onclick: () => gotoWs(w.id) }, (i + 1) + '. ' + w.title)));
+}
+function mountWs() {
+  const w = wsById(UI.cur), root = $('#ws');
+  $('#hint').textContent = w.hint; root.innerHTML = '';
+  w.mount(root);
+  const sc = $('#scroller'); if (sc) sc.scrollTop = 0;
+}
+function gotoWs(id) {
+  if (CS.open) { CS.open = false; renderCourse(); }
+  UI.cur = id; AS.key = id; AS.tab = 'steps';
+  renderSeg(); mountWs(); renderAct();
+}
+function renderAct() {
+  const box = $('#act'), btn = $('#bAct');
+  btn.setAttribute('aria-pressed', AS.open ? 'true' : 'false'); btn.classList.toggle('pri', AS.open);
+  box.hidden = !AS.open;
+  if (!AS.open) { box.innerHTML = ''; return; }
+  const oldB = box.querySelector('.pbody'), tag = AS.key + '|' + AS.tab, keep = oldB && box.dataset.k === tag ? oldB.scrollTop : 0;
+  box.dataset.k = tag;
+  box.innerHTML = '';
+  const a = ACT[AS.key];
+  const close = h('button', { class: 'btn sm', type: 'button', onclick: () => { AS.open = false; renderAct(); } }, 'Fermer');
+  box.append(h('div', { class: 'phead' }, h('b', null, 'Activité'), h('span', { class: 'sub' }, a.title), close));
+  const nq = a.qcm.length;
+  box.append(h('div', { class: 'tabs', role: 'tablist' },
+    h('button', { type: 'button', role: 'tab', 'aria-selected': AS.tab === 'steps' ? 'true' : 'false', onclick: () => { AS.tab = 'steps'; renderAct(); } }, 'Consignes'),
+    h('button', { type: 'button', role: 'tab', 'aria-selected': AS.tab === 'qcm' ? 'true' : 'false', onclick: () => { AS.tab = 'qcm'; renderAct(); } }, 'Questions (' + nq + ')')));
+  const body = h('div', { class: 'pbody' });
+  if (AS.tab === 'steps') {
+    body.append(h('p', { class: 'small' }, a.level + ' · environ ' + a.time), h('div', { class: 'goal' }, h('b', null, 'Objectif. '), a.goal));
+    body.append(h('ol', { class: 'steps' }, a.steps.map(s => h('li', { html: s }))));
+    body.append(h('div', { class: 'defi' }, h('b', null, 'Défi'), h('p', { html: a.defi.q }), h('details', null, h('summary', null, 'Voir la réponse'), h('p', { html: a.defi.a }))));
+    if (a.course) body.append(h('p', null, h('button', { class: 'btn', type: 'button', onclick: () => openCourse(a.course) }, 'Voir le cours : ' + courseSection(a.course).t)));
+    body.append(h('p', null, h('button', { class: 'btn', type: 'button', onclick: ev => {
+      const b = ev.currentTarget;
+      if (!AS.arm) { b.textContent = 'Confirmer ? Votre travail sera effacé'; AS.arm = setTimeout(() => { b.textContent = 'Recommencer l’atelier'; AS.arm = null; }, 3500); return; }
+      clearTimeout(AS.arm); AS.arm = null; wsById(UI.cur).reset(); mountWs(); renderAct(); } }, 'Recommencer l’atelier')));
+    body.append(h('p', null, h('button', { class: 'btn pri', type: 'button', onclick: () => { AS.tab = 'qcm'; renderAct(); } }, 'Passer aux questions')));
+  } else {
+    const s = actState(), show = s.checked || s.shown;
+    a.qcm.forEach((q, i) => {
+      const fs = h('fieldset', { class: 'q' }, h('legend', null, (i + 1) + '. ' + q.q));
+      q.o.forEach((o, j) => {
+        const good = show && j === q.a, bad = s.checked && !s.shown && s.a[i] === j && j !== q.a;
+        const inp = h('input', { type: 'radio', name: 'q' + i, checked: show && s.shown ? j === q.a : s.a[i] === j, disabled: show });
+        inp.addEventListener('change', () => { s.a[i] = j; actSave(); renderAct(); });
+        fs.append(h('label', { class: 'opt' + (good ? ' good' : '') + (bad ? ' bad' : '') }, inp, h('span', null, o + (good ? '  ✓' : '') + (bad ? '  ✗' : ''))));
+      });
+      if (show) { const miss = s.a[i] == null && !s.shown; fs.append(h('p', { class: 'why' }, (miss ? 'Sans réponse. ' : '') + q.w)); }
+      body.append(fs);
+    });
+    const done = Object.keys(s.a).length;
+    body.append(h('p', { class: 'small' }, s.shown ? 'Réponses affichées.' : s.checked ? '' : done + ' réponse(s) sur ' + nq + '.'));
+    if (s.checked && !s.shown) body.append(h('p', { class: 'score' }, 'Score : ' + actScore(a) + ' / ' + nq));
+    const row = h('div', { class: 'files' });
+    if (!show) row.append(h('button', { class: 'btn pri', type: 'button', onclick: () => { s.checked = true; actSave(); renderAct(); } }, 'Corriger'));
+    row.append(h('button', { class: 'btn', type: 'button', onclick: () => { s.shown = true; actSave(); renderAct(); } }, 'Afficher les réponses'));
+    if (show) row.append(h('button', { class: 'btn', type: 'button', onclick: () => { AS.st[AS.key] = { a: {}, checked: false, shown: false }; actSave(); renderAct(); } }, 'Recommencer'));
+    body.append(row);
+  }
+  box.append(body); body.scrollTop = keep;
+}
+function actToggle() { if (CS.open) { CS.open = false; renderCourse(); } AS.open = !AS.open; renderAct(); }
+$('#bAct').addEventListener('click', actToggle);
+
+function courseSection(id) { return COURSE.find(s => s.id === id) || COURSE[0]; }
+function renderCourse() {
+  const box = $('#course'), btn = $('#bCourse'), work = $('#work');
+  btn.setAttribute('aria-pressed', CS.open ? 'true' : 'false'); btn.classList.toggle('pri', CS.open);
+  box.hidden = !CS.open; work.hidden = CS.open; $('#modes').hidden = CS.open;
+  if (!CS.open) { box.innerHTML = ''; return; }
+  box.innerHTML = '';
+  const cur = courseSection(CS.id), idx = COURSE.indexOf(cur);
+  const go = id => { CS.id = id; renderCourse(); };
+  const nav = h('nav', { class: 'ctoc', 'aria-label': 'Sommaire du cours' }, COURSE.map((s, i) => h('button', { type: 'button', class: s.id === cur.id ? 'on' : '', 'aria-current': s.id === cur.id ? 'true' : 'false', onclick: () => go(s.id) }, (i + 1) + '. ' + s.t)));
+  const sel = h('select', { class: 'ctoc-sel', 'aria-label': 'Choisir une section', onchange: e => go(e.target.value) }, COURSE.map((s, i) => h('option', { value: s.id, selected: s.id === cur.id }, (i + 1) + '. ' + s.t)));
+  const art = h('article', { class: 'cbody' });
+  art.append(h('p', { class: 'ckick' }, 'Cours · section ' + (idx + 1) + ' sur ' + COURSE.length), h('h2', null, cur.t), h('div', { html: cur.h }));
+  art.append(h('div', { class: 'cpn' },
+    idx > 0 ? h('button', { class: 'btn', type: 'button', onclick: () => go(COURSE[idx - 1].id) }, '← ' + COURSE[idx - 1].t) : h('span'),
+    idx < COURSE.length - 1 ? h('button', { class: 'btn pri', type: 'button', onclick: () => go(COURSE[idx + 1].id) }, COURSE[idx + 1].t + ' →') : h('span')));
+  const top = h('div', { class: 'ctop' }, h('b', null, 'Cours : la trieuse de pièces et ses asservissements'), h('button', { class: 'btn pri sm', type: 'button', onclick: () => { CS.open = false; renderCourse(); } }, 'Retour à l’atelier'));
+  box.append(top, sel, h('div', { class: 'cwrap' }, nav, art));
+  const sc = box.querySelector('.cwrap'); if (sc) sc.scrollTop = 0; box.scrollTop = 0;
+}
+function openCourse(id) { if (id) CS.id = id; CS.open = true; renderCourse(); }
+$('#bCourse').addEventListener('click', () => { CS.open = !CS.open; renderCourse(); });
+
+function closeDlg() { $('#dlg').hidden = true; $('#dlg').innerHTML = ''; }
+function openDlg(title, body) {
+  const d = $('#dlg'); d.innerHTML = ''; d.hidden = false;
+  d.append(h('div', { class: 'dlgbox', role: 'dialog', 'aria-label': title }, h('header', null, h('b', null, title), h('button', { class: 'btn sm', type: 'button', onclick: closeDlg }, 'Fermer')), h('div', { class: 'dbody' }, body)));
+  d.onclick = ev => { if (ev.target === d) closeDlg(); };
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#dlg').hidden) closeDlg(); });
+$('#bHelp').addEventListener('click', () => {
+  openDlg('Aide', h('div', { html: '<p>Six ateliers autour de la trieuse de pièces : présentation et cadence, transmission et seuil du plateau, identification temporelle, asservissement en vitesse du plateau, asservissement en position de la trappe et analyse fréquentielle.</p>' +
+    '<h3>Utilisation</h3><ul><li>Choisissez un atelier dans la barre du haut et déplacez les curseurs : les tracés se recalculent immédiatement.</li><li>Survolez un tracé pour lire les valeurs.</li><li>Le bouton <b>Activité</b> ouvre les consignes et un QCM corrigé ; <b>Cours</b> ouvre le cours associé ; <b>Mode sombre</b> bascule le thème.</li></ul>' +
+    '<h3>Limites du jumeau</h3><p>Les documents publics donnent les moteurs, les inerties, les frottements, les hacheurs et les codeurs, mais pas le rapport du réducteur de la trappe, sa course, les périodes de commande ni l’inductance du moteur du plateau : ces valeurs sont calées et modifiables dans l’atelier 1. Le jumeau ne modélise ni les pièces individuelles ni le jeu des engrenages.</p>' +
+    '<h3>Vos données</h3><p>Les réponses au QCM et le thème sont mémorisés dans ce navigateur uniquement.</p>' }));
+});
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  const b = $('#bTheme'); b.setAttribute('aria-pressed', dark ? 'true' : 'false'); b.textContent = dark ? 'Mode clair' : 'Mode sombre';
+}
+$('#bTheme').addEventListener('click', () => { const d = document.documentElement.getAttribute('data-theme') !== 'dark'; applyTheme(d); lsSet('trieuse-theme', d ? 'dark' : 'light'); mountWs(); });
+(function init() { applyTheme(lsGet('trieuse-theme', 'light') === 'dark'); AS.open = !isSmall(); renderSeg(); mountWs(); renderAct(); renderCourse(); })();
+
+</script>
+
+</body></html>
