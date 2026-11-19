@@ -1,0 +1,797 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta charset="utf-8">
+<title>Jumeau numérique pompe Doshydro</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Mise en page : barre d'outils, onglets d'ateliers, zone de travail, panneau Activité à droite (feuille basse sur téléphone), vue Cours avec sommaire. Même structure que l'Atelier Algorithmes de tri. */
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+:root{
+  --font-ui:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  --bg:#ffffff;--bar:#eeeeee;--panel:#ffffff;--panel2:#f1f3f6;--field:#ffffff;--line:#b9bfc7;--grid:#e3e6ea;
+  --fg:#111111;--muted:#5a6068;--accent:#2e6da4;--accent-fg:#ffffff;--accent-soft:#dcebf8;--accent-ink:#1b4a76;
+  --ok:#1e7a2e;--warn:#9a5b00;--bad:#c0281f;--violet:#7b4fc2;
+  --c1:#2e6da4;--c2:#c9741a;--c3:#1e7a2e;--c4:#7b4fc2;--c5:#6b7480;
+  --energy:#c9741a;--info:#2e6da4;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#000000;--bar:#111111;--panel:#0a0a0a;--panel2:#1a1a1a;--field:#000000;--line:#3a3a3a;--grid:#222222;
+  --fg:#eeeeee;--muted:#a3a3a3;--accent:#5b9bd5;--accent-fg:#000000;--accent-soft:#1c1c1c;--accent-ink:#a9cdee;
+  --ok:#52b564;--warn:#e0a64a;--bad:#ef6a60;--violet:#a98bea;
+  --c1:#5b9bd5;--c2:#e8a33a;--c3:#52b564;--c4:#a98bea;--c5:#9a9a9a;--energy:#e8a33a;--info:#5b9bd5;
+  color-scheme:dark}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 var(--font-ui)}
+button,input,select,textarea{font:inherit;color:inherit}
+.inner{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#app{height:100%;display:flex;flex-direction:column;min-height:0}
+.band{background:var(--bar);border-bottom:1px solid var(--line);flex:none}
+.row{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding-block:7px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:16px;letter-spacing:.01em}
+.brand small{font-weight:400;color:var(--muted);font-size:13px}
+.files{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.btn{font-weight:500;font-size:13px;padding:6px 11px;border:1px solid var(--line);background:var(--panel);border-radius:7px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.pri{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.sm{padding:3px 8px;font-size:12px}
+:is(button,input,select,textarea,summary):focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;background:var(--panel);max-width:100%;overflow-x:auto}
+.seg button{border:0;background:transparent;padding:7px 14px;font-weight:500;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.work{flex:1;min-height:0;display:flex;gap:10px;padding-block:10px}
+#stage{flex:1;min-width:0;position:relative;border:1px solid var(--line);border-radius:10px;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+#hint{flex:none;padding:6px 12px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--line);background:var(--bar)}
+#scroller{flex:1;min-height:0;overflow:auto}
+.phead{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);flex:none}
+.phead b{font-size:15px}
+.phead .sub{color:var(--muted);font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tabs{display:flex;gap:2px;padding:6px 8px 0;border-bottom:1px solid var(--line);overflow-x:auto;flex:none}
+.tabs button{border:0;border-bottom:2px solid transparent;background:transparent;padding:6px 10px;font-weight:500;font-size:13px;cursor:pointer;white-space:nowrap;color:var(--muted)}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.pbody{overflow:auto;padding:12px;flex:1;min-height:0}
+.fld{display:flex;flex-direction:column;gap:3px;margin-bottom:9px;font-size:12.5px;color:var(--muted)}
+input[type=text],input[type=number],textarea,select{width:100%;background:var(--field);border:1px solid var(--line);border-radius:6px;padding:5px 8px;color:var(--fg)}
+input[type=range]{width:100%;padding:0;accent-color:var(--accent)}
+input[type=checkbox]{accent-color:var(--accent)}
+.mono{font-family:var(--font-mono);font-size:12.5px}
+.small{font-size:12px;color:var(--muted);margin:0 0 9px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;z-index:60;max-width:90vw}
+#dlg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.dlgbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:min(640px,100%);max-height:88%;display:flex;flex-direction:column}
+.dlgbox header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.dlgbox header b{font-size:16px}
+.dlgbox .dbody{padding:14px 16px;overflow:auto}
+.dlgbox h3{margin:14px 0 4px;font-size:14px}.dlgbox p,.dlgbox li{margin:4px 0;font-size:13.5px}
+#act{flex:none;width:clamp(280px,24vw,340px);display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--panel);min-height:0;max-height:100%}
+#act .pbody{font-size:13.5px}
+.goal{background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:8px 10px;margin:0 0 10px}
+.steps{margin:0 0 10px;padding-left:20px}.steps li{margin-bottom:9px}
+.defi{border:1px dashed var(--accent);border-radius:8px;padding:8px 10px;margin:0 0 12px}.defi p{margin:6px 0}
+.defi summary{cursor:pointer;font-weight:500;color:var(--accent-ink)}
+fieldset.q{border:1px solid var(--line);border-radius:8px;padding:8px 10px 6px;margin:0 0 10px;min-width:0}
+fieldset.q legend{font-weight:600;padding:0 4px;max-width:100%}
+.opt{display:flex;gap:8px;align-items:flex-start;padding:4px 6px;border-radius:6px;cursor:pointer}
+.opt input{margin-top:3px;width:auto;flex:none}
+.opt.good{background:rgba(30,122,46,.18)}.opt.bad{background:rgba(192,40,31,.18)}
+.why{font-size:12.5px;color:var(--muted);margin:6px 4px 2px}
+.score{font-weight:600;font-size:15px;margin:4px 0 8px}
+/* cours */
+#course{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg)}
+.ctop,.cwrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.ctop{flex:none;display:flex;justify-content:space-between;align-items:center;gap:10px;padding-block:8px;border-bottom:1px solid var(--line);background:var(--bar)}
+.cwrap{flex:1;min-height:0;display:flex;gap:28px;padding-block:14px}
+.ctoc{flex:none;width:250px;overflow:auto;display:flex;flex-direction:column;gap:1px}
+.ctoc button{display:block;width:100%;text-align:left;padding:6px 10px;border:0;border-left:3px solid transparent;background:transparent;cursor:pointer;font-size:13.5px}
+.ctoc button:hover{background:var(--panel2)}
+.ctoc button.on{border-left-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.ctoc-sel{display:none;margin:8px max(16px,env(safe-area-inset-left,0px)) 0;width:auto}
+.cbody{flex:1;min-width:0;overflow:auto;max-width:860px;padding-right:6px}
+.ckick{color:var(--muted);font-size:12.5px;margin:0}
+.cbody h2{font-size:26px;margin:2px 0 12px;text-wrap:balance}
+.cbody h3{font-size:16.5px;margin:22px 0 6px}
+.cbody p,.cbody li{font-size:14.5px;line-height:1.6}
+.cbody ul,.cbody ol{padding-left:22px}.cbody li{margin-bottom:4px}
+.cbody table{display:block;overflow-x:auto;max-width:100%}
+.ctable{border-collapse:collapse;font-size:13.5px;margin:8px 0 12px}
+.ctable th,.ctable td{border:1px solid var(--line);padding:5px 9px;text-align:left;vertical-align:top}
+.ctable th{background:var(--panel2);font-weight:600}
+.retain{background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:9px 12px;margin:16px 0 6px;font-size:14px}
+.formula{background:var(--panel2);border-left:3px solid var(--accent);padding:8px 12px;margin:8px 0;font-size:15px;overflow-x:auto;font-family:var(--font-mono)}
+pre.code{font:12.5px/1.55 var(--font-mono);margin:8px 0;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-x:auto;white-space:pre}
+.gloss{display:grid;grid-template-columns:max-content 1fr;gap:5px 18px;font-size:14px}.gloss dt{font-weight:600}.gloss dd{margin:0}
+.cpn{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:24px 0 32px}
+/* ateliers */
+#ws{padding:16px max(16px,env(safe-area-inset-left,0px)) 30px;max-width:980px}
+#ws h2{font-size:24px;margin:0 0 8px;text-wrap:balance}
+#ws h3{font-size:16.5px;margin:24px 0 6px}
+#ws p,#ws li{font-size:14.5px;line-height:1.55}
+#ws .small{font-size:12.5px}
+.opts{display:flex;gap:10px 18px;flex-wrap:wrap;align-items:flex-end;margin:6px 0 10px}.opts .fld{margin:0}
+.opts input[type=range]{width:190px;max-width:100%}
+.opts textarea{font-family:var(--font-mono);min-width:240px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:4px 11px;font-size:13px;cursor:pointer}
+.chip:hover{border-color:var(--accent)}.chip.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.gstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0}
+.stat{border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--panel);display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat span{font-size:12px;color:var(--muted)}.stat b{font-size:14px;font-family:var(--font-mono);overflow-wrap:anywhere}
+.verdict{border-radius:8px;padding:9px 12px;margin:10px 0;font-size:14px;background:var(--panel2);border:1px solid var(--line)}
+.verdict.yes{background:rgba(30,122,46,.16);border-color:var(--ok)}.verdict.no{background:rgba(192,40,31,.14);border-color:var(--bad)}.verdict.warn{background:rgba(154,91,0,.15);border-color:var(--warn)}
+.dwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:8px 0}
+.dt{border-collapse:collapse;width:100%;font-size:13.5px}
+.dt th,.dt td{padding:5px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.dt thead th{background:var(--panel2);font-weight:600}
+.dt td.m{font-family:var(--font-mono);font-size:12.5px}
+.dt tr:last-child td{border-bottom:0}
+.dt input[type=number]{width:84px;font-family:var(--font-mono)}
+.tag{display:inline-block;font-size:11.5px;border-radius:10px;padding:1px 8px;border:1px solid var(--line);white-space:nowrap}
+.tag.doc{border-color:var(--ok);color:var(--ok)}.tag.cat{border-color:var(--info);color:var(--info)}.tag.cal{border-color:var(--warn);color:var(--warn)}
+/* tracés */
+.pbox{border:1px solid var(--line);border-radius:10px;padding:8px 10px 6px;background:var(--panel);margin:8px 0}
+.pbox svg{display:block;width:100%;height:auto;touch-action:pan-y}
+.pbox .pt{font-size:12.5px;font-weight:600;margin:0 0 2px}
+.leg{display:flex;gap:4px 14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:2px 0 4px}
+.leg i{display:inline-block;width:14px;height:0;border-top:3px solid;vertical-align:3px;margin-right:5px}
+.leg i.d{border-top-style:dashed}
+.ro{font:12px var(--font-mono);color:var(--muted);min-height:17px;margin-top:2px}
+.twocol{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.armbox svg{width:100%;max-width:520px;height:auto;display:block}
+@media (max-width:820px){
+  .ctoc{display:none}.ctoc-sel{display:block}.cwrap{padding-top:8px}.cbody{padding-right:0}.gloss{grid-template-columns:1fr}.gloss dd{margin-bottom:6px}
+  #act{position:fixed;left:0;right:0;bottom:0;width:auto;height:70%;max-height:none;border-radius:14px 14px 0 0;z-index:35;box-shadow:0 -8px 30px rgba(0,0,0,.28);padding-bottom:env(safe-area-inset-bottom,0px)}
+  .work{flex-direction:column;gap:8px}
+  .twocol{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:no-preference){.btn{transition:border-color .12s,background .12s}}
+</style>
+<div id="app">
+  <header class="band"><div class="inner row">
+    <div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="3" y="9" width="12" height="9" rx="2" fill="none" stroke="var(--accent)" stroke-width="2.5"/><path d="M15 13.5 H23" stroke="var(--muted)" stroke-width="3" stroke-linecap="round"/><path d="M20 4 q3 4 0 8" fill="none" stroke="var(--energy)" stroke-width="2.5"/></svg><span>Jumeau numérique pompe Doshydro <small>SII · PCSI / PSI*</small></span></div>
+    <div class="files">
+      <button class="btn" id="bAct" type="button" aria-pressed="false">Activité</button>
+      <button class="btn" id="bCourse" type="button" aria-pressed="false">Cours</button>
+      <button class="btn" id="bHelp" type="button">Aide</button>
+      <button class="btn" id="bTheme" type="button" aria-pressed="false">Mode sombre</button>
+    </div>
+  </div></header>
+  <div class="band" id="modes"><div class="inner row"><div class="seg" id="wsSeg" role="tablist" aria-label="Ateliers"></div></div></div>
+  <main class="inner work" id="work">
+    <section id="stage"><div id="hint"></div><div id="scroller"><div id="ws"></div></div></section>
+    <aside id="act" hidden aria-label="Activité"></aside>
+  </main>
+  <section id="course" hidden aria-label="Cours"></section>
+</div>
+<div id="dlg" hidden></div>
+<div id="toast" hidden></div>
+<script>
+'use strict';
+const $ = (s, r) => (r || document).querySelector(s);
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v === false || v == null) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'html') el.innerHTML = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (v === true) el.setAttribute(k, '');
+    else el.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) el.append(k.nodeType ? k : document.createTextNode(k));
+  return el;
+}
+function isSmall() { try { return window.matchMedia('(max-width:820px)').matches; } catch (e) { return false; } }
+const KEYS = { act: 'doshydro-twin-v1' };
+function lsGet(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* stockage indisponible */ } }
+let toastT = null;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3500); }
+const WORKSHOPS = [];
+
+/* Doshydro : doseur à membrane à piston hydraulique, entraîné par moteur asynchrone + roue et vis + came */
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const TWO_PI = 2 * Math.PI, RPM = TWO_PI / 60, ATM = 1.013;
+const Q0 = { Pn: 370, nn: 1440, fs: 50, pp: 2, Cmax: 2.5, J: 1.0e-3,           /* moteur asynchrone */
+  N: 10, zr: 40, filets: 4, helix: 12.76, mu: 0.08, alpha: 20,                 /* roue et vis */
+  c: 8, Qn: 240, pn: 2, Qmax: 230, pmax: 8,                                    /* piston, débit */
+  Vb: 0.5, pre: 0.6, dpl: 0.3, k: 1.2 };                                         /* ballon, ligne */
+const fcam0 = Q => (Q.nn / Q.N) / 60;                                         /* Hz, 2,4 */
+const Aeff = Q => (Q.Qn / 3.6e6) / fcam0(Q) / (8e-3);                         /* m², déduit du débit à 8 mm */
+const Qp = (Q, p) => Q.Qn - (Q.Qn - Q.Qmax) / (Q.pmax - Q.pn) * (p - Q.pn);   /* L/h à la pression p (bar) */
+const etaV = (Q, p) => Qp(Q, p) / Q.Qn;
+const Qmean = (Q, c, f, p) => Aeff(Q) * (c * 1e-3) * f * etaV(Q, p) * 3.6e6;  /* L/h */
+const Cn = Q => Q.Pn / (Q.nn * RPM), ws = Q => TWO_PI * Q.fs / Q.pp, sn = Q => 1 - Q.nn * RPM / ws(Q);
+const sm = Q => { const x = (2 * Q.Cmax - Math.sqrt(4 * Q.Cmax * Q.Cmax - 4)) / 2; return sn(Q) / x; };
+const Cm = (Q, w) => { const s = 1 - w / ws(Q); if (Math.abs(s) < 1e-9) return 0; const m = sm(Q); return 2 * Q.Cmax * Cn(Q) / (s / m + m / s); };
+const etaVis = Q => { const g = Q.helix * Math.PI / 180, ph = Math.atan(Q.mu / Math.cos(Q.alpha * Math.PI / 180)); return Math.tan(g) / Math.tan(g + ph); };
+const xp = (Q, c, th) => c / 2 * (1 - Math.cos(th));                            /* mm */
+const qp = (Q, c, wc, th, p) => Math.max(0, Aeff(Q) * (c * 1e-3) / 2 * wc * Math.sin(th)) * etaV(Q, p); /* m³/s */
+const Ccam = (Q, c, th, p) => Math.max(0, Math.sin(th)) * p * 1e5 * Aeff(Q) * (c * 1e-3) / 2;              /* N·m sur la came */
+function simBallon(Q, o) {
+  const c = o.c, p0 = o.p, f = fcam0(Q) * (o.fr || 1), wc = TWO_PI * f, T = 1 / f, Qm = Qmean(Q, c, f, p0) / 3.6e6;
+  const R = Q.dpl * 1e5 / Qm, ps = p0 * 1e5 - Q.dpl * 1e5;                         /* Pa relatifs */
+  const Vb = (o.ballon ? Q.Vb : 0) * 1e-3, pre = (Q.pre * p0 + ATM) * 1e5, pw = (p0 + ATM) * 1e5;
+  let Vg = Vb * Math.pow(pre / pw, 1 / Q.k); if (Vg > Vb) Vg = Vb;
+  const nc = 8, dt = T / 2000, N = Math.round(nc * T / dt), t = [], q = [], qo = [], pr = [];
+  for (let n = 0; n < N; n++) {
+    const th = (n * dt * wc) % TWO_PI, qpump = qp(Q, c, wc, th, p0);
+    let qout, pl;
+    if (Vb <= 0) { qout = qpump; }
+    else {
+      const pg = pre * Math.pow(Vb / Vg, Q.k), Vl = Vb - Vg;
+      qout = Math.min(Math.max((pg - ATM * 1e5 - ps) / R, 0), qpump + Vl / dt);
+      Vg += (qout - qpump) * dt; if (Vg > Vb) Vg = Vb; if (Vg < 0.05 * Vb) Vg = 0.05 * Vb;
+    }
+    pl = (ps + R * qout) / 1e5;
+    if (n % 10 === 0 && n >= (nc - 1) * T / dt) { t.push((n * dt) % T); q.push(qpump * 3.6e6); qo.push(qout * 3.6e6); pr.push(pl); }
+  }
+  const mx = a => Math.max(...a), mn = a => Math.min(...a), mean = a => a.reduce((s, v) => s + v, 0) / a.length, qm = mean(qo);
+  return { t, q, qo, pr, qm, dq: (mx(qo) - mn(qo)) / qm, dp: mx(pr) - mn(pr), pmean: mean(pr), R, tau: Vb > 0 ? R * (Vb * Math.pow(pre / pw, 1 / Q.k) > Vb ? Vb : Vb * Math.pow(pre / pw, 1 / Q.k)) / (Q.k * pw) : 0 };
+}
+function simMoteur(Q, o) {
+  const c = o.c, p = o.p, J = o.J || Q.J, eta = etaVis(Q), dt = 1e-4, tend = o.tend || 1.5, t = [], w = [], Cmo = [], Cr = [];
+  let wm = 0, th = 0;
+  for (let n = 0; n * dt < tend; n++) {
+    const cr = Ccam(Q, c, th, p) / Q.N / eta, cm = Cm(Q, wm);
+    wm += (cm - cr) / J * dt; th += wm / Q.N * dt; if (th > TWO_PI) th -= TWO_PI;
+    if (n % 20 === 0) { t.push(n * dt); w.push(wm / RPM); Cmo.push(cm); Cr.push(cr); }
+  }
+  const k0 = Math.floor(t.length * 0.7), ws_ = w.slice(k0), mean = ws_.reduce((s, v) => s + v, 0) / ws_.length;
+  let t95 = null; for (let k = 0; k < w.length; k++) if (w[k] >= 0.95 * mean) { t95 = t[k]; break; }
+  return { t, w, Cmo, Cr, mean, rip: (Math.max(...ws_) - Math.min(...ws_)) / mean, t95, slip: 1 - mean * RPM / ws(Q) };
+}
+function harm(n) { return n === 1 ? Math.PI / 2 : (n % 2 === 0 ? (2 / (n * n - 1)) / 1 * 1 : 0); } /* amplitude / valeur moyenne, harmonique n de la came */
+const gaz = (Q, p) => { const pre = (Q.pre * p + ATM) * 1e5, pw = (p + ATM) * 1e5, V = Math.min(Q.Vb * 1e-3, Q.Vb * 1e-3 * Math.pow(pre / pw, 1 / Q.k)); return { V, C: V / (Q.k * pw) }; };
+
+
+/* ---------- aides d'interface ---------- */
+const trTxt = (tr, te) => tr >= te - 0.02 ? '> ' + fm(te, 1) + ' s' : fm(tr, 2) + ' s';
+const fm = (v, d) => (v == null || !isFinite(v)) ? '—' : v.toFixed(d == null ? 1 : d).replace('.', ',');
+function stats(list) { return h('div', { class: 'gstats' }, list.map(k => h('div', { class: 'stat' }, h('span', null, k[0]), h('b', null, k[1])))); }
+function setMsg(sel, text, kind) { const m = $(sel); if (!m) return; m.textContent = text; m.className = 'verdict' + (kind ? ' ' + kind : ''); }
+function sld(label, min, max, step, val, fmt, cb) {
+  const out = h('b', { class: 'mono' }, fmt(val));
+  const inp = h('input', { type: 'range', min, max, step, value: val, 'aria-label': label });
+  inp.addEventListener('input', () => { const v = +inp.value; out.textContent = fmt(v); cb(v); });
+  return h('label', { class: 'fld' }, h('span', null, label + ' : ', out), inp);
+}
+function chk(label, val, cb) { const i = h('input', { type: 'checkbox', checked: !!val }); i.addEventListener('change', () => cb(i.checked)); return h('label', { class: 'fld', style: 'flex-direction:row;align-items:center;gap:6px' }, i, h('span', null, label)); }
+let raf = {}; function later(key, fn) { cancelAnimationFrame(raf[key]); raf[key] = requestAnimationFrame(fn); }
+const P = JSON.parse(JSON.stringify(Q0));
+
+/* ---------- tracés SVG ---------- */
+function niceTicks(a, b, n) {
+  const raw = (b - a) / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag, s = (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag, t = [];
+  for (let v = Math.ceil(a / s - 1e-9) * s; v <= b + 1e-9; v += s) t.push(+v.toFixed(10));
+  return t;
+}
+let plotId = 0;
+/* o : {title, series:[{x,y,c,l,dash,w}], xr, yr, xl, yl, logx, hl:[{y,l}], h} */
+function plot(o) {
+  const W = 720, H = o.h || 230, m = { l: 48, r: 12, t: 8, b: 34 }, id = 'pc' + (++plotId);
+  let xr = o.xr, yr = o.yr;
+  if (!xr) { let a = Infinity, b = -Infinity; o.series.forEach(s => { a = Math.min(a, s.x[0]); b = Math.max(b, s.x[s.x.length - 1]); }); xr = [a, b]; }
+  if (!yr) { let a = Infinity, b = -Infinity; o.series.forEach(s => s.y.forEach(v => { if (isFinite(v)) { a = Math.min(a, v); b = Math.max(b, v); } })); const p = (b - a) * 0.08 || 1; yr = [a - p, b + p]; }
+  const lx = a => o.logx ? Math.log10(a) : a;
+  const sx = v => m.l + (lx(v) - lx(xr[0])) / (lx(xr[1]) - lx(xr[0])) * (W - m.l - m.r);
+  const sy = v => H - m.b - (v - yr[0]) / (yr[1] - yr[0]) * (H - m.t - m.b);
+  const xt = o.logx ? (() => { const t = []; for (let e = Math.ceil(Math.log10(xr[0])); e <= Math.floor(Math.log10(xr[1])); e++) t.push(Math.pow(10, e)); return t; })() : niceTicks(xr[0], xr[1], 6);
+  const yt = niceTicks(yr[0], yr[1], 5);
+  let g = '';
+  yt.forEach(v => { g += `<line x1="${m.l}" x2="${W - m.r}" y1="${sy(v)}" y2="${sy(v)}" style="stroke:var(--grid)" stroke-width="1"/><text x="${m.l - 6}" y="${sy(v) + 4}" text-anchor="end" font-size="11" font-family="var(--font-mono)" style="fill:var(--muted)">${String(v).replace('.', ',')}</text>`; });
+  xt.forEach(v => { g += `<line x1="${sx(v)}" x2="${sx(v)}" y1="${m.t}" y2="${H - m.b}" style="stroke:var(--grid)" stroke-width="1"/><text x="${sx(v)}" y="${H - m.b + 15}" text-anchor="middle" font-size="11" font-family="var(--font-mono)" style="fill:var(--muted)">${String(v).replace('.', ',')}</text>`; });
+  g += `<line x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}" style="stroke:var(--line)"/><line x1="${m.l}" x2="${m.l}" y1="${m.t}" y2="${H - m.b}" style="stroke:var(--line)"/>`;
+  if (o.xl) g += `<text x="${(m.l + W - m.r) / 2}" y="${H - 4}" text-anchor="middle" font-size="11.5" style="fill:var(--muted)">${o.xl}</text>`;
+  if (o.yl) g += `<text x="12" y="${(m.t + H - m.b) / 2}" text-anchor="middle" font-size="11.5" transform="rotate(-90 12 ${(m.t + H - m.b) / 2})" style="fill:var(--muted)">${o.yl}</text>`;
+  (o.hl || []).forEach(l => { if (l.y >= yr[0] && l.y <= yr[1]) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${sy(l.y)}" y2="${sy(l.y)}" style="stroke:var(--bad)" stroke-dasharray="2 4" stroke-width="1.2"/><text x="${W - m.r - 3}" y="${sy(l.y) - 4}" text-anchor="end" font-size="11" style="fill:var(--bad)">${l.l}</text>`; });
+  let paths = '';
+  o.series.forEach(s => {
+    const n = s.x.length, st = Math.max(1, Math.floor(n / 700)); let d = '';
+    for (let k = 0; k < n; k += st) { const yv = clamp(s.y[k], yr[0] - (yr[1] - yr[0]), yr[1] + (yr[1] - yr[0])); d += (d ? 'L' : 'M') + sx(s.x[k]).toFixed(1) + ' ' + sy(yv).toFixed(1); }
+    paths += `<path d="${d}" fill="none" style="stroke:${s.c}" stroke-width="${s.w || 2}" stroke-linejoin="round"${s.dash ? ` stroke-dasharray="${s.dash}"` : ''}/>`;
+  });
+  const wrap = h('div', { class: 'pbox' });
+  if (o.title) wrap.append(h('p', { class: 'pt' }, o.title));
+  wrap.append(h('div', { class: 'leg', html: o.series.filter(s => s.l).map(s => `<span><i class="${s.dash ? 'd' : ''}" style="border-color:${s.c}"></i>${s.l}</span>`).join('') }));
+  const holder = h('div'); holder.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.title || 'Tracé'}"><defs><clipPath id="${id}"><rect x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}"/></clipPath></defs>${g}<g clip-path="url(#${id})">${paths}</g><line class="cur" x1="0" x2="0" y1="${m.t}" y2="${H - m.b}" style="stroke:var(--fg)" stroke-width="1" opacity="0"/></svg>`;
+  const svg = holder.firstChild, cur = svg.querySelector('.cur'), ro = h('div', { class: 'ro' }, 'Survolez le tracé pour lire les valeurs.');
+  const move = ev => {
+    const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * W;
+    if (px < m.l || px > W - m.r) return;
+    const f = (px - m.l) / (W - m.l - m.r); const xv = o.logx ? Math.pow(10, lx(xr[0]) + f * (lx(xr[1]) - lx(xr[0]))) : xr[0] + f * (xr[1] - xr[0]);
+    cur.setAttribute('x1', px); cur.setAttribute('x2', px); cur.setAttribute('opacity', '.5');
+    const parts = [(o.xn || 't') + ' = ' + fm(xv, o.logx ? 2 : 3)];
+    o.series.forEach(s => { if (!s.l) return; let lo = 0, hi = s.x.length - 1; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (s.x[mid] < xv) lo = mid; else hi = mid; } const k = Math.abs(s.x[lo] - xv) < Math.abs(s.x[hi] - xv) ? lo : hi; parts.push(s.l.replace(/ \(.*\)/, '') + ' = ' + fm(s.y[k], 2)); });
+    ro.textContent = parts.join(' · ');
+  };
+  svg.addEventListener('pointermove', move); svg.addEventListener('pointerleave', () => cur.setAttribute('opacity', '0'));
+  wrap.append(holder.firstChild, ro); return wrap;
+}
+
+
+function blk(x, y, w, hh, t, kind) {
+  const col = kind === 'e' ? 'var(--energy)' : 'var(--info)';
+  return `<rect x="${x}" y="${y}" width="${w}" height="${hh}" rx="7" style="fill:var(--panel2);stroke:${col}" stroke-width="2"/>` + t.split('|').map((l, i, a) => `<text x="${x + w / 2}" y="${y + hh / 2 + 4 + (i - (a.length - 1) / 2) * 14}" text-anchor="middle" font-size="12" style="fill:var(--fg)">${l}</text>`).join('');
+}
+function arrow(x1, y1, x2, y2, kind, lab) {
+  const col = kind === 'e' ? 'var(--energy)' : 'var(--info)';
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke:${col}" stroke-width="2"/><path d="M${x2} ${y2} l${x2 > x1 ? -7 : x2 < x1 ? 7 : -4} ${y2 > y1 ? -7 : y2 < y1 ? 7 : -4} m0 0" fill="none"/>` +
+    `<circle cx="${x2}" cy="${y2}" r="3" style="fill:${col}"/>` + (lab ? (x1 === x2 ? `<text x="${x1 + 8}" y="${(y1 + y2) / 2 + 4}" font-size="11" style="fill:var(--muted)">${lab}</text>` : `<text x="${(x1 + x2) / 2}" y="${Math.min(y1, y2) - 5}" text-anchor="middle" font-size="11" style="fill:var(--muted)">${lab}</text>`) : '');
+}
+
+const D2R_ = Math.PI / 180;
+function pumpSvg(thDeg, c, pbar) {
+  const th = thDeg * D2R_, x = xp(P, c, th), ref = Math.sin(th) > 0, cx = 120, cy = 150;
+  const mx = cx + 22 * Math.cos(th), my = cy - 22 * Math.sin(th), px = 238 + x * 4, mem = 352 + 14 * x / 8, col = ref ? 'var(--energy)' : 'var(--info)';
+  return `<svg viewBox="0 0 560 300" role="img" aria-label="Schéma de la pompe : came à ${fm(thDeg, 0)} degrés, piston à ${fm(x, 1)} millimètres">
+  <rect x="8" y="124" width="46" height="52" rx="6" style="fill:var(--panel2);stroke:var(--energy)" stroke-width="2"/><text x="31" y="154" text-anchor="middle" font-size="11" style="fill:var(--fg)">Moteur</text><text x="31" y="167" text-anchor="middle" font-size="10" style="fill:var(--muted)">1440 tr/min</text>
+  <line x1="54" y1="150" x2="${cx - 38}" y2="150" style="stroke:var(--energy)" stroke-width="3"/><text x="${(54 + cx - 38) / 2 - 6}" y="128" text-anchor="middle" font-size="10" style="fill:var(--muted)">roue + vis /10</text>
+  <circle cx="${cx}" cy="${cy}" r="36" style="fill:var(--panel2);stroke:var(--accent)" stroke-width="3"/><circle cx="${cx}" cy="${cy}" r="3" style="fill:var(--fg)"/>
+  <line x1="${cx}" y1="${cy}" x2="${mx}" y2="${my}" style="stroke:var(--muted)" stroke-width="2"/><circle cx="${mx}" cy="${my}" r="6" style="fill:${col}"/>
+  <text x="${cx}" y="${cy + 54}" text-anchor="middle" font-size="11" style="fill:var(--muted)">came, ${fm(thDeg, 0)}°</text>
+  <line x1="${cx + 36}" y1="${cy}" x2="${px - 10}" y2="${cy}" style="stroke:var(--fg)" stroke-width="4"/>
+  <rect x="228" y="116" width="124" height="68" style="fill:none;stroke:var(--muted)" stroke-width="2"/>
+  <rect x="${px - 10}" y="119" width="10" height="62" style="fill:var(--accent)"/>
+  <rect x="${px}" y="119" width="${mem - px}" height="62" style="fill:var(--info);opacity:.18"/>
+  <text x="290" y="205" text-anchor="middle" font-size="11" style="fill:var(--muted)">piston et huile : ${fm(x, 1)} mm</text>
+  <path d="M${mem} 112 Q${mem + 12} 150 ${mem} 188" fill="none" style="stroke:${col}" stroke-width="4"/>
+  <rect x="352" y="104" width="96" height="92" style="fill:none;stroke:var(--muted)" stroke-width="2"/>
+  <text x="400" y="154" text-anchor="middle" font-size="11" style="fill:var(--muted)">chambre</text><text x="400" y="167" text-anchor="middle" font-size="11" style="fill:var(--muted)">de pompage</text>
+  <path d="M385 104 V60 H484" fill="none" style="stroke:var(--energy)" stroke-width="3"/><polygon points="385,92 379,102 391,102" style="fill:var(--energy);opacity:${ref ? 1 : .3}"/>
+  <path d="M415 196 V250 H350" fill="none" style="stroke:var(--info)" stroke-width="3"/><polygon points="415,208 409,198 421,198" style="fill:var(--info);opacity:${ref ? .3 : 1}"/>
+  <circle cx="510" cy="60" r="26" style="fill:var(--panel2);stroke:var(--energy)" stroke-width="2"/><text x="510" y="64" text-anchor="middle" font-size="11" style="fill:var(--fg)">ballon</text>
+  <text x="400" y="45" text-anchor="middle" font-size="11" style="fill:var(--energy)">refoulement ${fm(pbar, 0)} bar</text><text x="330" y="270" text-anchor="middle" font-size="11" style="fill:var(--info)">aspiration</text>
+  <text x="280" y="30" text-anchor="middle" font-size="12" style="fill:${col}">${ref ? 'Le piston avance : refoulement' : 'Le piston recule : aspiration'}</text></svg>`;
+}
+const S1 = { th: 60, c: 8, p: 2 };
+let anim1 = null;
+const PARAMS = [
+  ['Rôle', 'doseur à membrane à commande mécanique, piston hydraulique et clapet de compensation DMR', 'doc', 'TP du lycée Michelet'],
+  ['Motorisation', '0,37 kW, 1440 tr/min', 'doc', 'TP du lycée Michelet'],
+  ['Roue et vis', 'roue 40 dents, vis 4 filets, rapport 10 ; hélice 12,76°', 'doc', 'TP du lycée Michelet'],
+  ['Course du piston', '8 mm au maximum, réglable par un bouton', 'doc', 'TP du lycée Michelet'],
+  ['Cadence', '144 coups/min', 'doc', 'TP du lycée Michelet'],
+  ['Débit', '240 L/h à 2 bar ; 230 L/h à la pression maximale', 'doc', 'TP du lycée Michelet'],
+  ['Pressions', 'refoulement maximale 8 bar ; aspiration maximale 1 bar', 'doc', 'TP du lycée Michelet'],
+  ['Ballons', 'aspiration 1 L ; refoulement 0,5 L ; pré-gonflage 0,6 × pression de refoulement', 'doc', 'TP du lycée Michelet'],
+  ['Section équivalente du piston', '34,7 cm² (diamètre 66,5 mm), déduite du débit et de la course', 'cal', 'calcul à partir de 240 L/h, 144 coups/min, 8 mm'],
+  ['Loi de la came', 'déplacement sinusoïdal x = (c/2)(1 − cos θ)', 'cal', 'profil non publié'],
+  ['Débit selon la pression', 'baisse linéaire de 240 à 230 L/h entre 2 et 8 bar', 'cal', 'interpolation de deux points publiés'],
+  ['Rendement de la roue et vis', 'tan γ / tan(γ + φ), μ = 0,08, angle de pression 20°', 'cal', 'coefficient de frottement choisi'],
+  ['Moteur : courbe couple-vitesse', 'formule de Kloss, couple maximal = 2,5 × couple nominal', 'cal', 'courbe non publiée'],
+  ['Inertie ramenée au moteur', '1,0·10⁻³ kg·m²', 'cal', 'non publiée'],
+  ['Ligne de refoulement', 'perte de charge 0,3 bar au débit nominal, gaz du ballon polytropique k = 1,2', 'cal', 'non publiée']
+];
+const EDIT = [
+  ['Coefficient de frottement roue-vis μ', () => P.mu, v => { P.mu = v; }],
+  ['Inertie ramenée au moteur J (kg·m²)', () => P.J, v => { P.J = v; }],
+  ['Couple maximal / couple nominal', () => P.Cmax, v => { P.Cmax = v; }],
+  ['Perte de charge de la ligne (bar)', () => P.dpl, v => { P.dpl = v; }],
+  ['Volume du ballon de refoulement (L)', () => P.Vb, v => { P.Vb = v; }],
+  ['Pré-gonflage (fraction de la pression)', () => P.pre, v => { P.pre = v; }],
+  ['Exposant polytropique du gaz', () => P.k, v => { P.k = v; }]
+];
+function mount1(root) {
+  clearInterval(anim1);
+  root.append(h('h2', null, 'La pompe doseuse Doshydro et son jumeau'),
+    h('p', null, 'Un moteur entraîne une came par une roue et vis. La came pousse un piston qui chasse de l’huile derrière une membrane : la membrane refoule le produit à doser, puis le piston recule et la membrane aspire. Le réglage de la course du piston règle le volume dosé à chaque coup.'));
+  root.append(h('h3', null, 'Chaîne d’énergie'));
+  const dg = h('div', { class: 'pbox' }); dg.innerHTML = `<svg viewBox="0 0 880 130" role="img" aria-label="Chaîne d’énergie de la pompe" style="width:100%;height:auto">
+  ${blk(10, 30, 120, 50, 'Moteur|asynchrone', 'e')}${blk(165, 30, 120, 50, 'Roue et vis|rapport 10', 'e')}${blk(320, 30, 120, 50, 'Came et crosse|loi sinusoïdale', 'e')}${blk(475, 30, 120, 50, 'Piston|et huile', 'e')}${blk(630, 30, 110, 50, 'Membrane|et clapets', 'e')}${blk(775, 30, 95, 50, 'Ballon|et ligne', 'e')}
+  ${arrow(130, 55, 165, 55, 'e')}${arrow(285, 55, 320, 55, 'e')}${arrow(440, 55, 475, 55, 'e')}${arrow(595, 55, 630, 55, 'e')}${arrow(740, 55, 775, 55, 'e')}
+  <text x="10" y="112" font-size="12" style="fill:var(--energy)">■ chaîne d’énergie, sans chaîne d’information : commande en boucle ouverte.</text></svg>`;
+  root.append(dg, h('h3', null, 'Mouvement'), h('p', { class: 'small' }, 'Tournez la came et changez la course : le piston avance de 0 à c pendant le demi-tour de refoulement, puis recule.'));
+  const arm = h('div', { class: 'pbox armbox' }), info = h('div'); let play = false;
+  const draw = () => {
+    arm.innerHTML = pumpSvg(S1.th, S1.c, S1.p); info.innerHTML = '';
+    const f = fcam0(P), Q = Qmean(P, S1.c, f, S1.p);
+    info.append(stats([['Position du piston', fm(xp(P, S1.c, S1.th * D2R_), 2) + ' mm'], ['Volume refoulé par coup', fm(Aeff(P) * S1.c * 1e-3 * etaV(P, S1.p) * 1e6, 1) + ' cm³'], ['Cadence', fm(f * 60, 0) + ' coups/min'], ['Débit moyen', fm(Q, 0) + ' L/h'], ['Rapport moteur / came', fm(P.N, 0) + ' (' + P.zr + ' dents / ' + P.filets + ' filets)']]));
+  };
+  root.append(h('div', { class: 'opts' }, sld('Angle de la came', 0, 360, 1, S1.th, v => v + ' °', v => { S1.th = v; draw(); }), sld('Course réglée', 0, 8, 0.5, S1.c, v => fm(v, 1) + ' mm', v => { S1.c = v; draw(); }), sld('Pression de refoulement', 1, 8, 0.5, S1.p, v => fm(v, 1) + ' bar', v => { S1.p = v; draw(); })),
+    arm, info, h('div', { class: 'opts' }, h('button', { class: 'btn sm', type: 'button', onclick: ev => { play = !play; ev.target.textContent = play ? 'Arrêter' : 'Animer'; } }, 'Animer')));
+  anim1 = setInterval(() => { if (!arm.isConnected) { clearInterval(anim1); return; } if (play) { S1.th = (S1.th + 6) % 360; draw(); } }, 60);
+  draw();
+  root.append(h('h3', null, 'Paramètres du jumeau et leur statut'), h('p', { class: 'small' }, 'documenté = relevé dans le document public ; calé = valeur choisie ou calculée faute de donnée.'));
+  root.append(h('div', { class: 'dwrap' }, h('table', { class: 'dt' }, h('thead', null, h('tr', null, ['Grandeur', 'Valeur', 'Statut', 'Source'].map(x => h('th', null, x)))), h('tbody', null, PARAMS.map(p => h('tr', null, h('td', null, p[0]), h('td', null, p[1]), h('td', null, h('span', { class: 'tag ' + p[2] }, p[2] === 'doc' ? 'documenté' : 'calé')), h('td', { class: 'small' }, p[3])))))));
+  root.append(h('h3', null, 'Recaler le jumeau avec vos valeurs'));
+  root.append(h('div', { class: 'dwrap' }, h('table', { class: 'dt' }, h('tbody', null, EDIT.map(e => { const inp = h('input', { type: 'number', step: 'any', value: +e[1]().toPrecision(4), 'aria-label': e[0] }); inp.addEventListener('change', () => { const v = parseFloat(inp.value); if (isFinite(v) && v > 0) { e[2](v); toast('Valeur enregistrée : ' + e[0]); draw(); } }); return h('tr', null, h('td', null, e[0]), h('td', null, inp)); })))));
+}
+WORKSHOPS.push({ id: 's1', title: 'Le système', hint: 'Suivez la chaîne d’énergie, de la rotation du moteur à la translation du piston, et repérez l’origine de chaque paramètre.', mount: mount1, reset: () => { Object.assign(S1, { th: 60, c: 8, p: 2 }); } });
+
+/* ================= Atelier 2 : loi came-piston et débit ================= */
+const S2 = { c: 8, cps: 144, p: 2 };
+function mount2(root) {
+  root.append(h('h2', null, 'Loi came-piston et réglage de course'),
+    h('p', null, 'Le piston suit la came : x(θ) = (c/2)(1 − cos θ). Le liquide n’est refoulé que pendant la moitié du tour, et la vitesse du piston impose le débit instantané. Réglez la course et la cadence, puis lisez le volume dosé.'));
+  const box = h('div'), st = h('div'), msg = h('div', { class: 'verdict', id: 'm2' });
+  const draw = () => {
+    const f = S2.cps / 60, wc = TWO_PI * f, th = [], x = [], v = [], q = [];
+    for (let a = 0; a <= 360; a += 3) { const r = a * D2R_; th.push(a); x.push(xp(P, S2.c, r)); v.push(S2.c / 2 * wc * Math.max(0, Math.sin(r)) * (a <= 180 ? 1 : 0)); q.push(qp(P, S2.c, wc, r, S2.p) * 3.6e6); }
+    box.innerHTML = ''; st.innerHTML = '';
+    box.append(plot({ title: 'Position du piston', xl: 'angle de la came (°)', yl: 'mm', h: 170, series: [{ x: th, y: x, c: 'var(--c1)', l: 'x' }] }));
+    box.append(plot({ title: 'Débit instantané refoulé', xl: 'angle de la came (°)', yl: 'L/h', h: 190, series: [{ x: th, y: q, c: 'var(--c3)', l: 'q' }], hl: [{ y: Qmean(P, S2.c, f, S2.p), l: 'débit moyen' }] }));
+    const Qm = Qmean(P, S2.c, f, S2.p), Vc = Aeff(P) * S2.c * 1e-3 * etaV(P, S2.p) * 1e6;
+    st.append(stats([['Volume par coup', fm(Vc, 1) + ' cm³'], ['Débit moyen', fm(Qm, 0) + ' L/h'], ['Débit maximal', fm(Qm * Math.PI, 0) + ' L/h'], ['Débit maximal / débit moyen', fm(Math.PI, 2)], ['Vitesse maximale du piston', fm(S2.c / 2 * wc, 1) + ' mm/s'], ['Accélération maximale', fm(S2.c / 2 * wc * wc / 1000, 2) + ' m/s²'], ['Part du tour utile', '50 %'], ['Débit à 8 bar (même réglage)', fm(Qmean(P, S2.c, f, 8), 0) + ' L/h']]));
+    setMsg('#m2', 'Le débit moyen est proportionnel à la course et à la cadence : ' + fm(Qm, 0) + ' L/h pour ' + fm(S2.c, 1) + ' mm à ' + fm(S2.cps, 0) + ' coups/min. Pendant le refoulement, le débit atteint π fois sa valeur moyenne, d’où le ballon amortisseur.', 'ok');
+  };
+  root.append(h('div', { class: 'opts' }, sld('Course du piston', 0, 8, 0.5, S2.c, v => fm(v, 1) + ' mm', v => { S2.c = v; later('d2', draw); }), sld('Cadence', 40, 160, 2, S2.cps, v => v + ' coups/min', v => { S2.cps = v; later('d2', draw); }), sld('Pression de refoulement', 1, 8, 0.5, S2.p, v => fm(v, 1) + ' bar', v => { S2.p = v; later('d2', draw); })), box, st, msg);
+  draw();
+}
+WORKSHOPS.push({ id: 's2', title: 'Came et débit', hint: 'Reliez course, cadence et débit, et repérez le rapport π entre débit maximal et débit moyen.', mount: mount2, reset: () => { Object.assign(S2, { c: 8, cps: 144, p: 2 }); } });
+
+/* ================= Atelier 3 : ballon amortisseur ================= */
+const S3 = { p: 2, Vb: 0.5, pre: 0.6, dpl: 0.3 };
+function mount3(root) {
+  root.append(h('h2', null, 'Débit, pression et ballon amortisseur'),
+    h('p', null, 'Sans ballon, le débit dans la ligne est celui du piston, haché par la came. Un ballon de gaz placé à la sortie stocke du liquide pendant le refoulement et le rend pendant l’aspiration. Réglez son volume et son pré-gonflage.'));
+  const box = h('div'), st = h('div'), msg = h('div', { class: 'verdict', id: 'm3' });
+  const draw = () => {
+    const Q = Object.assign({}, P, { Vb: S3.Vb, dpl: S3.dpl, pre: S3.pre }), a = simBallon(Q, { c: 8, p: S3.p, ballon: S3.Vb > 0.001 }), b = simBallon(Q, { c: 8, p: S3.p, ballon: false });
+    const t = a.t.map(v => v * 1000);
+    box.innerHTML = ''; st.innerHTML = '';
+    box.append(plot({ title: 'Débit dans la ligne de refoulement', xl: 'temps sur un coup (ms)', yl: 'L/h', h: 200, series: [{ x: t, y: b.qo, c: 'var(--c3)', l: 'sans ballon' }, { x: t, y: a.qo, c: 'var(--c1)', l: 'avec ballon' }] }));
+    box.append(plot({ title: 'Pression dans la ligne', xl: 'temps sur un coup (ms)', yl: 'bar', h: 180, series: [{ x: t, y: b.pr, c: 'var(--c3)', l: 'sans ballon' }, { x: t, y: a.pr, c: 'var(--c1)', l: 'avec ballon' }] }));
+    const g = gaz(Q, S3.p);
+    st.append(stats([['Irrégularité du débit sans ballon', fm(b.dq * 100, 0) + ' %'], ['Irrégularité avec ballon', fm(a.dq * 100, 0) + ' %'], ['Variation de pression avec ballon', fm(a.dp * 1000, 0) + ' mbar'], ['Volume de gaz à la pression de service', fm(g.V * 1000, 2) + ' L'], ['Constante de temps du filtre R·C', fm(a.tau, 2) + ' s'], ['Débit moyen', fm(a.qm, 0) + ' L/h']]));
+    const dead = S3.pre * S3.p + ATM > S3.p + ATM - 0.001;
+    setMsg('#m3', dead ? 'Le pré-gonflage est au niveau de la pression de service : la vessie reste plaquée, le ballon n’amortit plus.' : 'L’irrégularité (débit maximal moins minimal, sur la moyenne) passe de ' + fm(b.dq * 100, 0) + ' % à ' + fm(a.dq * 100, 0) + ' %. Le ballon se comporte comme un filtre passe-bas de constante de temps R·C.', dead ? 'bad' : 'ok');
+  };
+  const set = o => () => { Object.assign(S3, o); mountWs(); };
+  root.append(h('div', { class: 'chips' }, [['Ballon de 0,5 L', { Vb: 0.5, pre: 0.6 }], ['Sans ballon', { Vb: 0 }], ['Ballon de 2 L', { Vb: 2, pre: 0.6 }], ['Pré-gonflage trop élevé', { Vb: 0.5, pre: 1.05 }]].map(c => h('button', { class: 'btn sm', type: 'button', onclick: set(c[1]) }, c[0]))),
+    h('div', { class: 'opts' }, sld('Pression de service', 1, 8, 0.5, S3.p, v => fm(v, 1) + ' bar', v => { S3.p = v; later('d3', draw); }), sld('Volume du ballon', 0, 2, 0.1, S3.Vb, v => fm(v, 1) + ' L', v => { S3.Vb = v; later('d3', draw); }), sld('Pré-gonflage', 0, 1.2, 0.05, S3.pre, v => fm(v, 2) + ' × pression', v => { S3.pre = v; later('d3', draw); }), sld('Perte de charge de la ligne', 0.05, 1, 0.05, S3.dpl, v => fm(v, 2) + ' bar', v => { S3.dpl = v; later('d3', draw); })), box, st, msg);
+  draw();
+}
+WORKSHOPS.push({ id: 's3', title: 'Ballon amortisseur', hint: 'Comparez débit et pression avec et sans ballon, et cherchez le bon pré-gonflage.', mount: mount3, reset: () => { Object.assign(S3, { p: 2, Vb: 0.5, pre: 0.6, dpl: 0.3 }); } });
+
+/* ================= Atelier 4 : couple, puissance, rendement ================= */
+const S4 = { p: 8, c: 8, mu: null };
+function mount4(root) {
+  root.append(h('h2', null, 'Couple, puissance et rendement'),
+    h('p', null, 'La pression s’exerce sur le piston seulement pendant le refoulement : le couple sur la came est un demi-sinus. La roue et vis le divise par 10 et perd de la puissance par frottement. Comparez le couple demandé au couple nominal du moteur.'));
+  const box = h('div'), st = h('div'), msg = h('div', { class: 'verdict', id: 'm4' });
+  const draw = () => {
+    const Q = Object.assign({}, P, S4.mu ? { mu: S4.mu } : {}), eta = etaVis(Q), th = [], cm = [];
+    for (let a = 0; a <= 360; a += 3) { th.push(a); cm.push(Ccam(Q, S4.c, a * D2R_, S4.p) / Q.N / eta); }
+    const f = fcam0(Q), Qm = Qmean(Q, S4.c, f, S4.p) / 3.6e6, Ph = S4.p * 1e5 * Qm, Pm = Ph / eta, Cmean = cm.reduce((s, v) => s + v, 0) / cm.length, Cpk = Math.max(...cm);
+    box.innerHTML = ''; st.innerHTML = '';
+    box.append(plot({ title: 'Couple résistant sur l’arbre moteur', xl: 'angle de la came (°)', yl: 'N·m', h: 200, series: [{ x: th, y: cm, c: 'var(--c3)', l: 'couple résistant' }], hl: [{ y: Cmean, l: 'moyenne' }, { y: Cn(Q), l: 'couple nominal' }] }));
+    st.append(stats([['Puissance hydraulique utile', fm(Ph, 1) + ' W'], ['Puissance à l’arbre moteur', fm(Pm, 1) + ' W'], ['Rendement de la roue et vis', fm(eta * 100, 0) + ' %'], ['Part de la puissance nominale', fm(Pm / Q.Pn * 100, 0) + ' %'], ['Couple moyen sur la came', fm(Cmean * Q.N * eta, 2) + ' N·m'], ['Couple moyen sur le moteur', fm(Cmean, 3) + ' N·m'], ['Couple maximal sur le moteur', fm(Cpk, 2) + ' N·m'], ['Couple nominal du moteur', fm(Cn(Q), 2) + ' N·m']]));
+    setMsg('#m4', 'À ' + fm(S4.p, 1) + ' bar, la pompe demande ' + fm(Pm, 0) + ' W à l’arbre moteur, soit ' + fm(Pm / Q.Pn * 100, 0) + ' % de la puissance nominale ; le couple de pointe vaut ' + fm(Cpk / Cn(Q) * 100, 0) + ' % du couple nominal. Le moteur est largement surdimensionné pour ce service.', 'ok');
+  };
+  root.append(h('div', { class: 'opts' }, sld('Pression de refoulement', 1, 8, 0.5, S4.p, v => fm(v, 1) + ' bar', v => { S4.p = v; later('d4', draw); }), sld('Course du piston', 1, 8, 0.5, S4.c, v => fm(v, 1) + ' mm', v => { S4.c = v; later('d4', draw); }), sld('Coefficient de frottement roue-vis', 0.02, 0.2, 0.01, S4.mu || P.mu, v => fm(v, 2), v => { S4.mu = v; later('d4', draw); })), box, st, msg);
+  draw();
+}
+WORKSHOPS.push({ id: 's4', title: 'Couple et rendement', hint: 'Suivez la puissance de l’huile jusqu’au moteur, avec le rendement de la roue et vis.', mount: mount4, reset: () => { Object.assign(S4, { p: 8, c: 8, mu: null }); } });
+
+/* ================= Atelier 5 : moteur asynchrone ================= */
+const S5 = { p: 8, c: 8, J: 1.0, Cmax: 2.5 };
+function mount5(root) {
+  root.append(h('h2', null, 'Moteur asynchrone en charge'),
+    h('p', null, 'Le couple d’un moteur asynchrone dépend de son glissement. Le couple résistant de la pompe pulse deux fois par tour de came : la vitesse oscille légèrement, et le moteur tourne près de 1500 tr/min quand il est peu chargé.'));
+  const out = h('div'), st = h('div'), msg = h('div', { class: 'verdict', id: 'm5' });
+  const draw = () => {
+    const Q = Object.assign({}, P, { J: S5.J * 1e-3, Cmax: S5.Cmax }), o = simMoteur(Q, { c: S5.c, p: S5.p, tend: 1 });
+    out.innerHTML = ''; st.innerHTML = '';
+    out.append(plot({ title: 'Vitesse du moteur', xl: 'temps (s)', yl: 'tr/min', h: 190, series: [{ x: o.t, y: o.w, c: 'var(--c1)', l: 'moteur' }], hl: [{ y: 1500, l: 'synchronisme' }] }));
+    out.append(plot({ title: 'Couple moteur et couple résistant', xl: 'temps (s)', yl: 'N·m', h: 180, series: [{ x: o.t, y: o.Cmo, c: 'var(--c4)', l: 'moteur' }, { x: o.t, y: o.Cr, c: 'var(--c3)', l: 'résistant' }] }));
+    st.append(stats([['Vitesse établie', fm(o.mean, 0) + ' tr/min'], ['Glissement', fm(o.slip * 100, 1) + ' %'], ['Cadence réelle', fm(o.mean / Q.N, 1) + ' coups/min'], ['Temps pour atteindre 95 %', o.t95 != null ? fm(o.t95 * 1000, 0) + ' ms' : '—'], ['Ondulation de vitesse', fm(o.rip * 100, 1) + ' %'], ['Couple de démarrage', fm(Cm(Q, 0), 2) + ' N·m']]));
+    setMsg('#m5', 'La pompe tourne à ' + fm(o.mean, 0) + ' tr/min, soit ' + fm(o.mean / Q.N, 1) + ' coups/min au lieu de 144 : à faible charge, le glissement est petit. La vitesse varie de ' + fm(o.rip * 100, 1) + ' % autour de sa moyenne.', 'ok');
+  };
+  const set = o => () => { Object.assign(S5, o); mountWs(); };
+  root.append(h('div', { class: 'chips' }, [['2 bar', { p: 2 }], ['8 bar', { p: 8 }], ['Inertie × 5', { J: 5 }], ['Moteur faible (Cmax 1,8)', { Cmax: 1.8 }]].map(c => h('button', { class: 'btn sm', type: 'button', onclick: set(c[1]) }, c[0]))),
+    h('div', { class: 'opts' }, sld('Pression de refoulement', 1, 8, 0.5, S5.p, v => fm(v, 1) + ' bar', v => { S5.p = v; later('d5', draw); }), sld('Course du piston', 1, 8, 0.5, S5.c, v => fm(v, 1) + ' mm', v => { S5.c = v; later('d5', draw); }), sld('Inertie ramenée au moteur', 0.2, 6, 0.2, S5.J, v => fm(v, 1) + '·10⁻³ kg·m²', v => { S5.J = v; later('d5', draw); }), sld('Couple maximal / nominal', 1.5, 3, 0.1, S5.Cmax, v => fm(v, 1), v => { S5.Cmax = v; later('d5', draw); })), out, st, msg);
+  draw();
+}
+WORKSHOPS.push({ id: 's5', title: 'Moteur asynchrone', hint: 'Observez le démarrage, le glissement et l’ondulation de vitesse selon la pression.', mount: mount5, reset: () => { Object.assign(S5, { p: 8, c: 8, J: 1.0, Cmax: 2.5 }); } });
+
+/* ================= Atelier 6 : analyse harmonique ================= */
+const S6 = { Vb: 0.5, pre: 0.6, dpl: 0.3, p: 2 };
+function mount6(root) {
+  root.append(h('h2', null, 'Analyse harmonique du débit'),
+    h('p', null, 'Le débit d’un piston à came est une demi-sinusoïde redressée : son spectre contient la fréquence de rotation de la came et ses harmoniques paires. Le ballon et la ligne forment un filtre passe-bas du premier ordre qui les atténue.'));
+  const box = h('div'), st = h('div'), tb = h('div'), msg = h('div', { class: 'verdict', id: 'm6' });
+  const draw = () => {
+    const Q = Object.assign({}, P, { Vb: S6.Vb, dpl: S6.dpl, pre: S6.pre }), f0 = fcam0(Q), Qm = Qmean(Q, 8, f0, S6.p) / 3.6e6, R = S6.dpl * 1e5 / Qm, g = gaz(Q, S6.p), tau = R * g.C, fs = [], H = [];
+    for (let k = -1.5; k <= 1.5; k += 0.03) { const f = Math.pow(10, k); fs.push(f); H.push(-10 * Math.log10(1 + Math.pow(TWO_PI * f * tau, 2))); }
+    box.innerHTML = ''; st.innerHTML = ''; tb.innerHTML = '';
+    box.append(plot({ title: 'Atténuation du ballon et de la ligne', xn: 'f', logx: true, xl: 'fréquence (Hz)', yl: 'dB', h: 200, series: [{ x: fs, y: H, c: 'var(--c1)', l: 'gain' }], hl: [{ y: -3, l: '−3 dB' }] }));
+    const rows = []; let sum = 0, sumH = 0;
+    [1, 2, 4, 6].forEach(n => { const a = harm(n), hh = 1 / Math.sqrt(1 + Math.pow(TWO_PI * n * f0 * tau, 2)); sum += a; sumH += a * hh; rows.push(h('tr', null, h('td', null, n + ' × ' + fm(f0, 1) + ' Hz'), h('td', null, fm(a * 100, 0) + ' %'), h('td', null, fm(hh * 100, 0) + ' %'), h('td', null, fm(a * hh * 100, 1) + ' %'))); });
+    tb.append(h('div', { class: 'dwrap' }, h('table', { class: 'dt' }, h('thead', null, h('tr', null, ['Harmonique', 'Amplitude sans ballon', 'Gain du filtre', 'Amplitude avec ballon'].map(x => h('th', null, x)))), h('tbody', null, rows))));
+    const sim = simBallon(Q, { c: 8, p: S6.p, ballon: S6.Vb > 0.001 });
+    st.append(stats([['Constante de temps R·C', fm(tau, 2) + ' s'], ['Fréquence de coupure', fm(1 / (TWO_PI * tau), 2) + ' Hz'], ['Fréquence de la came', fm(f0, 1) + ' Hz'], ['Atténuation de la fondamentale', fm(-20 * Math.log10(1 / Math.sqrt(1 + Math.pow(TWO_PI * f0 * tau, 2))) * 1, 1) + ' dB'], ['Irrégularité estimée (2 × somme)', fm(2 * sumH * 100, 0) + ' %'], ['Irrégularité simulée', fm(sim.dq * 100, 0) + ' %']]));
+    setMsg('#m6', 'La fondamentale à ' + fm(f0, 1) + ' Hz est atténuée de ' + fm(-20 * Math.log10(1 / Math.sqrt(1 + Math.pow(TWO_PI * f0 * tau, 2))), 1) + ' dB. L’estimation par les harmoniques donne ' + fm(2 * sumH * 100, 0) + ' % d’irrégularité, la simulation temporelle ' + fm(sim.dq * 100, 0) + ' % : le calcul linéaire donne le bon ordre de grandeur.', 'ok');
+  };
+  root.append(h('div', { class: 'opts' }, sld('Volume du ballon', 0.1, 2, 0.1, S6.Vb, v => fm(v, 1) + ' L', v => { S6.Vb = v; later('d6', draw); }), sld('Pré-gonflage', 0, 1, 0.05, S6.pre, v => fm(v, 2) + ' × pression', v => { S6.pre = v; later('d6', draw); }), sld('Perte de charge de la ligne', 0.05, 1, 0.05, S6.dpl, v => fm(v, 2) + ' bar', v => { S6.dpl = v; later('d6', draw); }), sld('Pression de service', 1, 8, 0.5, S6.p, v => fm(v, 1) + ' bar', v => { S6.p = v; later('d6', draw); })), box, tb, st, msg);
+  draw();
+}
+WORKSHOPS.push({ id: 's6', title: 'Harmoniques (PSI*)', hint: 'Décomposez le débit en harmoniques et comparez le filtre linéaire à la simulation.', mount: mount6, reset: () => { Object.assign(S6, { Vb: 0.5, pre: 0.6, dpl: 0.3, p: 2 }); } });
+
+const ACT = {
+  s1: {
+    title: 'Découvrir la Doshydro', level: 'Niveau 1 · Découvrir', time: '25 min', course: 'presentation',
+    goal: 'Suivre la chaîne d’énergie, relier le mouvement de la came à celui du piston et distinguer les paramètres documentés des paramètres calés.',
+    steps: [
+      'Sur le schéma, repérez les éléments de la chaîne d’énergie. Y a-t-il une chaîne d’information ? Que conclure sur le mode de commande ?',
+      'Faites tourner la came de 0 à 360° : pendant quelle plage d’angle le piston avance-t-il ? Quelle phase correspond à l’aspiration ?',
+      'Réduisez la course à 4 mm : que devient le volume refoulé par coup ? Et la cadence ?',
+      'Vérifiez que 1440 tr/min et un rapport de 10 donnent bien 144 coups/min. Combien de filets pour la vis et de dents pour la roue donnent ce rapport ?',
+      'Dans le tableau, comptez les valeurs calées. Lesquelles pèsent le plus sur le calcul du couple moteur ?'
+    ],
+    defi: { q: 'La pompe débite 240 L/h à 144 coups/min avec 8 mm de course. Quel est le volume refoulé par coup et la section équivalente du piston ?', a: '240 L/h = 66,7 mL/s ; à 2,4 coups/s : <b>27,8 cm³ par coup</b>. Section = 27,8 cm³ / 0,8 cm ≈ <b>34,7 cm²</b>, soit un diamètre équivalent d’environ 66,5 mm.' },
+    qcm: [
+      { q: 'Quel est le rapport de la roue et vis (roue de 40 dents, vis à 4 filets) ?', o: ['4', '10', '40', '160'], a: 1, w: 'Rapport = nombre de dents de la roue / nombre de filets = 40 / 4 = 10.' },
+      { q: 'Que fait la membrane pendant l’aspiration ?', o: ['Elle avance', 'Elle recule, entraînée par le retrait du piston', 'Elle ne bouge pas', 'Elle tourne'], a: 1, w: 'Le piston recule, crée une dépression dans l’huile et la membrane le suit.' },
+      { q: 'Comment règle-t-on le volume dosé ?', o: ['En changeant la tension du moteur', 'En réglant la course du piston', 'Par un codeur', 'En changeant la pression d’aspiration'], a: 1, w: 'Un bouton règle la course du piston entre 0 et 8 mm : le débit est proportionnel à cette course.' },
+      { q: 'Quelle valeur est calée dans le jumeau ?', o: ['La course maximale de 8 mm', 'Le rapport de la roue et vis', 'La loi de déplacement de la came', 'Le débit à 2 bar'], a: 2, w: 'Le profil de la came n’est pas publié : le jumeau suppose une loi sinusoïdale.' },
+      { q: 'La Doshydro est-elle asservie ?', o: ['Oui, en vitesse', 'Oui, en position', 'Non, commande en boucle ouverte', 'Oui, en pression'], a: 2, w: 'Aucun capteur ni correcteur n’est décrit : on règle la course à la main.' }
+    ]
+  },
+  s2: {
+    title: 'Loi came-piston', level: 'Niveau 1 · Découvrir', time: '30 min', course: 'came',
+    goal: 'Établir la loi x(θ), calculer volume par coup et débit moyen, et expliquer le rapport π entre débit maximal et débit moyen.',
+    steps: [
+      'À 8 mm et 144 coups/min, relevez le volume par coup, le débit moyen et le débit maximal.',
+      'Passez la course à 4 mm : comparez le débit moyen. Quelle relation voyez-vous avec la course ?',
+      'Augmentez la cadence à 160 coups/min : comment évoluent débit moyen, vitesse maximale et accélération maximale ?',
+      'Passez la pression de 2 à 8 bar : le débit moyen change-t-il ? De combien ?',
+      'Expliquez pourquoi le débit instantané est nul pendant la moitié du tour.'
+    ],
+    defi: { q: 'Avec x(θ) = (c/2)(1 − cos θ), calculez la vitesse maximale et l’accélération maximale du piston pour c = 8 mm à 144 coups/min.', a: 'ω = 2π × 2,4 = 15,08 rad/s. v = (c/2)·ω·sin θ : <b>v<sub>max</sub> = 4 × 15,08 ≈ 60 mm/s</b>. a = (c/2)·ω²·cos θ : <b>a<sub>max</sub> = 4 × 227 ≈ 0,91 m/s²</b>.' },
+    qcm: [
+      { q: 'Quel est le débit moyen pour une course de 4 mm à 144 coups/min et 2 bar ?', o: ['60 L/h', '120 L/h', '240 L/h', '480 L/h'], a: 1, w: 'Le débit est proportionnel à la course : 240 × 4 / 8 = 120 L/h.' },
+      { q: 'Quel est le rapport débit maximal / débit moyen ?', o: ['1', '2', 'π', '4'], a: 2, w: 'Pendant la demi-période de refoulement, q = q<sub>max</sub> sin θ ; la valeur moyenne vaut q<sub>max</sub>/π.' },
+      { q: 'Quel est environ le débit maximal à 8 mm et 2 bar ?', o: ['240 L/h', '480 L/h', '750 L/h', '2 400 L/h'], a: 2, w: '240 × π ≈ 754 L/h.' },
+      { q: 'Quelle part du tour est utile au refoulement ?', o: ['25 %', '50 %', '75 %', '100 %'], a: 1, w: 'Le piston avance de 0 à 180°, puis recule de 180° à 360°.' },
+      { q: 'À 8 bar, par rapport à 2 bar, le débit moyen…', o: ['est doublé', 'baisse de 240 à 230 L/h', 'est nul', 'ne change pas du tout'], a: 1, w: 'Les fuites et la compressibilité réduisent légèrement le volume refoulé.' }
+    ]
+  },
+  s3: {
+    title: 'Le ballon amortisseur', level: 'Niveau 2 · Modéliser', time: '35 min', course: 'ballon',
+    goal: 'Mesurer l’irrégularité du débit avec et sans ballon, et régler le pré-gonflage.',
+    steps: [
+      'Sans ballon, relevez l’irrégularité du débit et la variation de pression à 2 bar.',
+      'Avec le ballon de 0,5 L (pré-gonflage 0,6), relevez les mêmes grandeurs. Comparez.',
+      'Passez à 2 L : l’amélioration est-elle proportionnelle au volume ?',
+      'Mettez un pré-gonflage supérieur à la pression de service. Que se passe-t-il ?',
+      'Augmentez la perte de charge de la ligne : quelle est l’influence sur la constante de temps R·C ?'
+    ],
+    defi: { q: 'Sans ballon, la perte de charge de 0,3 bar à 240 L/h devient quoi au débit maximal de π × 240 L/h ?', a: 'La perte de charge est proportionnelle au débit : 0,3 × π ≈ <b>0,94 bar</b>. La pression oscille donc de 0 à 0,94 bar au-dessus de la contre-pression.' },
+    qcm: [
+      { q: 'Sans ballon, quelle est l’irrégularité (débit maximal moins minimal, sur la moyenne) ?', o: ['100 %', 'π, soit 314 %', '50 %', '0 %'], a: 1, w: 'Le débit va de 0 à π fois sa valeur moyenne.' },
+      { q: 'Avec le ballon de 0,5 L, l’irrégularité vaut environ…', o: ['5 %', '47 %', '150 %', '314 %'], a: 1, w: 'La simulation sur un coup donne environ 47 % avec le réglage documenté.' },
+      { q: 'Que se passe-t-il si le pré-gonflage dépasse la pression de service ?', o: ['Le ballon amortit mieux', 'La vessie reste plaquée : le ballon n’agit plus', 'La pompe s’arrête', 'La membrane se perce'], a: 1, w: 'Le liquide ne peut pas entrer dans le ballon tant que la pression reste sous le pré-gonflage.' },
+      { q: 'Quel est le rôle du ballon ?', o: ['Augmenter le débit moyen', 'Stocker du liquide au refoulement et le rendre à l’aspiration', 'Filtrer le produit', 'Réduire la course'], a: 1, w: 'Il laisse le débit moyen inchangé et lisse les variations.' },
+      { q: 'Quel est le rôle du clapet de compensation DMR ?', o: ['Compenser les fuites d’huile côté piston', 'Réguler le débit', 'Amortir les pulsations', 'Protéger le moteur'], a: 0, w: 'Il s’ouvre en fin d’aspiration s’il manque de l’huile dans la chambre.' }
+    ]
+  },
+  s4: {
+    title: 'Couple et rendement', level: 'Niveau 3 · Concevoir', time: '40 min', course: 'puissance',
+    goal: 'Calculer la puissance hydraulique, le couple sur la came et sur le moteur, et critiquer le dimensionnement.',
+    steps: [
+      'À 8 bar et 8 mm, relevez la puissance hydraulique, la puissance à l’arbre moteur et le couple de pointe.',
+      'Comparez ces valeurs à la puissance et au couple nominaux du moteur. Que concluez-vous ?',
+      'Ramenez la pression à 2 bar : comment évoluent puissance et couple ?',
+      'Augmentez le coefficient de frottement de la vis jusqu’à 0,15 : quel effet sur le rendement et le couple ?',
+      'Expliquez pourquoi le couple de pointe vaut π fois le couple moyen.'
+    ],
+    defi: { q: 'À 8 bar, quelle est la puissance hydraulique pour 230 L/h ? En déduire la puissance à l’arbre moteur avec un rendement de 71 %.', a: 'Q = 230 L/h = 63,9·10⁻⁶ m³/s ; P<sub>h</sub> = 8·10⁵ × 63,9·10⁻⁶ ≈ <b>51 W</b>. P<sub>moteur</sub> = 51 / 0,713 ≈ <b>72 W</b>, soit 19 % de 370 W.' },
+    qcm: [
+      { q: 'Quelle est la puissance hydraulique à 8 bar ?', o: ['5 W', '51 W', '370 W', '800 W'], a: 1, w: 'P = p·Q = 8·10⁵ × 63,9·10⁻⁶ ≈ 51 W.' },
+      { q: 'Quel est le rendement calculé de la roue et vis ?', o: ['Environ 30 %', 'Environ 71 %', 'Environ 95 %', '100 %'], a: 1, w: 'η = tan γ / tan(γ + φ) avec γ = 12,76° et φ = arctan(0,08/cos 20°) ≈ 4,9°.' },
+      { q: 'Quel est le couple nominal du moteur (0,37 kW, 1440 tr/min) ?', o: ['0,25 N·m', '2,45 N·m', '24,5 N·m', '0,37 N·m'], a: 1, w: 'C = P/ω = 370 / 150,8 ≈ 2,45 N·m.' },
+      { q: 'À 8 bar, le couple de pointe sur le moteur représente environ…', o: ['6 % du nominal', '64 % du nominal', '150 % du nominal', '300 % du nominal'], a: 1, w: 'Environ 1,56 N·m sur 2,45 N·m.' },
+      { q: 'Pourquoi le moteur est-il surdimensionné ?', o: ['Il doit démarrer en charge et supporter la pointe de couple', 'Par erreur de conception', 'Pour augmenter la cadence', 'Pour compenser le ballon'], a: 0, w: 'Le démarrage et les pointes de couple demandent une marge ; le service moyen est à 19 % de la puissance nominale.' }
+    ]
+  },
+  s5: {
+    title: 'Le moteur en charge', level: 'Niveau 3 · Concevoir', time: '40 min', course: 'moteur',
+    goal: 'Lire démarrage, glissement et ondulation de vitesse d’un moteur asynchrone entraînant une charge pulsée.',
+    steps: [
+      'À 8 bar, relevez la vitesse établie, le glissement et l’ondulation de vitesse.',
+      'Passez à 2 bar : comparez. Pourquoi la vitesse est-elle supérieure à 1440 tr/min ?',
+      'Multipliez l’inertie par 5 : comment évolue l’ondulation ? et le temps de démarrage ?',
+      'Prenez un moteur plus faible (couple maximal = 1,8 couple nominal) : le démarrage et la vitesse changent-ils ?',
+      'Calculez la cadence réelle à 2 bar et comparez-la aux 144 coups/min annoncés.'
+    ],
+    defi: { q: 'Le moteur tourne à 1497 tr/min à 2 bar. Quel est le glissement et la cadence de la pompe ?', a: 'Synchronisme : 1500 tr/min. g = (1500 − 1497) / 1500 ≈ <b>0,2 %</b>. Cadence = 1497 / 10 ≈ <b>150 coups/min</b>, soit 4 % de plus que la valeur nominale à 1440 tr/min.' },
+    qcm: [
+      { q: 'Quelle est la vitesse de synchronisme d’un moteur à 2 paires de pôles sur 50 Hz ?', o: ['750 tr/min', '1000 tr/min', '1500 tr/min', '3000 tr/min'], a: 2, w: 'n<sub>s</sub> = 60 f / p = 60 × 50 / 2 = 1500 tr/min.' },
+      { q: 'Quel est le glissement nominal ?', o: ['0,4 %', '4 %', '14 %', '40 %'], a: 1, w: '(1500 − 1440) / 1500 = 4 %.' },
+      { q: 'À 2 bar, la vitesse du moteur est…', o: ['égale à 1440 tr/min', 'proche de 1500 tr/min', 'nulle', 'supérieure à 1500 tr/min'], a: 1, w: 'À faible charge, le glissement est très inférieur au glissement nominal.' },
+      { q: 'Avec plus d’inertie, l’ondulation de vitesse…', o: ['augmente', 'diminue', 'ne change pas', 'disparaît'], a: 1, w: 'L’inertie filtre les variations rapides du couple résistant ; elle ralentit aussi le démarrage.' },
+      { q: 'Quel est le couple de démarrage calé dans le jumeau ?', o: ['Environ 0,9 fois le couple nominal', 'Environ 5 fois', 'Zéro', 'Environ 0,1 fois'], a: 0, w: 'La formule de Kloss avec C<sub>max</sub> = 2,5 C<sub>n</sub> donne environ 2,3 N·m, donc 0,92 C<sub>n</sub> : valeur calée, non publiée.' }
+    ]
+  },
+  s6: {
+    title: 'Analyse harmonique', level: 'Niveau 4 · Approfondir (PSI*)', time: '45 min', course: 'harmonique',
+    goal: 'Décomposer le débit en série de Fourier, modéliser le ballon par un filtre du premier ordre et comparer à la simulation.',
+    steps: [
+      'Relevez les amplitudes des harmoniques sans ballon. Vérifiez la fondamentale (π/2) et le deuxième harmonique (2/3).',
+      'Relevez la constante de temps R·C et la fréquence de coupure. Où se situe la fréquence de la came ?',
+      'Doublez le volume du ballon : comment évolue τ ? et l’irrégularité estimée ?',
+      'Doublez la perte de charge : même question.',
+      'Comparez l’irrégularité estimée à la simulation temporelle. Quelle est la source de l’écart ?'
+    ],
+    defi: { q: 'Le ballon a une compliance C = 1,07·10⁻⁹ m³/Pa et la ligne une résistance R = 4,5·10⁸ Pa·s/m³. Calculez τ, f<sub>c</sub> et l’atténuation de la fondamentale à 2,4 Hz.', a: 'τ = R·C ≈ <b>0,48 s</b>, f<sub>c</sub> = 1/(2πτ) ≈ <b>0,33 Hz</b>. À 2,4 Hz : |H| = 1/√(1 + (2π × 2,4 × 0,48)²) ≈ 0,137, soit <b>−17 dB</b>.' },
+    qcm: [
+      { q: 'Quelle est l’amplitude de la fondamentale du débit, relativement à la moyenne ?', o: ['π/2, soit 157 %', '1', '2/3', '50 %'], a: 0, w: 'q/q̄ = 1 + (π/2) sin θ − 2 Σ cos(2kθ) / (4k² − 1).' },
+      { q: 'Quels harmoniques sont présents en plus de la fondamentale ?', o: ['Les harmoniques impairs', 'Les harmoniques pairs', 'Tous', 'Aucun'], a: 1, w: 'Le signal redressé n’a, en dehors de la fondamentale, que des harmoniques pairs : 2/3, 2/15, 2/35.' },
+      { q: 'Le ballon et la ligne forment un filtre…', o: ['passe-haut', 'passe-bas du premier ordre', 'coupe-bande', 'du second ordre sans amortissement'], a: 1, w: 'La ligne est une résistance et le gaz une capacité : q<sub>sortie</sub>/q<sub>pompe</sub> = 1/(1 + R·C·p).' },
+      { q: 'Si l’on double le volume de gaz, la constante de temps…', o: ['est divisée par 2', 'reste identique', 'double environ', 'quadruple'], a: 2, w: 'τ = R·C et C est proportionnelle au volume de gaz.' },
+      { q: 'Pourquoi l’estimation (53 %) diffère-t-elle de la simulation (47 %) ?', o: ['Le calcul oublie le débit moyen', 'La somme des amplitudes surestime l’écart crête à crête, les harmoniques n’étant pas en phase au même instant', 'Le jumeau est faux', 'Le ballon est supposé infini'], a: 1, w: 'Les harmoniques ne culminent pas ensemble : la somme des amplitudes majore l’écart crête à crête.' }
+    ]
+  }
+};
+
+const COURSE = [];
+COURSE.push({ id: 'presentation', t: 'La pompe Doshydro', h: `
+<p>La Doshydro est un <b>doseur à membrane à commande mécanique</b>. Un moteur asynchrone entraîne une came par une roue et vis ; la came pousse un piston qui déplace de l’huile ; l’huile déforme une membrane qui aspire et refoule le produit.</p>
+<h3>Caractéristiques publiées</h3>
+<table class="dt"><tbody>
+<tr><td>Motorisation</td><td>0,37 kW, 1440 tr/min, rapport de réduction 10 (roue 40 dents, vis 4 filets)</td></tr>
+<tr><td>Piston</td><td>course 8 mm, 144 coups/min</td></tr>
+<tr><td>Débit</td><td>240 L/h à 2 bar ; 230 L/h à la pression maximale</td></tr>
+<tr><td>Pressions</td><td>refoulement jusqu’à 8 bar ; aspiration jusqu’à 1 bar ; hauteur d’aspiration 2,5 m</td></tr>
+<tr><td>Ballons</td><td>aspiration 1 L ; refoulement 0,5 L ; pré-gonflage de 0,6 fois la pression de refoulement</td></tr></tbody></table>
+<p>Un clapet de compensation DMR laisse entrer de l’huile quand il en manque en fin d’aspiration. La membrane travaille en déséquilibre de pression : ce type de doseur se limite aux basses pressions.</p>
+<div class="retain"><b>À retenir.</b> Aucune boucle d’asservissement n’est décrite. Le jumeau suppose une came sinusoïdale et ajoute des valeurs calées (rendement, inertie, courbe du moteur, perte de charge). L’interprétation « réducteur de 10 = roue et vis 40/4 » est aussi une déduction.</div>
+<h3>Sources</h3>
+<p class="small">Dossier technique de TP « DOSHYDRO » du lycée Michelet (cahier-de-prepa.fr, PCSI 2).</p>` });
+COURSE.push({ id: 'came', t: 'Loi came-piston et débit', h: `
+<p>Pour une came excentrée, le piston suit x(θ) = (c/2)(1 − cos θ), de vitesse v = (c/2)·ω·sin θ. Le piston refoule pour θ ∈ [0, π].</p>
+<div class="formula">V<sub>coup</sub> = S·c     Q̄ = S·c·f     q(θ) = S·(c/2)·ω·sin θ  (0 ≤ θ ≤ π), 0 ensuite</div>
+<p>Section déduite : S = 27,8 cm³ / 0,8 cm ≈ 34,7 cm². Le débit moyen est proportionnel à la course (120 L/h pour 4 mm) et à la cadence. Le débit maximal vaut π fois le débit moyen.</p>
+<div class="retain"><b>À retenir.</b> Vitesse maximale 60 mm/s et accélération maximale 0,91 m/s² à 144 coups/min. Entre 2 et 8 bar, le débit passe de 240 à 230 L/h.</div>` });
+COURSE.push({ id: 'ballon', t: 'Ballon amortisseur', h: `
+<p>Le ballon de refoulement contient un gaz pré-gonflé. Quand la pression dépasse le pré-gonflage, du liquide y entre et comprime le gaz : le ballon stocke pendant le refoulement et restitue pendant l’aspiration.</p>
+<div class="formula">p<sub>gaz</sub>·V<sub>gaz</sub><sup>k</sup> = cte     q<sub>sortie</sub> = q<sub>pompe</sub> − dV<sub>liquide</sub>/dt     p = p<sub>s</sub> + R·q<sub>sortie</sub></div>
+<table class="dt"><thead><tr><th>Configuration (2 bar)</th><th>Irrégularité du débit</th><th>Variation de pression</th></tr></thead><tbody>
+<tr><td>sans ballon</td><td>314 % (π)</td><td>0,94 bar</td></tr><tr><td>ballon de 0,5 L, pré-gonflage 0,6</td><td>47 %</td><td>0,14 bar</td></tr></tbody></table>
+<div class="retain"><b>À retenir.</b> Le pré-gonflage doit rester inférieur à la pression de service, sinon le ballon ne joue plus son rôle.</div>` });
+COURSE.push({ id: 'puissance', t: 'Couple, puissance et rendement', h: `
+<p>La pression agit sur le piston pendant le refoulement : le couple sur la came est C<sub>came</sub>(θ) = p·S·(c/2)·sin θ. Il est ramené au moteur par le rapport 10 et le rendement η de la roue et vis.</p>
+<div class="formula">η = tan γ / tan(γ + φ)     γ = 12,76°     φ = arctan(μ / cos α)     C<sub>moteur</sub> = C<sub>came</sub> / (N·η)</div>
+<p>Avec μ = 0,08 (calé) et α = 20° : η ≈ 71 %. À 8 bar, la puissance hydraulique est de 51 W, la puissance à l’arbre moteur de 72 W (19 % de 370 W) et le couple de pointe de 1,56 N·m (64 % de 2,45 N·m).</p>
+<div class="retain"><b>À retenir.</b> Le couple de pointe vaut π fois le couple moyen. Le moteur est dimensionné pour le démarrage et les pointes, pas pour le service moyen.</div>` });
+COURSE.push({ id: 'moteur', t: 'Le moteur asynchrone en charge', h: `
+<p>Synchronisme 1500 tr/min, vitesse nominale 1440 tr/min, glissement nominal 4 %, couple nominal 2,45 N·m. Le jumeau utilise la formule de Kloss :</p>
+<div class="formula">C = 2·C<sub>max</sub> / (g/g<sub>m</sub> + g<sub>m</sub>/g)     J·dω/dt = C − C<sub>résistant</sub>(θ)</div>
+<p>Avec C<sub>max</sub> = 2,5 C<sub>n</sub> (calé), g<sub>m</sub> ≈ 0,19. Couple de démarrage 2,27 N·m. À 2 bar, le moteur tourne à 1497 tr/min (150 coups/min) ; à 8 bar, à environ 1 490 tr/min avec 2,5 % d’ondulation. La vitesse est établie en environ 40 ms.</p>
+<div class="retain"><b>À retenir.</b> Plus la charge est faible, plus le moteur se rapproche de 1500 tr/min : la cadence réelle dépasse les 144 coups/min annoncés à vitesse nominale.</div>` });
+COURSE.push({ id: 'harmonique', t: 'Analyse harmonique du débit', h: `
+<p>Le débit d’un piston à came se décompose en série de Fourier :</p>
+<div class="formula">q(θ) / q̄ = 1 + (π/2)·sin θ − 2·Σ cos(2kθ) / (4k² − 1)</div>
+<p>Amplitudes : 157 % (fondamentale), 67 % (2<sup>e</sup>), 13 % (4<sup>e</sup>), 6 % (6<sup>e</sup>). Le ballon et la ligne forment un filtre passe-bas de constante de temps τ = R·C.</p>
+<div class="formula">H(p) = 1 / (1 + τ·p)     C = V<sub>gaz</sub> / (k·p<sub>abs</sub>)     R = Δp<sub>ligne</sub> / Q̄</div>
+<p>Avec τ ≈ 0,48 s (f<sub>c</sub> ≈ 0,33 Hz), la fondamentale à 2,4 Hz est atténuée de 17 dB et l’irrégularité estimée vaut 53 %, contre 47 % en simulation temporelle.</p>
+<div class="retain"><b>À retenir.</b> Pour mieux lisser, on augmente τ : plus de gaz ou une ligne plus résistante. Le calcul harmonique est linéaire, il donne l’ordre de grandeur.</div>` });
+
+/* ---------- interface ---------- */
+const UI = { cur: 's1' };
+const AS = { key: 's1', tab: 'steps', open: false, st: lsGet(KEYS.act, {}), arm: null };
+const CS = { open: false, id: 'presentation' };
+function actSave() { lsSet(KEYS.act, AS.st); }
+function actState() { return AS.st[AS.key] || (AS.st[AS.key] = { a: {}, checked: false, shown: false }); }
+function actScore(a) { const s = actState(); return a.qcm.filter((q, i) => s.a[i] === q.a).length; }
+function wsById(id) { return WORKSHOPS.find(w => w.id === id) || WORKSHOPS[0]; }
+function renderSeg() {
+  const seg = $('#wsSeg'); seg.innerHTML = '';
+  WORKSHOPS.forEach((w, i) => seg.append(h('button', { type: 'button', role: 'tab', 'aria-pressed': w.id === UI.cur ? 'true' : 'false', 'aria-selected': w.id === UI.cur ? 'true' : 'false', onclick: () => gotoWs(w.id) }, (i + 1) + '. ' + w.title)));
+}
+function mountWs() {
+  const w = wsById(UI.cur), root = $('#ws');
+  $('#hint').textContent = w.hint; root.innerHTML = '';
+  w.mount(root);
+  const sc = $('#scroller'); if (sc) sc.scrollTop = 0;
+}
+function gotoWs(id) {
+  if (CS.open) { CS.open = false; renderCourse(); }
+  UI.cur = id; AS.key = id; AS.tab = 'steps';
+  renderSeg(); mountWs(); renderAct();
+}
+function renderAct() {
+  const box = $('#act'), btn = $('#bAct');
+  btn.setAttribute('aria-pressed', AS.open ? 'true' : 'false'); btn.classList.toggle('pri', AS.open);
+  box.hidden = !AS.open;
+  if (!AS.open) { box.innerHTML = ''; return; }
+  const oldB = box.querySelector('.pbody'), tag = AS.key + '|' + AS.tab, keep = oldB && box.dataset.k === tag ? oldB.scrollTop : 0;
+  box.dataset.k = tag;
+  box.innerHTML = '';
+  const a = ACT[AS.key];
+  const close = h('button', { class: 'btn sm', type: 'button', onclick: () => { AS.open = false; renderAct(); } }, 'Fermer');
+  box.append(h('div', { class: 'phead' }, h('b', null, 'Activité'), h('span', { class: 'sub' }, a.title), close));
+  const nq = a.qcm.length;
+  box.append(h('div', { class: 'tabs', role: 'tablist' },
+    h('button', { type: 'button', role: 'tab', 'aria-selected': AS.tab === 'steps' ? 'true' : 'false', onclick: () => { AS.tab = 'steps'; renderAct(); } }, 'Consignes'),
+    h('button', { type: 'button', role: 'tab', 'aria-selected': AS.tab === 'qcm' ? 'true' : 'false', onclick: () => { AS.tab = 'qcm'; renderAct(); } }, 'Questions (' + nq + ')')));
+  const body = h('div', { class: 'pbody' });
+  if (AS.tab === 'steps') {
+    body.append(h('p', { class: 'small' }, a.level + ' · environ ' + a.time), h('div', { class: 'goal' }, h('b', null, 'Objectif. '), a.goal));
+    body.append(h('ol', { class: 'steps' }, a.steps.map(s => h('li', { html: s }))));
+    body.append(h('div', { class: 'defi' }, h('b', null, 'Défi'), h('p', { html: a.defi.q }), h('details', null, h('summary', null, 'Voir la réponse'), h('p', { html: a.defi.a }))));
+    if (a.course) body.append(h('p', null, h('button', { class: 'btn', type: 'button', onclick: () => openCourse(a.course) }, 'Voir le cours : ' + courseSection(a.course).t)));
+    body.append(h('p', null, h('button', { class: 'btn', type: 'button', onclick: ev => {
+      const b = ev.currentTarget;
+      if (!AS.arm) { b.textContent = 'Confirmer ? Votre travail sera effacé'; AS.arm = setTimeout(() => { b.textContent = 'Recommencer l’atelier'; AS.arm = null; }, 3500); return; }
+      clearTimeout(AS.arm); AS.arm = null; wsById(UI.cur).reset(); mountWs(); renderAct(); } }, 'Recommencer l’atelier')));
+    body.append(h('p', null, h('button', { class: 'btn pri', type: 'button', onclick: () => { AS.tab = 'qcm'; renderAct(); } }, 'Passer aux questions')));
+  } else {
+    const s = actState(), show = s.checked || s.shown;
+    a.qcm.forEach((q, i) => {
+      const fs = h('fieldset', { class: 'q' }, h('legend', null, (i + 1) + '. ' + q.q));
+      q.o.forEach((o, j) => {
+        const good = show && j === q.a, bad = s.checked && !s.shown && s.a[i] === j && j !== q.a;
+        const inp = h('input', { type: 'radio', name: 'q' + i, checked: show && s.shown ? j === q.a : s.a[i] === j, disabled: show });
+        inp.addEventListener('change', () => { s.a[i] = j; actSave(); renderAct(); });
+        fs.append(h('label', { class: 'opt' + (good ? ' good' : '') + (bad ? ' bad' : '') }, inp, h('span', null, o + (good ? '  ✓' : '') + (bad ? '  ✗' : ''))));
+      });
+      if (show) { const miss = s.a[i] == null && !s.shown; fs.append(h('p', { class: 'why' }, (miss ? 'Sans réponse. ' : '') + q.w)); }
+      body.append(fs);
+    });
+    const done = Object.keys(s.a).length;
+    body.append(h('p', { class: 'small' }, s.shown ? 'Réponses affichées.' : s.checked ? '' : done + ' réponse(s) sur ' + nq + '.'));
+    if (s.checked && !s.shown) body.append(h('p', { class: 'score' }, 'Score : ' + actScore(a) + ' / ' + nq));
+    const row = h('div', { class: 'files' });
+    if (!show) row.append(h('button', { class: 'btn pri', type: 'button', onclick: () => { s.checked = true; actSave(); renderAct(); } }, 'Corriger'));
+    row.append(h('button', { class: 'btn', type: 'button', onclick: () => { s.shown = true; actSave(); renderAct(); } }, 'Afficher les réponses'));
+    if (show) row.append(h('button', { class: 'btn', type: 'button', onclick: () => { AS.st[AS.key] = { a: {}, checked: false, shown: false }; actSave(); renderAct(); } }, 'Recommencer'));
+    body.append(row);
+  }
+  box.append(body); body.scrollTop = keep;
+}
+function actToggle() { if (CS.open) { CS.open = false; renderCourse(); } AS.open = !AS.open; renderAct(); }
+$('#bAct').addEventListener('click', actToggle);
+
+function courseSection(id) { return COURSE.find(s => s.id === id) || COURSE[0]; }
+function renderCourse() {
+  const box = $('#course'), btn = $('#bCourse'), work = $('#work');
+  btn.setAttribute('aria-pressed', CS.open ? 'true' : 'false'); btn.classList.toggle('pri', CS.open);
+  box.hidden = !CS.open; work.hidden = CS.open; $('#modes').hidden = CS.open;
+  if (!CS.open) { box.innerHTML = ''; return; }
+  box.innerHTML = '';
+  const cur = courseSection(CS.id), idx = COURSE.indexOf(cur);
+  const go = id => { CS.id = id; renderCourse(); };
+  const nav = h('nav', { class: 'ctoc', 'aria-label': 'Sommaire du cours' }, COURSE.map((s, i) => h('button', { type: 'button', class: s.id === cur.id ? 'on' : '', 'aria-current': s.id === cur.id ? 'true' : 'false', onclick: () => go(s.id) }, (i + 1) + '. ' + s.t)));
+  const sel = h('select', { class: 'ctoc-sel', 'aria-label': 'Choisir une section', onchange: e => go(e.target.value) }, COURSE.map((s, i) => h('option', { value: s.id, selected: s.id === cur.id }, (i + 1) + '. ' + s.t)));
+  const art = h('article', { class: 'cbody' });
+  art.append(h('p', { class: 'ckick' }, 'Cours · section ' + (idx + 1) + ' sur ' + COURSE.length), h('h2', null, cur.t), h('div', { html: cur.h }));
+  art.append(h('div', { class: 'cpn' },
+    idx > 0 ? h('button', { class: 'btn', type: 'button', onclick: () => go(COURSE[idx - 1].id) }, '← ' + COURSE[idx - 1].t) : h('span'),
+    idx < COURSE.length - 1 ? h('button', { class: 'btn pri', type: 'button', onclick: () => go(COURSE[idx + 1].id) }, COURSE[idx + 1].t + ' →') : h('span')));
+  const top = h('div', { class: 'ctop' }, h('b', null, 'Cours : la pompe doseuse Doshydro'), h('button', { class: 'btn pri sm', type: 'button', onclick: () => { CS.open = false; renderCourse(); } }, 'Retour à l’atelier'));
+  box.append(top, sel, h('div', { class: 'cwrap' }, nav, art));
+  const sc = box.querySelector('.cwrap'); if (sc) sc.scrollTop = 0; box.scrollTop = 0;
+}
+function openCourse(id) { if (id) CS.id = id; CS.open = true; renderCourse(); }
+$('#bCourse').addEventListener('click', () => { CS.open = !CS.open; renderCourse(); });
+
+function closeDlg() { $('#dlg').hidden = true; $('#dlg').innerHTML = ''; }
+function openDlg(title, body) {
+  const d = $('#dlg'); d.innerHTML = ''; d.hidden = false;
+  d.append(h('div', { class: 'dlgbox', role: 'dialog', 'aria-label': title }, h('header', null, h('b', null, title), h('button', { class: 'btn sm', type: 'button', onclick: closeDlg }, 'Fermer')), h('div', { class: 'dbody' }, body)));
+  d.onclick = ev => { if (ev.target === d) closeDlg(); };
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#dlg').hidden) closeDlg(); });
+$('#bHelp').addEventListener('click', () => {
+  openDlg('Aide', h('div', { html: '<p>Six ateliers autour de la pompe doseuse à membrane Doshydro : système et cinématique, loi came-piston et réglage de course, débit et ballon amortisseur, couple et rendement, moteur asynchrone en charge, analyse harmonique du débit.</p>' +
+    '<h3>Utilisation</h3><ul><li>Choisissez un atelier dans la barre du haut et déplacez les curseurs : les tracés se recalculent immédiatement.</li><li>Survolez un tracé pour lire les valeurs.</li><li>Le bouton <b>Activité</b> ouvre les consignes et un QCM corrigé ; <b>Cours</b> ouvre le cours associé ; <b>Mode sombre</b> bascule le thème.</li></ul>' +
+    '<h3>Limites du jumeau</h3><p>Le seul document public décrit la pompe comme un doseur mécanique (moteur 0,37 kW, réducteur 10, course 8 mm, 144 coups/min, débit 240 L/h à 2 bar). Le jumeau complète par des valeurs calées, signalées et modifiables dans l’atelier 1 : loi de la came, rendement de la roue et vis, inertie, courbe du moteur, perte de charge, polytropique du ballon. Il ne modélise ni la membrane ni les clapets.</p>' +
+    '<h3>Vos données</h3><p>Les réponses au QCM et le thème sont mémorisés dans ce navigateur uniquement.</p>' }));
+});
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  const b = $('#bTheme'); b.setAttribute('aria-pressed', dark ? 'true' : 'false'); b.textContent = dark ? 'Mode clair' : 'Mode sombre';
+}
+$('#bTheme').addEventListener('click', () => { const d = document.documentElement.getAttribute('data-theme') !== 'dark'; applyTheme(d); lsSet('doshydro-theme', d ? 'dark' : 'light'); mountWs(); });
+(function init() { applyTheme(lsGet('doshydro-theme', 'light') === 'dark'); AS.open = !isSmall(); renderSeg(); mountWs(); renderAct(); renderCourse(); })();
+
+</script>
+
+</body></html>
